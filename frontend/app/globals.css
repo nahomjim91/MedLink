@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #EEEDE9;
+  --foreground: #ffffff;
+  --text: #28161C;
+
+}
+
+@theme {
+  --color-primary: #25C8B1;   /* Custom primary color */
+  --color-secondary: #28161C; /* Custom secondary color */
+  --color-error: #FF0000;      /* Custom error color */
+  --font-primary: 'Poppins';
+}
+body{
+  background-color: var(--background);
+  font-family: var(--font-primary);
+}
