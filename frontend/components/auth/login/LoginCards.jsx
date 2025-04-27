@@ -4,7 +4,7 @@ import { Button, OAuthButton } from "@/components/ui/Button";
 import { EmailInput, PasswordInput, TextDivider } from "@/components/ui/Input";
 
 // Detailed signup form with password and terms
-export function LogInFormCard() {
+export function LogInFormCard( {fromTelehealth = true}) {
   const [formData, setFormData] = useState({
     email: "user@example.com",
     password: "123456789",
@@ -39,7 +39,7 @@ export function LogInFormCard() {
           </h1>
           <p className="text-xs md:text-sm text-center text-secondary/50">
             Don&apos;t have an account?{" "}
-            <Link href="/login" className="text-secondary hover:underline">
+            <Link href={fromTelehealth ? "/telehealth/auth/signup" : "/medical-supplies/auth/signup"} className="text-secondary hover:underline">
               Sign up
             </Link>
           </p>

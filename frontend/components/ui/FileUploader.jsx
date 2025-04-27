@@ -9,7 +9,8 @@ export function FileUploader({
   onFileUpload,
   initialFiles = null,
   showPreview = true,
-  previewType = "image" // "image" or "document"
+  previewType = "image", // "image" or "document"
+  className = "",
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState(initialFiles || (multiple ? [] : null));
@@ -73,16 +74,19 @@ export function FileUploader({
     if (!multiple) {
       if (previewType === "image" && files) {
         return (
-          <div className="relative">
+          <div className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
             <img 
               src={URL.createObjectURL(files)} 
               alt="Preview" 
-              className="w-20 h-20 object-cover rounded-full mx-auto mb-2" 
+              className="w-full h-full object-cover rounded-full" 
             />
             <button 
               type="button"
-              onClick={() => removeFile(files)}
-              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeFile(files);
+              }}
+              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
             >
               ×
             </button>
@@ -91,12 +95,15 @@ export function FileUploader({
       }
       
       return (
-        <div className="flex items-center justify-between bg-gray-100 p-2 rounded mb-2">
+        <div className="flex items-center justify-between bg-gray-100 p-2 rounded mb-2 w-full">
           <span className="text-xs md:text-sm truncate max-w-[85%]">{files.name}</span>
           <button 
             type="button"
-            onClick={() => removeFile(files)}
-            className="text-red-500 hover:text-red-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeFile(files);
+            }}
+            className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
           >
             ×
           </button>
@@ -105,16 +112,17 @@ export function FileUploader({
     }
     
     return (
-        // <div className="grid md:grid-cols-2 gap-4">
-
-      <div className="mt-3 grid md:grid-cols-2 gap-4  ">
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
         {files.map((file, index) => (
-          <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded mb-2">
-            <span className="text-xs md:text-sm truncate max-w-[85%]">{file.name}</span>
+          <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+            <span className="text-xs md:text-sm truncate max-w-[80%]">{file.name}</span>
             <button 
               type="button"
-              onClick={() => removeFile(file, index)}
-              className="text-red-500 hover:text-red-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                removeFile(file, index);
+              }}
+              className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
             >
               ×
             </button>
@@ -125,7 +133,7 @@ export function FileUploader({
   };
 
   return (
-    <div className="mb-2">
+    <div className={`mb-4 ${className}`}>
       <label className="block text-xs md:text-sm font-medium text-secondary/70 mb-2">
         {label}
       </label>
@@ -139,7 +147,7 @@ export function FileUploader({
         onClick={() => document.getElementById(`fileInput-${label}`).click()}
       >
         {files && (multiple ? files.length > 0 : files) ? (
-          <div className="text-center">
+          <div className="text-center w-full">
             {renderPreview()}
             <p className="text-xs md:text-sm text-secondary/60 mt-1">
               Click to {multiple ? "add more" : "change"}
@@ -147,9 +155,9 @@ export function FileUploader({
           </div>
         ) : (
           <>
-            <div className="w-12 h-12 md:w-14 md:h-14 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <div className="w-10 h-10 md:w-14 md:h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3 md:mb-4">
               <svg 
-                className="w-8 h-8 text-gray-400" 
+                className="w-6 h-6 md:w-8 md:h-8 text-gray-400" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
@@ -158,10 +166,10 @@ export function FileUploader({
               </svg>
             </div>
             <p className="text-xs md:text-sm text-center text-secondary/70 mb-1">
-              Click or drag {multiple ? "files" : "file"} to this area to upload
+              {multiple ? "Upload files" : "Upload file"}
             </p>
             <p className="text-xs text-center text-secondary/50">
-              Formats accepted: {accept.replace(/\./g, '').replace(/,/g, ', ')}
+              {accept.replace(/\./g, '').replace(/,/g, ', ')}
             </p>
           </>
         )}

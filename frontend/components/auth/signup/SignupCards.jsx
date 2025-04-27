@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 
 // Initial signup card with Google auth option or email entry
-export function SignupStartCard({ onNextStep }) {
+export function SignupStartCard({ onNextStep  , fromTelehealth = true}) {
   const [isLoading, setIsLoading] = useState(false);
   const handleContinueWithEmail = () => {
     setIsLoading(true);
@@ -39,7 +39,7 @@ export function SignupStartCard({ onNextStep }) {
           </h1>
           <p className="text-xs md:text-sm  text-secondary/50 mt-2">
             Already have an account?{" "}
-            <Link href="/login" className="text-secondary hover:underline">
+            <Link href={fromTelehealth ? "/telehealth/auth/login" : "/medical-supplies/auth/login"} className="text-secondary hover:underline">
               Log in
             </Link>
           </p>
@@ -59,7 +59,7 @@ export function SignupStartCard({ onNextStep }) {
           fullWidth
           className="text-base"
         >
-          Create an account
+          Continue with Email
         </Button>
       </div>
     </div>
@@ -67,7 +67,7 @@ export function SignupStartCard({ onNextStep }) {
 }
 
 // Detailed signup form with password and terms
-export function SignupFormCard({ onComplete }) {
+export function SignupFormCard({ fromTelehealth = true }) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "user@example.com", // Pre-filled from previous step
@@ -92,7 +92,7 @@ export function SignupFormCard({ onComplete }) {
     }, 1000);
   };
 const gotoRegister = () => {
-  router.push("/telehealth/auth/registering" , { state: { email: formData.email } });
+  router.push( fromTelehealth ? "/telehealth/auth/registering" :"/medical-supplies/auth/registering" , { state: { email: formData.email } });
 };
   const isFormValid = formData.password.length >= 8 && agreeToTerms;
 
@@ -194,7 +194,7 @@ const gotoRegister = () => {
 
       <p className="text-xs md:text-sm text-center text-secondary/50 mt-6">
         Already have an account?{" "}
-        <Link href="/login" className="text-secondary hover:underline">
+        <Link href= {fromTelehealth ? "/telehealth/auth/login" :"/medical-supplies/auth/login"} className="text-secondary hover:underline">
           Log in
         </Link>
       </p>
