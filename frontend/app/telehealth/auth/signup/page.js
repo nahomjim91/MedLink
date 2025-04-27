@@ -4,8 +4,8 @@ import Image from "next/image";
 import {
   SignupStartCard,
   SignupFormCard,
-  SignupSuccessCard,
-} from "@/components/auth/sign up/SignupCards";
+  
+} from "@/components/auth/signup/SignupCards";
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
@@ -16,11 +16,8 @@ export default function SignupPage() {
       case 1:
         return <SignupStartCard onNextStep={() => setStep(2)} />;
       case 2:
-        return <SignupFormCard onComplete={() => setStep(3)} />;
-     // after finishing the signup and register process, show the success card
-        case 3:
-        return <SignupSuccessCard />;
-      default:
+        return <SignupFormCard  />;
+          default:
         return <SignupStartCard onNextStep={() => setStep(2)} />;
     }
   };

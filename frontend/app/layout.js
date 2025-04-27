@@ -10,13 +10,12 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`bg-amber-50 font-primary`}
-      >
-              <Navbar/>
+      <body className={`bg-amber-50 font-primary`}>
+        <Navbar />
 
         {children}
       </body>
     </html>
   );
 }
+
