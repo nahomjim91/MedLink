@@ -4,7 +4,7 @@ import { Button, OAuthButton } from "@/components/ui/Button";
 import { EmailInput, PasswordInput, TextDivider } from "@/components/ui/Input";
 
 // Detailed signup form with password and terms
-export function LogInFormCard( {fromTelehealth = true}) {
+export function LogInFormCard({ fromTelehealth = true }) {
   const [formData, setFormData] = useState({
     email: "user@example.com",
     password: "123456789",
@@ -26,7 +26,6 @@ export function LogInFormCard( {fromTelehealth = true}) {
     }, 1000);
   };
 
-
   return (
     <div className="flex flex-col items-center  ">
       <div className="md:hidden w-42 h-42 flex items-center justify-center">
@@ -39,7 +38,14 @@ export function LogInFormCard( {fromTelehealth = true}) {
           </h1>
           <p className="text-xs md:text-sm text-center text-secondary/50">
             Don&apos;t have an account?{" "}
-            <Link href={fromTelehealth ? "/telehealth/auth/signup" : "/medical-supplies/auth/signup"} className="text-secondary hover:underline">
+            <Link
+              href={
+                fromTelehealth
+                  ? "/telehealth/auth/signup"
+                  : "/medical-supplies/auth/signup"
+              }
+              className="text-secondary hover:underline"
+            >
               Sign up
             </Link>
           </p>
@@ -72,19 +78,15 @@ export function LogInFormCard( {fromTelehealth = true}) {
             required
           />
           <div className="mb-4 flex justify-end items-end">
-
-            <p className="w-full  text-xs md:text-sm text-right text-secondary/50 hover:text-secondary hover:underline ">
-              {" "}
-              Forgot Your Password ?
-            </p>
+            <Link href={fromTelehealth ? "/telehealth/auth/forgotpassword" : "/medical-supplies/auth/forgotpassword"}>
+              <p className="w-full  text-xs md:text-sm text-right text-secondary/50 hover:text-secondary hover:underline ">
+                {" "}
+                Forgot Your Password ?
+              </p>
+            </Link>
           </div>
 
-          <Button
-            type="submit"
-            variant="fill"
-            color="primary"
-            fullWidth
-          >
+          <Button type="submit" variant="fill" color="primary" fullWidth>
             Log in
           </Button>
         </form>

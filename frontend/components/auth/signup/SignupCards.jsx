@@ -1,7 +1,6 @@
 'use client';
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Button, OAuthButton } from "@/components/ui/Button";
 import { EmailInput, PasswordInput, TextDivider } from "@/components/ui/Input";
 import { useRouter } from "next/navigation";
@@ -229,4 +228,5 @@ export function SignupSuccessCard() {
     </div>
   );
 }
+
 

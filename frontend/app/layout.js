@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
       <body className={`bg-amber-50 font-primary`}>
         <Navbar />
 
-        {children}
+        {children} 
       </body>
     </html>
   );

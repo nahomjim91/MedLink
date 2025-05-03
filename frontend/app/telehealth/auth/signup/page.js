@@ -28,18 +28,18 @@ export default function SignupPage() {
       <div className=" w-full md:w-1/2  p-4  md:p-8">{renderStep()}</div>
 
       {/* Right side - Image */}
-      <div className="hidden md:flex md:w-1/2 relative items-center justify-center p-8">
-        <div className="relative max-w-md">
-          <Image
-            src="/image/trees.jpg"
-            alt="Healthcare professional using MedLink platform"
-            width={400}
-            height={800}
-            className="rounded-3xl shadow-lg"
-            priority
-          />
-        </div>
-      </div>
+           <div className="hidden md:flex md:w-1/2 relative items-center justify-center py-8 pr-8 ">
+             <div className="relative w-full h-full">
+               <Image
+                 src="/image/trees.jpg"
+                 alt="Healthcare professional using MedLink platform"
+                  fill
+                 style={{ objectFit: "cover" }}
+                 className="rounded-3xl shadow-lg"
+                 priority
+               />
+             </div>
+           </div>
     </div>
   );
 }
