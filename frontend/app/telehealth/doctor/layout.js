@@ -2,9 +2,9 @@
 
 import SharedLayout from "../components/layout/SharedLayout";
 
-export default function AdminLayout({ children }) {
+export default function DoctorLayout({ children }) {
   return (
-    <SharedLayout allowedRoles={["ADMIN", "admin"]}>
+    <SharedLayout allowedRoles={["DOCTOR", "doctor"]}>
       {children}
     </SharedLayout>
   );
