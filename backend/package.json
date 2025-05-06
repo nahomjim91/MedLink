@@ -1,15 +1,16 @@
-{
-  "name": "medlink_backend",
+{  "name": "medlink-backend",
   "version": "1.0.0",
+  "description": "MedLink Backend Server",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "author": "",
   "license": "ISC",
-  "description": ""
-  ,
   "dependencies": {
+    "@graphql-tools/load": "^8.0.0",
+    "@graphql-tools/graphql-file-loader": "^8.0.0",
     "apollo-server": "^3.13.0",
     "apollo-server-express": "^3.13.0",
     "cors": "^2.8.5",
@@ -21,6 +22,9 @@
     "graphql-subscriptions": "^3.0.0",
     "http": "^0.0.1-security",
     "socket.io": "^4.8.1"
+  },
+  "keywords": [],
+  "devDependencies": {
+    "nodemon": "^3.0.3"
   }
 }
-

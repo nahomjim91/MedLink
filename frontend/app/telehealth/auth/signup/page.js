@@ -5,7 +5,7 @@ import {
   SignupStartCard,
   SignupFormCard,
   
-} from "@/components/auth/signup/SignupCards";
+} from "../../components/auth/signup/SignupCards";
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);

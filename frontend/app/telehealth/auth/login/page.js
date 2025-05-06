@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
 import Image from "next/image";
-import { LogInFormCard } from "@/components/auth/login/LoginCards";
-
+import { LogInFormCard } from "../../components/auth/login/LoginCards"; 
 export default function LoginPage() {
 
 

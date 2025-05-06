@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import ForgotPassword from "@/components/auth/ForgotPassword";
+import ForgotPassword from "@/app/telehealth/components/auth/ForgotPassword";
 
 
 export default function LoginPage() {
@@ -10,7 +10,7 @@ export default function LoginPage() {
     <div className="flex flex-col md:flex-row  ">
       {/* Left side - Sign-up form */}
       <div className=" w-full md:w-1/2  p-4  md:p-8">
-      <ForgotPassword fromTelehealth={false}/>
+      <ForgotPassword/>
       </div>
       
       {/* Right side - Image */}
