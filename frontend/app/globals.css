@@ -11,6 +11,7 @@
 @theme {
   --color-primary: #25C8B1;   /* Custom primary color */
   --color-secondary: #28161C; /* Custom secondary color */
+  --color-tertiary: #EEEDE9;  /* Custom tertiary color */
   --color-error: #FF0000;      /* Custom error color */
   --font-primary: 'Poppins';
 }
