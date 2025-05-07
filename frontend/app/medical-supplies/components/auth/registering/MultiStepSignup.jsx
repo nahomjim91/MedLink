@@ -5,7 +5,7 @@ import RoleSelection from "./RoleSelection";
 import CompanyInfoForm from "./CompanyInfoForm";
 import ProfileUpload from "./ProfileUpload";
 import SignupSuccess from "./SignupSuccess";
-import { StepProgressIndicator } from "@/app/telehealth/components/ui/StepProgressIndicator";
+import { StepProgressIndicator } from "../../ui/StepProgressIndicator";
 
 export default function MultiStepSignup({ email }) {
   const [currentStep, setCurrentStep] = useState(1);

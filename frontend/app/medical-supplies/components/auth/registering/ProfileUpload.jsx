@@ -1,7 +1,7 @@
 'use client';
 import { useState } from "react";
-import { StepButtons } from "@/app/telehealth/components/ui/Button";
-import { FileUploader } from "@/app/telehealth/components/ui/FileUploader"; // Make sure this path is correct
+import { StepButtons } from "../../ui/Button";
+import { FileUploader } from "../../ui/FileUploader"; // Make sure this path is correct
 
 export default function ProfileUploader({ onProfileImageUpload, onNext, onPrevious }) {
   const [profileImage, setProfileImage] = useState(null);

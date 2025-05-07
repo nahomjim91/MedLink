@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 
-import MultiStepSignup from "@/app/telehealth/components/medical-supplies/registering/MultiStepSignup";
+import MultiStepSignup from "../../components/auth/registering/MultiStepSignup";
 
 export default function RegisterPage() {
   const router = useRouter();

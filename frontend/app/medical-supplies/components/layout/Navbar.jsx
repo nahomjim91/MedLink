@@ -10,7 +10,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const isTelehealth = pathname.startsWith("/telehealth");
+  const isMedicalSupplies = pathname.startsWith("/medical-supplies");
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -31,20 +31,20 @@ export default function Navbar() {
     setIsMenuOpen(false);
   }, [pathname]);
 
-  // Dynamic route generation based on whether we're in telehealth section
+  // Dynamic route generation based on whether we're in medical-supplies section
   const getRoute = (path) => {
-    if (isTelehealth) {
-      return `/telehealth${path === '/' ? '' : path}`;
+    if (isMedicalSupplies) {
+      return `/medical-supplies${path === '/' ? '' : path}`;
     }
     return path;
   };
 
-  // Check if a path is active, accounting for telehealth prefix
+  // Check if a path is active, accounting for medical-supplies prefix
   const isActive = (path) => {
     if (path === '/') {
-      return pathname === '/' || pathname === '/telehealth';
+      return pathname === '/' || pathname === '/medical-supplies';
     }
-    return isTelehealth ? pathname === `/telehealth${path}` : pathname === path;
+    return isMedicalSupplies ? pathname === `/medical-supplies${path}` : pathname === path;
   };
 
   // Prevent body scrolling when menu is open
@@ -69,9 +69,9 @@ export default function Navbar() {
         <div className="flex justify-between items-center h-16 md:h-20">
           {/* Logo */}
           <div className="flex items-center gap-10">
-            <Link href={isTelehealth ? "/telehealth" : "/"} className="flex-shrink-0 text-2xl md:text-4xl font-bold text-secondary">
+            <Link href={isMedicalSupplies ? "/medical-supplies" : "/"} className="flex-shrink-0 text-2xl md:text-4xl font-bold text-secondary">
               MedLink
-              {isTelehealth && <span className="text-primary text-xl ml-1">Telehealth</span>}
+              {isMedicalSupplies && <span className="text-primary text-xl ml-1">Telehealth</span>}
             </Link>
         
             {/* Desktop Navigation */}
@@ -117,7 +117,7 @@ export default function Navbar() {
             transition={{ duration: 0.4 }}
           >
             <div className="">
-              {isTelehealth && <LanguageSelector />}
+              {isMedicalSupplies && <LanguageSelector />}
             </div>
 
             {/* Desktop auth buttons with hover animations */}

@@ -1,15 +1,15 @@
+// app/medical-supplies/components/auth/MSLogInFormCard.js
 'use client';
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, OAuthButton } from "@/app/medical-supplies/components/ui/Button";
-import { EmailInput, PasswordInput, TextDivider } from "@/app/medical-supplies/components/ui/Input";
-// import { useAuth } from "@/app/@/app/medical-supplies/components/hooks/useAuth";
+import { Button, OAuthButton} from "../../ui/Button" 
+import { EmailInput, PasswordInput, TextDivider } from "../../ui/Input" 
+import { useMSAuth } from "../../../hooks/useMSAuth";
 
-// Detailed login form with password and terms
-export function LogInFormCard() {
+export function MSLogInFormCard() {
   const router = useRouter();
-  const { login, signInWithGoogle } = useAuth();
+  const { login, signInWithGoogle } = useMSAuth(); 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -30,7 +30,7 @@ export function LogInFormCard() {
     
     try {
       await login(formData.email, formData.password);
-      router.push(  "/medical-supplies/dashboard");
+      router.push("/medical-supplies/dashboard"); // MS dashboard route
     } catch (error) {
       console.error("Login error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -45,7 +45,7 @@ export function LogInFormCard() {
     
     try {
       await signInWithGoogle();
-      router.push("/medical-supplies/dashboard");
+      router.push("/medical-supplies/dashboard"); // MS dashboard route
     } catch (error) {
       console.error("Google login error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -85,9 +85,7 @@ export function LogInFormCard() {
           <p className="text-xs md:text-sm text-center text-secondary/50">
             Don&apos;t have an account?{" "}
             <Link
-              href={
-               "/medical-supplies/auth/signup"
-              }
+              href="/medical-supplies/auth/signup" // Updated signup route
               className="text-secondary hover:underline"
             >
               Sign up
@@ -133,7 +131,7 @@ export function LogInFormCard() {
           />
           
           <div className="mb-4 flex justify-end items-end">
-            <Link href={ "/medical-supplies/auth/forgotpassword"}>
+            <Link href="/medical-supplies/auth/forgotpassword" > {/* Updated password reset route */}
               <p className="w-full text-xs md:text-sm text-right text-secondary/50 hover:text-secondary hover:underline">
                 Forgot Your Password?
               </p>

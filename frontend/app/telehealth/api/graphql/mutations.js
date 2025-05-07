@@ -45,7 +45,6 @@ export const COMPLETE_REGISTRATION = gql`
       profileComplete
       firstName
       lastName
-      # Add other fields you need after registration
     }
   }
 `;

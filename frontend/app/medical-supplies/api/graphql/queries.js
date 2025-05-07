@@ -1,189 +1,127 @@
-//app/telehealth/api/graphql/queries.js
-import { gql } from "@apollo/client";
+// /api/graphql/queries.js
+import { gql } from '@apollo/client';
 
-export const GET_USER = gql`
-  query GetUser {
-    me {
-      id
-      firstName
-      lastName
-      email
-      role
-    }
-  }
-`;
-
-export const GET_USER_BY_ID = gql`
-  query GetUserById($id: ID!) {
-    getUserById(id: $id) {
-      id
-      firstName
-      lastName
-      email
-      role
-    }
-  }
-`;
-
-export const GET_DOCTORS = gql`
-  query GetDoctors($specialization: String, $searchTerm: String) {
-    getDoctors(specialization: $specialization, searchTerm: $searchTerm) {
-      id
+// Query to get the current MS user profile
+export const GET_MS_ME = gql`
+  query GetMSMe {
+    msMe {
       userId
-      specialization
-      experience
-      consultationFee
-      rating
-      user {
-        id
-        firstName
-        lastName
-      }
-    }
-  }
-`;
-
-export const GET_DOCTOR_BY_USER_ID = gql`
-  query GetDoctorByUserId($userId: ID!) {
-    getDoctorByUserId(userId: $userId) {
-      id
-    }
-  }
-`;
-
-export const GET_DOCTOR_APPOINTMENTS = gql`
-  query GetDoctorAppointments($doctorId: ID!) {
-    getDoctorAppointments(doctorId: $doctorId) {
-      id
-      startTime
-      endTime
-      status
-      notes
-      meetingLink
-      patient {
-        user {
-          firstName
+      email
+      role
+      companyName
+      contactName
+      phoneNumber
+      address {
+        street
+        city
+        state
+        country
+        postalCode
+        geoLocation {
+          latitude
+          longitude
         }
       }
-    }
-  }
-`;
-
-export const GET_DOCTOR_AVAILABILITY = gql`
-  query GetDoctorAvailability($doctorId: ID!) {
-    getDoctorAvailability(doctorId: $doctorId) {
-      id
-      startTime
-      endTime
-    }
-  }
-`;
-
-export const GET_AVAILABLE_SLOTS = gql`
-  query GetAvailableSlots($doctorId: ID!, $date: String!) {
-    getAvailableSlots(doctorId: $doctorId, date: $date)
-  }
-`;
-
-export const GET_PATIENT_APPOINTMENTS = gql`
-  query GetPatientAppointments($patientId: ID!, $status: AppointmentStatus) {
-    getPatientAppointments(patientId: $patientId, status: $status) {
-      id
-      doctor {
-        id
-        user {
-          firstName
-          lastName
-          email
+      profileImageUrl
+      createdAt
+      isApproved
+      approvedBy
+      approvedAt
+      efdaLicenseUrl
+      businessLicenseUrl
+      cart {
+        items {
+          productId
+          quantity
+          price
+          productName
+          productImage
         }
-        specialization
+        total
+        lastUpdated
       }
-      startTime
-      endTime
-      status
-      notes
+    }
+  }
+`;
+
+// Query to get a specific MS user by ID (for admin use)
+export const GET_MS_USER_BY_ID = gql`
+  query GetMSUserById($userId: ID!) {
+    msUserById(userId: $userId) {
+      userId
+      email
+      role
+      companyName
+      contactName
+      phoneNumber
+      address {
+        street
+        city
+        state
+        country
+        postalCode
+        geoLocation {
+          latitude
+          longitude
+        }
+      }
+      profileImageUrl
+      createdAt
+      isApproved
+      approvedBy
+      approvedAt
+      efdaLicenseUrl
+      businessLicenseUrl
+    }
+  }
+`;
+
+// Query to get users by role (for admin use)
+export const GET_MS_USERS_BY_ROLE = gql`
+  query GetMSUsersByRole($role: String!) {
+    msUsersByRole(role: $role) {
+      userId
+      email
+      companyName
+      contactName
+      phoneNumber
+      profileImageUrl
+      isApproved
       createdAt
     }
   }
 `;
 
-export const GET_PATIENT_BY_USER_ID = gql`
-  query GetPatientByUserId($userId: ID!) {
-    getPatientByUserId(userId: $userId) {
-      id
-    }
-  }
-`;
-
-export const ADD_APPOINTMENT_NOTE = gql`
-  mutation AddAppointmentNotes($id: ID!, $notes: String!) {
-    addAppointmentNotes(id: $id, notes: $notes) {
-      id
-      notes
-      status
-    }
-  }
-`;
-
-export const GET_USER_APPOINTMENTS = gql`
-  query GetUserAppointments {
-    getUserAppointments {
-      id
-      doctorId
-      doctor {
-        id
-        specialization
-        user {
-          id
-          firstName
-          lastName
-          email
-          role
-        }
-      }
-      lastTime
-      lastMessage
-      lastSenderId
-      patientId
-      patient {
-        id
-        dateOfBirth
-        user {
-          id
-          firstName
-          lastName
-          email
-          role
-        }
-      }
-      startTime
-      endTime
-      status
-      notes
-      meetingLink
+// Query to get pending approval users (for admin use)
+export const GET_PENDING_APPROVAL_USERS = gql`
+  query GetPendingApprovalUsers($limit: Int, $offset: Int) {
+    pendingApprovalUsers(limit: $limit, offset: $offset) {
+      userId
+      email
+      role
+      companyName
+      contactName
+      phoneNumber
+      profileImageUrl
       createdAt
-      updatedAt
+      efdaLicenseUrl
+      businessLicenseUrl
     }
   }
 `;
 
-export const GET_APPOINTMENT_BY_ID = gql`
-  query GetAppointmentById($id: ID!) {
-    getAppointmentById(id: $id) {
-      patientId
-      doctorId
-      patient {
-        user {
-          firstName
-          lastName
-        }
-      }
-      doctor {
-        user {
-          firstName
-          lastName
-        }
-      }
+// Query to search for users (for admin use)
+export const SEARCH_MS_USERS = gql`
+  query SearchMSUsers($query: String!, $limit: Int, $offset: Int) {
+    searchMSUsers(query: $query, limit: $limit, offset: $offset) {
+      userId
+      email
+      role
+      companyName
+      contactName
+      phoneNumber
+      profileImageUrl
+      isApproved
     }
   }
 `;

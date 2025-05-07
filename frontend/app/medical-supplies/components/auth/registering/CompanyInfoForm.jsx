@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Button, StepButtons } from "@/app/telehealth/components/ui/Button";
-import { AddressInput, TextInput } from "@/app/telehealth/components/ui/Input";
-import { FileUploader } from "@/app/telehealth/components/ui/FileUploader";
+import { Button, StepButtons } from "../../ui/Button";
+import { AddressInput, TextInput } from "../../ui/Input";
+import { FileUploader } from "../../ui/FileUploader";
 
 export default function CompanyInfoForm({
   userData,

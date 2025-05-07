@@ -25,12 +25,11 @@ const NavbarWrapper = ({ children }) => {
   );
   
   // Also hide navbar in auth paths
-  const isAuthPath = pathname.includes('/telehealth/auth/');
   
   // Render navbar only if not in a protected area
   return (
     <>
-      {!shouldHideNavbar && !isAuthPath && <Navbar />}
+      {!shouldHideNavbar && <Navbar />}
       {children}
     </>
   );

@@ -259,32 +259,3 @@ export function SignupFormCard({ }) {
     </div>
   );
 }
-
-// Success screen after signup completion
-export function SignupSuccessCard() {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="md:hidden w-80 h-80 flex items-center justify-center">
-        <div className="w-56 h-56 bg-gray-300 rounded-full"></div>
-      </div>
-      <div className="w-full bg-white rounded-3xl shadow-sm px-6 py-16 md:mt-0 md:px-32 md:py-40">
-        <div className="px-8 md:px-0">
-          <h1 className="text-2xl font-bold text-secondary/80 mb-4">
-            Account created successfully
-          </h1>
-
-          <p className="text-secondary/60 mb-8">
-            Welcome to MedLink! You can now access all our healthcare services.
-          </p>
-        </div>
-
-        <Link href="/dashboard">
-          <Button variant="fill" color="primary" fullWidth>
-            Go to Dashboard
-          </Button>
-        </Link>
-      </div>
-    </div>
-  );
-}
-

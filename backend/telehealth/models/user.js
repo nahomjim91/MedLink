@@ -1,13 +1,13 @@
 /**
  * User model for MedLink telehealth
  */
-const { db } = require('../config/firebase');
-const { formatDoc, sanitizeInput, timestamp } = require('../utils/helpers');
+const { db } = require('../../config/firebase');
+const { formatDoc, sanitizeInput, timestamp } = require('../../utils/helpers');
 const DoctorProfileModel = require('./doctorProfile');
 const PatientProfileModel = require('./patientProfile');
 
 // Collection reference
-const usersRef = db.collection('users');
+const thUsersRef = db.collection('thUsers');
 
 /**
  * User model
@@ -20,7 +20,7 @@ const UserModel = {
    */
   async getById(id) {
     try {
-      const doc = await usersRef.doc(id).get();
+      const doc = await thUsersRef.doc(id).get();
       return formatDoc(doc);
     } catch (error) {
       console.error('Error getting user by ID:', error);
@@ -35,7 +35,7 @@ const UserModel = {
    */
   async getByEmail(email) {
     try {
-      const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+      const snapshot = await thUsersRef.where('email', '==', email).limit(1).get();
       if (snapshot.empty) return null;
       return formatDoc(snapshot.docs[0]);
     } catch (error) {
@@ -55,7 +55,7 @@ const UserModel = {
       const sanitizedData = sanitizeInput(data);
       
       // Get existing user
-      const userRef = usersRef.doc(id);
+      const userRef = thUsersRef.doc(id);
       const userDoc = await userRef.get();
       
       let userData;
@@ -102,7 +102,7 @@ const UserModel = {
    */
   async initializeUser(id, email) {
     try {
-      const userRef = usersRef.doc(id);
+      const userRef = thUsersRef.doc(id);
       const userData = {
         email: email,
         role: null, // Role will be set during completeRegistration
@@ -129,7 +129,7 @@ const UserModel = {
     try {
       const sanitizedUserData = sanitizeInput(userData);
       const sanitizedRoleData = sanitizeInput(roleSpecificData);
-      const userRef = usersRef.doc(id);
+      const userRef = thUsersRef.doc(id);
 
       // Ensure the user document exists before attempting transaction
       const userDoc = await userRef.get();
@@ -187,7 +187,7 @@ const UserModel = {
   async delete(id) {
     try {
       // Get user to check role
-      const userDoc = await usersRef.doc(id).get();
+      const userDoc = await thUsersRef.doc(id).get();
       if (!userDoc.exists) return false;
       
       const userData = userDoc.data();
@@ -195,7 +195,7 @@ const UserModel = {
       // Delete user with transaction to ensure data consistency
       await db.runTransaction(async (transaction) => {
         // Delete user document
-        transaction.delete(usersRef.doc(id));
+        transaction.delete(thUsersRef.doc(id));
         
         // Delete role-specific profile
         if (userData.role === 'doctor') {

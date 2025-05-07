@@ -8,7 +8,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const { Server } = require('socket.io');
 const setupApolloServer = require('./graphql');
-const { authMiddleware } = require('./middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {

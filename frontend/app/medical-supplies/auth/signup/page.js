@@ -2,10 +2,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import {
-  SignupStartCard,
-  SignupFormCard,
+  MSSignupStartCard,
+  MSSignupFormCard,
   
-} from "@/app/telehealth/components/auth/signup/SignupCards";
+} from "../../components/auth/signup/SignupCards";
 
 export default function SignupPage() {
   const [step, setStep] = useState(1);
@@ -14,11 +14,11 @@ export default function SignupPage() {
   const renderStep = () => {
     switch (step) {
       case 1:
-        return <SignupStartCard  onNextStep={() => setStep(2)} />;
+        return <MSSignupStartCard  onNextStep={() => setStep(2)} />;
       case 2:
-        return <SignupFormCard   />;
+        return <MSSignupFormCard   />;
           default:
-        return <SignupStartCard onNextStep={() => setStep(2)} />;
+        return <MSSignupStartCard onNextStep={() => setStep(2)} />;
     }
   };
 

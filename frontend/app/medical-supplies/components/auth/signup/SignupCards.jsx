@@ -2,17 +2,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button, OAuthButton } from "@/app/telehealth/components/ui/Button";
-import { EmailInput, PasswordInput, TextDivider } from "@/app/telehealth/components/ui/Input";
-import { useAuth } from "@/app/hooks/useAuth";
+import { Button, OAuthButton } from "../../ui/Button";
+import { EmailInput, PasswordInput, TextDivider } from "../../ui/Input";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 
 // Initial signup card with Google auth option or email entry
-export function SignupStartCard({ onNextStep,   }) {
+export function MSSignupStartCard({ onNextStep }) {
   const [isLoading, setIsLoading] = useState(false);
   
   const handleContinueWithEmail = () => {
     setIsLoading(true);
-    // Simulate API call or validation
     setTimeout(() => {
       setIsLoading(false);
       onNextStep();
@@ -33,8 +32,8 @@ export function SignupStartCard({ onNextStep,   }) {
             Create an account
           </h1>
           <p className="text-xs md:text-sm text-secondary/50 mt-2">
-            Already have an account?{" "}fromTelehealth
-            <Link href={"/medical-supplies/auth/login"} className="text-secondary hover:underline">
+            Already have an account?{" "}
+            <Link href="/medical-supplies/auth/login" className="text-secondary hover:underline">
               Log in
             </Link>
           </p>
@@ -68,9 +67,9 @@ export function SignupStartCard({ onNextStep,   }) {
 }
 
 // Detailed signup form with password and terms
-export function SignupFormCard() {
+export function MSSignupFormCard() {
   const router = useRouter();
-  const { signup, signInWithGoogle } = useAuth();
+  const { signup, signInWithGoogle } = useMSAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -94,11 +93,8 @@ export function SignupFormCard() {
     setError(null);
     
     try {
-      await signup(formData.email, formData.password, {
-        email: formData.email,
-        subscribeNewsletter,
-        role: "" // Will be set during registration process
-      });
+      // Using the MS-specific signup function
+      await signup(formData.email, formData.password);
       gotoRegister();
     } catch (error) {
       console.error("Signup error:", error);
@@ -122,9 +118,8 @@ export function SignupFormCard() {
   };
 
   const gotoRegister = () => {
-    router.push("/medical-supplies/auth/registering", 
-      { state: { email: formData.email } }
-    );
+    // Redirect to MS registration page
+    router.push("/medical-supplies/auth/registering");
   };
 
   // Function to get user-friendly error messages
@@ -152,7 +147,7 @@ export function SignupFormCard() {
           Sign up
         </h1>
         <p className="text-xs md:text-sm text-secondary/50 mb-2 text-center">
-          Sign up for free to access to in any of our products
+          Sign up for free to access our medical supplies platform
         </p>
       </div>
 
@@ -252,38 +247,10 @@ export function SignupFormCard() {
 
       <p className="text-xs md:text-sm text-center text-secondary/50 mt-6">
         Already have an account?{" "}
-        <Link href={ "/medical-supplies/auth/login"} className="text-secondary hover:underline">
+        <Link href="/medical-supplies/auth/login" className="text-secondary hover:underline">
           Log in
         </Link>
       </p>
-    </div>
-  );
-}
-
-// Success screen after signup completion
-export function SignupSuccessCard() {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="md:hidden w-80 h-80 flex items-center justify-center">
-        <div className="w-56 h-56 bg-gray-300 rounded-full"></div>
-      </div>
-      <div className="w-full bg-white rounded-3xl shadow-sm px-6 py-16 md:mt-0 md:px-32 md:py-40">
-        <div className="px-8 md:px-0">
-          <h1 className="text-2xl font-bold text-secondary/80 mb-4">
-            Account created successfully
-          </h1>
-
-          <p className="text-secondary/60 mb-8">
-            Welcome to MedLink! You can now access all our healthcare services.
-          </p>
-        </div>
-
-        <Link href="/dashboard">
-          <Button variant="fill" color="primary" fullWidth>
-            Go to Dashboard
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }

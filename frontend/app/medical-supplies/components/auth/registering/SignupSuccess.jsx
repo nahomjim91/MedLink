@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/app/telehealth/components/ui/Button";
+import { Button } from "../../ui/Button";
 import { Check } from "lucide-react";
 
 export default function SignupSuccess({ userData }) {

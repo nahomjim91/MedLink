@@ -1,8 +1,8 @@
 "use client";
 import React from "react";
-import { StepButtons } from "@/app/telehealth/components/ui/Button";
-import IconCard from "@/app/telehealth/components/ui/Card";
-import { TextDivider } from "@/app/telehealth/components/ui/Input";
+import { StepButtons } from "../../ui/Button";
+import IconCard from "../../ui/Card";
+import { TextDivider } from "../../ui/Input";
 import { FaUserMd, FaUserInjured, FaUserCog } from "react-icons/fa";
 
 export default function RoleSelection({ selectedRole, onRoleSelect, onNext }) {

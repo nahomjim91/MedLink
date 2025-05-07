@@ -1,82 +1,163 @@
-//app/telehealth/api/graphql/mutations.js:
-import { gql } from "@apollo/client";
+// /api/graphql/mutations.js
+import { gql } from '@apollo/client';
 
-export const REGISTER = gql`
-  mutation Register($input: RegisterInput!) {
-    register(input: $input) {
-      token
-      user {
-        id
-        firstName
-        lastName
-        email
-        role
+// Mutation to initialize a medical supplies user profile
+export const INITIALIZE_MS_USER_PROFILE = gql`
+  mutation InitializeMSUserProfile($email: String!) {
+    initializeMSUserProfile(email: $email) {
+      userId
+      email
+      role
+    }
+  }
+`;
+
+// Mutation to update user profile
+export const UPDATE_MS_USER_PROFILE = gql`
+  mutation UpdateMSUserProfile($input: MSUserInput!) {
+    updateMSUserProfile(input: $input) {
+      userId
+      email
+      role
+      companyName
+      contactName
+      phoneNumber
+      address {
+        street
+        city
+        state
+        country
+        postalCode
+        geoLocation {
+          latitude
+          longitude
+        }
+      }
+      profileImageUrl
+      efdaLicenseUrl
+      businessLicenseUrl
+    }
+  }
+`;
+
+// Mutation to complete registration
+export const COMPLETE_MS_REGISTRATION = gql`
+  mutation CompleteMSRegistration($input: MSUserInput!) {
+    completeMSRegistration(input: $input) {
+      userId
+      email
+      role
+      companyName
+      contactName
+      phoneNumber
+      address {
+        street
+        city
+        state
+        country
+        postalCode
+      }
+      profileImageUrl
+      efdaLicenseUrl
+      businessLicenseUrl
+      isApproved
+    }
+  }
+`;
+
+// Mutation to approve a user (admin only)
+export const APPROVE_MS_USER = gql`
+  mutation ApproveMSUser($userId: ID!) {
+    approveMSUser(userId: $userId) {
+      userId
+      email
+      isApproved
+      approvedBy
+      approvedAt
+    }
+  }
+`;
+
+// Mutation to reject a user (admin only)
+export const REJECT_MS_USER = gql`
+  mutation RejectMSUser($userId: ID!, $reason: String!) {
+    rejectMSUser(userId: $userId, reason: $reason)
+  }
+`;
+
+// Cart mutations
+export const ADD_TO_CART = gql`
+  mutation AddToCart($productId: ID!, $quantity: Int!, $price: Float!, $productName: String, $productImage: String) {
+    addToCart(productId: $productId, quantity: $quantity, price: $price, productName: $productName, productImage: $productImage) {
+      userId
+      cart {
+        items {
+          productId
+          quantity
+          price
+          productName
+          productImage
+        }
+        total
+        lastUpdated
       }
     }
   }
 `;
 
-export const CREATE_DOCTOR_PROFILE = gql`
-  mutation CreateDoctorProfile($input: DoctorProfileInput!) {
-    createDoctorProfile(input: $input) {
-      id
-      specialization
-      experience
-      bio
+export const UPDATE_CART_ITEM = gql`
+  mutation UpdateCartItem($productId: ID!, $quantity: Int!) {
+    updateCartItem(productId: $productId, quantity: $quantity) {
+      userId
+      cart {
+        items {
+          productId
+          quantity
+          price
+          productName
+          productImage
+        }
+        total
+        lastUpdated
+      }
     }
   }
 `;
 
-export const CREATE_PATIENT_PROFILE = gql`
-  mutation CreatePatientProfile($input: PatientProfileInput!) {
-    createPatientProfile(input: $input) {
-      id
-      dateOfBirth
-      gender
+export const REMOVE_FROM_CART = gql`
+  mutation RemoveFromCart($productId: ID!) {
+    removeFromCart(productId: $productId) {
+      userId
+      cart {
+        items {
+          productId
+          quantity
+          price
+          productName
+          productImage
+        }
+        total
+        lastUpdated
+      }
     }
   }
 `;
 
-
-
-export const UPDATE_DOCTOR_AVAILABILITY = gql`
-  mutation UpdateDoctorAvailability($doctorId: ID!, $availabilities: [AvailabilityInput!]!) {
-    updateDoctorAvailability(doctorId: $doctorId, availabilities: $availabilities) {
-      id
-      startTime
-      endTime
-    }
-  }
-`;
-
-export const DELETE_AVAILABILITY = gql`
-  mutation DeleteAvailability($id: ID!) {
-    deleteAvailability(id: $id) {
-      id
-    }
-  }
-`;
-
-export const BOOK_APPOINTMENT = gql`
-  mutation BookAppointment($input: AppointmentInput!) {
-    bookAppointment(input: $input) {
-      id
-      startTime
-      endTime
-      status
-    }
-  }
-`;
-
-export const UPDATE_APPOINTMENT_STATUS = gql`
-  mutation UpdateAppointmentStatus($id: ID!, $status: AppointmentStatus!) {
-    updateAppointmentStatus(id: $id, status: $status) {
-      id
-      status
-      startTime
-      endTime
-      notes
-      meetingLink
+export const CLEAR_CART = gql`
+  mutation ClearCart {
+    clearCart {
+      userId
+      cart {
+        items {
+          productId
+          quantity
+          price
+          productName
+          productImage
+        }
+        total
+        lastUpdated
+      }
     }
   }
 `;

@@ -1,8 +1,8 @@
 /**
  * Patient profile model for MedLink telehealth
  */
-const { db } = require('../config/firebase');
-const { formatDoc, sanitizeInput, timestamp } = require('../utils/helpers');
+const { db } = require('../../config/firebase');
+const { formatDoc, sanitizeInput, timestamp } = require('../../utils/helpers');
 
 // Collection reference
 const patientsRef = db.collection('patientProfiles');
