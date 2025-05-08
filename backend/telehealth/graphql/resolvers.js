@@ -207,7 +207,7 @@ const resolvers = {
         // 1. Update the base user information
         const updatedUser = await UserModel.createOrUpdate(userId, {
           ...THuserInput,
-          profileComplete: true,
+          profileComplete: true, 
         });
 
         const user = isAuthenticated(context);

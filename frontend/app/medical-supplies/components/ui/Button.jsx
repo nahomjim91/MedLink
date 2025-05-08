@@ -1,13 +1,5 @@
-/**
- * Button Component
- * @param {string} variant - "fill" or "outline"
- * @param {string} color - "primary", "secondary", "error", or custom color
- * @param {function} onClick - click handler function
- * @param {boolean} fullWidth - whether button should take full width
- * @param {string} size - "sm", "md", or "lg"
- * @param {ReactNode} children - button content
- * @param {boolean} disabled - disables the button
- */
+import Image from "next/image";
+
 export function Button({
   variant = "fill",
   color = "primary",
@@ -85,9 +77,6 @@ export function Button({
   );
 }
 
-/**
- * OAuth Button Component (like "Continue with Google")
- */
 export function OAuthButton({
   provider,
   onClick,
@@ -151,9 +140,6 @@ export function OAuthButton({
   );
 }
 
-/**
- * Progress Indicator (for multi-step forms)
- */
 export function StepButtons({
   onPrevious,
   onNext,
@@ -195,3 +181,51 @@ export function StepButtons({
     </div>
   );
 }
+
+export const IconButton = ({ icon, badge, isActive, onClick  }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative p-2 md:p-3  rounded-full transition-all ${
+        isActive
+          ? "bg-primary text-white"
+          : "bg-white text-gray-700 "
+      }`}
+    >
+      {icon}
+      {badge && badge > 0 ? (
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+          {badge}
+        </span>
+      ) : (
+        ""
+      )}
+    </button>
+  );
+};
+
+export const ImageIconButton = ({
+  imageUrl,
+  onClick,
+  alt = "Icon",
+  isActive = false,
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative w-10 h-10 rounded-3xl overflow-hidden cursor-pointer ${
+        isActive ? "ring-2 ring-primary" : ""
+      }`}
+    >
+      <Image
+        src={imageUrl}
+        alt={alt}
+        fill
+        sizes="2.25rem"
+        style={{ objectFit: "cover" }}
+        className="rounded-3xl shadow-lg"
+        priority
+      />
+    </button>
+  );
+};

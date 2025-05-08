@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
     const handleProfileData = (firebaseUser, profileData) => {
       setUser({
         id: firebaseUser.uid,
-        email: firebaseUser.email,
+        email: firebaseUser.email, 
         displayName: firebaseUser.displayName || profileData.firstName || "",
         photoURL: firebaseUser.photoURL || profileData.profileImageUrl || "",
         role: profileData.role,

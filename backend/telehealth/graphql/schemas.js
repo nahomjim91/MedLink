@@ -15,7 +15,7 @@ const typeDefs = gql`
     dob: Date
     profileImageUrl: String
     createdAt: Date
-    profileComplete: Boolean
+    profileComplete: Boolean 
     doctorProfile: DoctorProfile
   }
 

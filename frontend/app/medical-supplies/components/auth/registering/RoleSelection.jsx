@@ -4,6 +4,7 @@ import { StepButtons } from "../../ui/Button";
 import IconCard from "../../ui/Card";
 import { TextDivider } from "../../ui/Input";
 import { FaUserMd, FaUserInjured, FaUserCog } from "react-icons/fa";
+import { Hospital, Store, Truck } from "lucide-react";
 
 export default function RoleSelection({ selectedRole, onRoleSelect, onNext }) {
   return (
@@ -19,19 +20,19 @@ export default function RoleSelection({ selectedRole, onRoleSelect, onNext }) {
 
       <div className="grid grid-cols-2 justify-items-center md:grid-cols-3 gap-2  ">
         <IconCard
-          icon={<FaUserInjured size={52} />}
+          icon={<Truck size={52} />}
           label="Importer"
           onClick={() => onRoleSelect("importer")}
           isSelected={selectedRole === "importer"}
         />
         <IconCard
-          icon={<FaUserMd size={52} />}
+          icon={<Store size={52} />}
           label="Supplier"
           onClick={() => onRoleSelect("supplier")}
           isSelected={selectedRole === "supplier"}
         />
          <IconCard
-          icon={<FaUserMd size={52} />}
+          icon={<Hospital size={52} />}
           label="Health Facility"
           onClick={() => onRoleSelect("health Facility")}
           isSelected={selectedRole === "health Facility"}

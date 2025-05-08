@@ -14,6 +14,7 @@ import { GET_MS_ME } from "../api/graphql/queries";
 import { INITIALIZE_MS_USER_PROFILE } from "../api/graphql/mutations";
 import client from "../api/graphql/client";
 import { useMutation } from '@apollo/client';
+import { ADD_TO_CART, UPDATE_CART_ITEM, REMOVE_FROM_CART, CLEAR_CART } from "../api/graphql/mutations";
 
 const MSAuthContext = createContext();
 
@@ -28,7 +29,13 @@ export const MSAuthProvider = ({ children }) => {
 
   useEffect(() => {
     const registrationPath = "/medical-supplies/auth/registering";
-    const dashboardPath = "/medical-supplies/dashboard"; // Define the dashboard path
+    const dashboardPath = "/medical-supplies/dashboard";
+    const loginPath = "/medical-supplies/auth/login";
+    const signupPath = "/medical-supplies/auth/signup";
+    const homePath = "/medical-supplies/";
+    
+    // Define public paths that don't require authentication
+    const publicPaths = [loginPath, signupPath, homePath];
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
@@ -89,19 +96,26 @@ export const MSAuthProvider = ({ children }) => {
           await handleSignOut();
         }
       } else {
-        // User is signed out
+        // User is signed out - redirect to home if not on a public path
         await handleSignOut();
+        
+        // Check if user is trying to access a protected route
+        if (!publicPaths.includes(pathname) && !pathname.startsWith(homePath)) {
+          console.log("Unauthenticated user trying to access protected route, redirecting to home");
+          router.push(homePath);
+        }
       }
     });
 
     const handleProfileData = (firebaseUser, profileData) => {
       setUser({
-        id: firebaseUser.uid,
+        uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName || profileData.contactName || "",
         photoURL: firebaseUser.photoURL || profileData.profileImageUrl || "",
         role: profileData.role,
         isApproved: profileData.isApproved || false,
+        profileComplete: profileData.profileComplete || false,
         // Include other relevant fields fetched
         companyName: profileData.companyName,
         contactName: profileData.contactName,
@@ -110,23 +124,16 @@ export const MSAuthProvider = ({ children }) => {
         efdaLicenseUrl: profileData.efdaLicenseUrl,
         businessLicenseUrl: profileData.businessLicenseUrl,
         cart: profileData.cart
+
       });
 
-      // Handle routing based on profile completion and approval status
-      const isRegistrationComplete = Boolean(
-        profileData.contactName && 
-        profileData.phoneNumber &&
-        (profileData.role === 'admin' || (
-          profileData.companyName && 
-          (profileData.efdaLicenseUrl || profileData.businessLicenseUrl)
-        ))
-      );
+     
 
-      if (!isRegistrationComplete && pathname !== registrationPath) {
+      if (!profileData.profileComplete && pathname !== registrationPath) {
         // If profile is incomplete and user is not on registration page, redirect to registration
         router.push(registrationPath);
-      } else if (isRegistrationComplete && 
-                (pathname === registrationPath || pathname === "/medical-supplies/auth/login" || pathname === "/medical-supplies/auth/signup")) {
+      } else if (profileData.profileComplete && 
+                (pathname === registrationPath || pathname === loginPath || pathname === signupPath)) {
         // If profile is complete and user is on auth pages, redirect to dashboard
         router.push(dashboardPath);
       }

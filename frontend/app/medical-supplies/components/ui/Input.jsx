@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Eye, EyeOff, Check , ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Check, ChevronDown } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
-
+import { Search } from "lucide-react";
+import { IconButton } from "./Button";
 
 export function TextInput({
   type = "text",
@@ -164,12 +165,9 @@ export function PasswordInput({
   );
 }
 
-
-/**
- * Select Dropdown Component with enhanced styling
- */
 export function SelectInput({
   label,
+  name,
   value,
   onChange,
   options = [],
@@ -179,8 +177,30 @@ export function SelectInput({
   fullWidth = false,
   required = false,
   className = "",
+  defaultToFirstOption = true,
   ...props
 }) {
+  // Set default value to first option if defaultToFirstOption is true and options exist
+  const effectiveValue =
+    !value && defaultToFirstOption && options.length > 0
+      ? options[0].value
+      : value;
+
+  // Handle change with proper event structure
+  const handleChange = (e) => {
+    const selectedValue = e.target.value;
+
+    // Call the parent's onChange handler with properly structured event
+    onChange({
+      ...e,
+      target: {
+        ...e.target,
+        name: name || e.target.name,
+        value: selectedValue,
+      },
+    });
+  };
+
   return (
     <div className={`mb-4 ${fullWidth ? "w-full" : ""} ${className}`}>
       {label && (
@@ -190,12 +210,13 @@ export function SelectInput({
       )}
       <div className="relative">
         <select
-          value={value}
-          onChange={onChange}
+          name={name}
+          value={effectiveValue || ""}
+          onChange={handleChange}
           className={`
               w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
               appearance-none bg-white pr-10
-              ${!value ? "text-gray-500" : "text-gray-900"}
+              ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
               ${
                 error
                   ? "border-error focus:border-error focus:ring-error/30"
@@ -205,11 +226,17 @@ export function SelectInput({
           required={required}
           {...props}
         >
-          <option value="" disabled className="text-gray-500">
-            {placeholder}
-          </option>
+          {placeholder && (
+            <option value="" disabled className="text-gray-500">
+              {placeholder}
+            </option>
+          )}
           {options.map((option) => (
-            <option key={option.value} value={option.value} className="text-gray-900">
+            <option
+              key={option.value}
+              value={option.value}
+              className="text-gray-900"
+            >
               {option.label}
             </option>
           ))}
@@ -269,12 +296,12 @@ export function EmailInput({
   );
 }
 
-
 /**
  * Date Input Component with min and max date validation
  */
 export function DateInput({
   label,
+  name,
   value,
   onChange,
   error = false,
@@ -289,21 +316,17 @@ export function DateInput({
   // Handle date change with validation
   const handleChange = (e) => {
     const selectedDate = e.target.value;
-    
-    // Validate against min/max if provided
-    if (min && selectedDate < min) {
-      // You can handle this validation error separately if needed
-      onChange(e); // Still update the value to show the user's selection
-      return;
-    }
-    
-    if (max && selectedDate > max) {
-      // You can handle this validation error separately if needed
-      onChange(e); // Still update the value to show the user's selection
-      return;
-    }
-    
-    onChange(e);
+
+    // Call the parent's onChange handler with the event
+    // This allows the form to update its state
+    onChange({
+      ...e,
+      target: {
+        ...e.target,
+        name: name || e.target.name,
+        value: selectedDate,
+      },
+    });
   };
 
   return (
@@ -315,7 +338,8 @@ export function DateInput({
       )}
       <input
         type="date"
-        value={value}
+        name={name}
+        value={value || ""}
         onChange={handleChange}
         min={min}
         max={max}
@@ -352,46 +376,51 @@ export function AddressInput({
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
-  
+
   // This would typically connect to a location API
   const fetchAddressSuggestions = (query) => {
     if (!query) {
       setSuggestions([]);
       return;
     }
-    
+
     // Mock implementation - replace with actual API call
     setTimeout(() => {
       setSuggestions([
         { id: 1, address: `${query} Main St`, city: "New York", state: "NY" },
-        { id: 2, address: `${query} Broadway`, city: "Los Angeles", state: "CA" },
+        {
+          id: 2,
+          address: `${query} Broadway`,
+          city: "Los Angeles",
+          state: "CA",
+        },
         { id: 3, address: `${query} 5th Ave`, city: "Chicago", state: "IL" },
       ]);
     }, 300);
   };
-  
+
   // Standard input change handler that creates a synthetic event
   const handleInputChange = (e) => {
     onChange(e); // Pass the actual event object through
     fetchAddressSuggestions(e.target.value);
   };
-  
+
   // For suggestion selection, create a synthetic event
   const handleSelectSuggestion = (suggestion) => {
     const fullAddress = `${suggestion.address}, ${suggestion.city}, ${suggestion.state}`;
-    
+
     // Create a synthetic event object
     const syntheticEvent = {
       target: {
         name,
-        value: fullAddress
-      }
+        value: fullAddress,
+      },
     };
-    
+
     onChange(syntheticEvent);
     setSuggestions([]);
   };
-  
+
   // For current location, create a synthetic event
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -399,15 +428,15 @@ export function AddressInput({
         (position) => {
           // Mock address - would normally use reverse geocoding
           const mockAddress = "Current Location (123 Main St)";
-          
+
           // Create a synthetic event object
           const syntheticEvent = {
             target: {
               name,
-              value: mockAddress
-            }
+              value: mockAddress,
+            },
           };
-          
+
           onChange(syntheticEvent);
         },
         (error) => {
@@ -444,14 +473,14 @@ export function AddressInput({
           required={required}
           {...props}
         />
-        <button 
+        <button
           type="button"
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary-dark"
           onClick={handleUseCurrentLocation}
         >
           <FaMapMarkerAlt size={18} />
         </button>
-        
+
         {isFocused && suggestions.length > 0 && (
           <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
             {suggestions.map((suggestion) => (
@@ -461,7 +490,9 @@ export function AddressInput({
                 onClick={() => handleSelectSuggestion(suggestion)}
               >
                 <div className="font-medium">{suggestion.address}</div>
-                <div className="text-gray-500">{suggestion.city}, {suggestion.state}</div>
+                <div className="text-gray-500">
+                  {suggestion.city}, {suggestion.state}
+                </div>
               </div>
             ))}
           </div>
@@ -486,3 +517,18 @@ export function TextDivider({ text = "OR", className = "" }) {
     </div>
   );
 }
+
+export const SearchBar = () => {
+  return (
+    <div className="relative w-full">
+      <input
+        type="text"
+        placeholder="Search Anything..."
+        className="w-full py-3 pl-4 pr-12 rounded-full border bg-white border-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+      <div className="absolute right-1 top-1/2 -translate-y-1/2">
+      <IconButton icon={<Search/>} isActive={true} />
+      </div>
+    </div>
+  );
+};

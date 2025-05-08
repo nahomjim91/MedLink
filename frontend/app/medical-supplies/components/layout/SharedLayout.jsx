@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../../hooks/useAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import {
   Menu,
   X,
@@ -18,16 +18,20 @@ import {
   Users,
   LogOut,
   Bell,
+  ClipboardList,
+  Package,
+  HistoryIcon,
+  ShoppingBag,
 } from "lucide-react";
 import { SearchBar } from "../ui/Input";
 import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaQuestion } from "react-icons/fa";
 
 export default function SharedLayout({ children, allowedRoles = [] }) {
-  const { user, logout } = useAuth();
+  const { user, logout } = useMSAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userType, setUserType] = useState("patient"); // Default to patient
+  const [userType, setUserType] = useState("healthFacility"); // Default to patient
   const [unseenChats, setUnseenChats] = useState(2);
   const [unseenNotifications, setUnseenNotifications] = useState(0);
 
@@ -36,15 +40,19 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
     if (user) {
       // Convert user role to lowercase for consistency
       const role =
-        user.role?.toLowerCase() || user.type?.toLowerCase() || "patient";
+        user.role?.toLowerCase() ||
+        user.type?.toLowerCase() ||
+        "healthFacility";
 
       // Map role to user type
       if (role.includes("admin")) {
         setUserType("admin");
-      } else if (role.includes("doctor")) {
-        setUserType("doctor");
+      } else if (role.includes("importer")) {
+        setUserType("importer");
+      } else if (role.includes("supplier")) {
+        setUserType("supplier");
       } else {
-        setUserType("patient");
+        setUserType("healthFacility");
       }
     }
   }, [user]);
@@ -68,114 +76,163 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
   // Navigation items based on user type
   const navigationItems = {
-    doctor: [
-      { name: "Home", path: "/telehealth/doctor", icon: <Home /> },
+    importer: [
+      { name: "Home", path: "", icon: <Home /> },
+      {
+        name: "Inventory",
+        path: "inventory",
+        icon: <Package />,
+      },
       {
         name: "Analytics",
-        path: "/telehealth/doctor/analytics",
+        path: "analytics",
         icon: <BarChart2 />,
       },
       {
-        name: "History",
-        path: "/telehealth/doctor/history",
-        icon: <Clock />,
+        name: "Orders",
+        path: "orders",
+        icon: <ClipboardList />,
       },
       {
-        name: "Appointments",
-        path: "/telehealth/doctor/appointments",
-        icon: <Calendar />,
+        name: "History",
+        path: "history",
+        icon: <HistoryIcon />,
       },
+
       {
         name: "Chats",
-        path: "/telehealth/doctor/chats",
+        path: "chats",
         icon: <MessageCircle />,
       },
-      {
-        name: "Calendar",
-        path: "/telehealth/doctor/calendar",
-        icon: <Calendar />,
-      },
+
       {
         name: "Settings",
-        path: "/telehealth/doctor/settings",
+        path: "settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/telehealth/doctor/helps",
+        path: "helps",
         icon: <FaQuestion />,
       },
     ],
-    patient: [
-      { name: "Home", path: "/telehealth/patient", icon: <Home /> },
+    supplier: [
+      { name: "Home", path: "", icon: <Home /> },
+      {
+        name: "Inventory",
+        path: "inventory",
+        icon: <Package />,
+      },
       {
         name: "Analytics",
-        path: "/telehealth/patient/analytics",
+        path: "analytics",
         icon: <BarChart2 />,
       },
       {
-        name: "History",
-        path: "/telehealth/patient/history",
-        icon: <Clock />,
+        name: "Marketplace",
+        path: "marketplace",
+        icon: <ShoppingBag />,
       },
       {
-        name: "Appointments",
-        path: "/telehealth/patient/appointments",
-        icon: <Calendar />,
+        name: "Orders",
+        path: "orders",
+        icon: <ClipboardList />,
       },
+      {
+        name: "History",
+        path: "history",
+        icon: <HistoryIcon />,
+      },
+
       {
         name: "Chats",
-        path: "/telehealth/patient/chats",
+        path: "chats",
         icon: <MessageCircle />,
       },
+
       {
         name: "Settings",
-        path: "/telehealth/patient/settings",
+        path: "settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/telehealth/patient/helps",
+        path: "helps",
+        icon: <FaQuestion />,
+      },
+    ],
+    healthFacility: [
+      { name: "Home", path: "", icon: <Menu /> },
+
+      {
+        name: "Analytics",
+        path: "analytics",
+        icon: <BarChart2 />,
+      },
+      {
+        name: "Marketplace",
+        path: "marketplace",
+        icon: <ShoppingBag />,
+      },
+      {
+        name: "Orders",
+        path: "orders",
+        icon: <ClipboardList />,
+      },
+      {
+        name: "History",
+        path: "history",
+        icon: <HistoryIcon />,
+      },
+      {
+        name: "Chats",
+        path: "chats",
+        icon: <MessageCircle />,
+      },
+
+      {
+        name: "Settings",
+        path: "settings",
+        icon: <Settings />,
+      },
+      {
+        name: "Helps",
+        path: "helps",
         icon: <FaQuestion />,
       },
     ],
     admin: [
-      { name: "Home", path: "/telehealth/admin", icon: <Home /> },
+      { name: "Home", path: "admin", icon: <Home /> },
       {
         name: "Analytics",
-        path: "/telehealth/admin/analytics",
+        path: "admin/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "History",
-        path: "/telehealth/admin/history",
-        icon: <Clock />,
+        path: "admin/history",
+        icon: <HistoryIcon />,
       },
       {
-        name: "Patients",
-        path: "/telehealth/admin/patients",
+        name: "Users",
+        path: "admin/users",
         icon: <Users />,
       },
       {
-        name: "Doctors",
-        path: "/telehealth/admin/doctors",
-        icon: <User />,
-      },
-      {
         name: "Settings",
-        path: "/telehealth/admin/settings",
+        path: "admin/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/telehealth/admin/helps",
+        path: "admin/helps",
         icon: <FaQuestion />,
       },
     ],
   };
 
   // Get current nav items based on user type
-  const currentNavItems = navigationItems[userType] || navigationItems.patient;
+  const currentNavItems = navigationItems[userType] || navigationItems.healthFacility;
 
   // Check if a path is active
   const isActive = (path) => {
@@ -265,7 +322,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               <LogOut />
             </div>
             <Link
-              href={`/${userType}/profile`}
+              href={`${userType}/profile`}
               className="flex items-center px-4 py-3 text-lg text-secondary rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ImageIconButton
@@ -308,7 +365,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               <div className="flex items-center gap-2 md:gap-4 ">
                 {/* Chat Icon */}
                 <Link
-                  href={`/${userType}/chats`}
+                  href={`${userType}/chats`}
                   className="hidden md:block relative"
                 >
                   <IconButton
@@ -319,7 +376,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                 </Link>
 
                 {/* Notification Icon */}
-                <Link href={`/${userType}/notifications`} className="relative">
+                <Link href={`${userType}/notifications`} className="relative">
                   <IconButton
                     icon={<Bell />}
                     isActive={false}
@@ -443,7 +500,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                   >
                     <LogOut size={24} className="hover:text-white" />
                   </div>
-                  <Link href={`/${userType}/profile`} className="block">
+                  <Link href={`${userType}/profile`} className="block">
                     <ImageIconButton
                       imageUrl={user.image || "/image/trees.jpg"}
                       isActive={false}

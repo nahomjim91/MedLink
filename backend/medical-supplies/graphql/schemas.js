@@ -8,7 +8,7 @@ const typeDefs = gql`
     latitude: Float!
     longitude: Float!
   }
-    
+
   type Address {
     street: String
     city: String
@@ -47,6 +47,7 @@ const typeDefs = gql`
     approvedAt: Date
     efdaLicenseUrl: String
     businessLicenseUrl: String
+    profileComplete: Boolean
     cart: Cart
   }
 

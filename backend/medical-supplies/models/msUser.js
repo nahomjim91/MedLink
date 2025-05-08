@@ -221,12 +221,14 @@ const MSUserModel = {
         role: null, // Will be set during registration
         createdAt: timestamp(),
         isApproved: false,
+        profileComplete: false,
         cart: {
           items: [],
           total: 0,
           lastUpdated: timestamp()
         }
       };
+      
       
       await userRef.set(userData);
       
@@ -295,6 +297,7 @@ const MSUserModel = {
       // Update user
       await userRef.update({
         ...sanitizedData,
+        profileComplete: true,
         isApproved: sanitizedData.role === 'admin' ? true : false, // Auto-approve admins
         updatedAt: timestamp()
       });
