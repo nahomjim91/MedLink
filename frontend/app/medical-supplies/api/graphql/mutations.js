@@ -1,5 +1,5 @@
 // /api/graphql/mutations.js
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 // Mutation to initialize a medical supplies user profile
 export const INITIALIZE_MS_USER_PROFILE = gql`
@@ -56,6 +56,11 @@ export const COMPLETE_MS_REGISTRATION = gql`
         state
         country
         postalCode
+        geoLocation {
+          latitude
+          longitude
+        }
+        geoLocationText
       }
       profileImageUrl
       efdaLicenseUrl
@@ -87,8 +92,20 @@ export const REJECT_MS_USER = gql`
 
 // Cart mutations
 export const ADD_TO_CART = gql`
-  mutation AddToCart($productId: ID!, $quantity: Int!, $price: Float!, $productName: String, $productImage: String) {
-    addToCart(productId: $productId, quantity: $quantity, price: $price, productName: $productName, productImage: $productImage) {
+  mutation AddToCart(
+    $productId: ID!
+    $quantity: Int!
+    $price: Float!
+    $productName: String
+    $productImage: String
+  ) {
+    addToCart(
+      productId: $productId
+      quantity: $quantity
+      price: $price
+      productName: $productName
+      productImage: $productImage
+    ) {
       userId
       cart {
         items {

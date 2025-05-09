@@ -26,7 +26,7 @@ export default function AdminLayout({ children }) {
       );
 
       // Redirect to their correct role path
-      const correctRolePath = `/medical-supplies/${user.role}/dashboard`;
+      const correctRolePath = `/medical-supplies/${user.role}`;
       router.push(correctRolePath);
     }
   }, [user, loading, router]);

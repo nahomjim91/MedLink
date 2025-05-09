@@ -12,10 +12,14 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const auth = admin.auth();
+const GeoPoint = admin.firestore.GeoPoint; 
+
+
 
 module.exports = {
   admin,
   db,
   auth,
   FieldValue,
+  GeoPoint
 };

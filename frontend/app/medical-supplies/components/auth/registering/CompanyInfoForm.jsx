@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { StepButtons } from "../../ui/Button";
-import { TextInput } from "../../ui/Input";
+import { TextInput, AddressInput } from "../../ui/Input";
 import { FileUploader } from "../../ui/FileUploader";
 
 export default function CompanyInfoForm({
@@ -11,7 +11,7 @@ export default function CompanyInfoForm({
   onPrevious,
   onEFDAUpload,
   onLicenseUpload,
-  isLoading
+  isLoading,
 }) {
   const [formData, setFormData] = useState({
     companyName: userData.companyName || "",
@@ -23,9 +23,18 @@ export default function CompanyInfoForm({
       state: userData.address?.state || "",
       country: userData.address?.country || "",
       postalCode: userData.address?.postalCode || "",
+      geoLocation: userData.address?.geoLocation || {
+        latitude: null,
+        longitude: null,
+      },
+      geoLocationText: formatGeoLocationText(userData.address?.geoLocation),
     },
-    efdaLicense: userData.efdaLicenseUrl ? { url: userData.efdaLicenseUrl } : null,
-    businessLicense: userData.businessLicenseUrl ? { url: userData.businessLicenseUrl } : null,
+    efdaLicense: userData.efdaLicenseUrl
+      ? { url: userData.efdaLicenseUrl }
+      : null,
+    businessLicense: userData.businessLicenseUrl
+      ? { url: userData.businessLicenseUrl }
+      : null,
   });
 
   // Update local form state when userData prop changes
@@ -40,11 +49,35 @@ export default function CompanyInfoForm({
         state: userData.address?.state || "",
         country: userData.address?.country || "",
         postalCode: userData.address?.postalCode || "",
+        geoLocation: userData.address?.geoLocation || {
+          latitude: null,
+          longitude: null,
+        },
+        geoLocationText: formatGeoLocationText(userData.address?.geoLocation),
       },
-      efdaLicense: userData.efdaLicenseUrl ? { url: userData.efdaLicenseUrl } : null,
-      businessLicense: userData.businessLicenseUrl ? { url: userData.businessLicenseUrl } : null,
+      efdaLicense: userData.efdaLicenseUrl
+        ? { url: userData.efdaLicenseUrl }
+        : null,
+      businessLicense: userData.businessLicenseUrl
+        ? { url: userData.businessLicenseUrl }
+        : null,
     });
   }, [userData]);
+
+  function formatGeoLocationText(geoLocation) {
+    if (
+      !geoLocation ||
+      geoLocation.latitude === null ||
+      geoLocation.longitude === null
+    ) {
+      return "";
+    }
+
+    // You could customize this format based on your needs
+    return `${geoLocation.latitude.toFixed(6)}, ${geoLocation.longitude.toFixed(
+      6
+    )}`;
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -57,36 +90,65 @@ export default function CompanyInfoForm({
       ...prev,
       address: {
         ...prev.address,
-        [name]: value
-      }
+        [name]: value,
+      },
+    }));
+  };
+
+  const handleGeoLocationTextChange = (e) => {
+    const { value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      address: {
+        ...prev.address,
+        geoLocationText: value,
+      },
+    }));
+  };
+
+  const handleGeoLocationChange = (geoLocation) => {
+    console.log("Received coordinates:", geoLocation);
+
+    setFormData((prev) => ({
+      ...prev,
+      address: {
+        ...prev.address,
+        geoLocation: {
+          latitude: geoLocation.latitude,
+          longitude: geoLocation.longitude,
+        },
+        // Update the text representation as well
+        geoLocationText: formatGeoLocationText(geoLocation),
+      },
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Update parent component with form data
     onUpdate({
       companyName: formData.companyName,
       contactName: formData.contactName,
       phoneNumber: formData.phoneNumber,
-      address: formData.address
+      address: formData.address,
     });
-    
+
     onNext();
   };
 
   const handleEFDAUpload = (file) => {
-    setFormData(prev => ({ ...prev, efdaLicense: file }));
+    setFormData((prev) => ({ ...prev, efdaLicense: file }));
     onEFDAUpload(file.url);
   };
 
   const handleLicenseUpload = (file) => {
-    setFormData(prev => ({ ...prev, businessLicense: file }));
+    setFormData((prev) => ({ ...prev, businessLicense: file }));
     onLicenseUpload(file.url);
   };
 
-  const isFormValid = 
+  const isFormValid =
     formData.companyName &&
     formData.contactName &&
     formData.phoneNumber &&
@@ -128,7 +190,7 @@ export default function CompanyInfoForm({
             required={true}
           />
         </div>
-        
+
         <div className="mb-4">
           <TextInput
             name="phoneNumber"
@@ -191,11 +253,23 @@ export default function CompanyInfoForm({
               onChange={handleAddressChange}
               required={true}
             />
+            <AddressInput
+              label="Geolocation"
+              className="mb-4"
+              placeholder="Enter geolocation"
+              name="geoLocationText"
+              value={formData.address?.geoLocationText || ""}
+              onChange={handleGeoLocationTextChange}
+              onGeoLocationChange={handleGeoLocationChange}
+              required={true}
+            />
           </div>
         </div>
 
         <div className="mb-6">
-          <h3 className="text-md font-medium mb-2">Licenses & Certifications</h3>
+          <h3 className="text-md font-medium mb-2">
+            Licenses & Certifications
+          </h3>
           <div className="grid md:grid-cols-2 md:gap-4">
             <FileUploader
               label="EFDA Registration"
@@ -222,8 +296,8 @@ export default function CompanyInfoForm({
           </div>
         </div>
 
-        <StepButtons 
-          onNext={handleSubmit} 
+        <StepButtons
+          onNext={handleSubmit}
           onPrevious={onPrevious}
           nextDisabled={!isFormValid}
           isLoading={isLoading}

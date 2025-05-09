@@ -1,5 +1,5 @@
 // /api/graphql/queries.js
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 // Query to get the current MS user profile
 export const GET_MS_ME = gql`
@@ -21,6 +21,7 @@ export const GET_MS_ME = gql`
           latitude
           longitude
         }
+        geoLocationText
       }
       profileImageUrl
       createdAt
@@ -65,6 +66,7 @@ export const GET_MS_USER_BY_ID = gql`
           latitude
           longitude
         }
+        geoLocationText
       }
       profileImageUrl
       createdAt

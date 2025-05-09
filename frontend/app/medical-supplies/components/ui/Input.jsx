@@ -1,4 +1,5 @@
-import { useState } from "react";
+"use client";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Check, ChevronDown } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { Search } from "lucide-react";
@@ -367,6 +368,7 @@ export function AddressInput({
   placeholder = "Enter address",
   value = "",
   onChange,
+  onGeoLocationChange,
   error = false,
   errorMessage = "",
   fullWidth = false,
@@ -376,38 +378,189 @@ export function AddressInput({
 }) {
   const [suggestions, setSuggestions] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
 
-  // This would typically connect to a location API
+  // Create a useEffect to update display when value changes externally
+  useEffect(() => {
+    // If the value changed but not from selecting a suggestion,
+    // we should try to parse it for coordinates display
+    if (selectedLocation === null && value) {
+      // This is a placeholder for more sophisticated parsing if needed
+      console.log("External value update:", value);
+    }
+  }, [value, selectedLocation]);
+
+  // Ethiopian cities with actual coordinates
+  const ethiopianCities = [
+    {
+      id: 1,
+      address: "Meskel Square",
+      city: "Addis Ababa",
+      state: "AA",
+      country: "Ethiopia",
+      coordinates: { latitude: 9.010772, longitude: 38.761889 },
+    },
+    {
+      id: 2,
+      address: "Ras Hotel",
+      city: "Dire Dawa",
+      state: "DD",
+      country: "Ethiopia",
+      coordinates: { latitude: 9.590424, longitude: 41.866878 },
+    },
+    {
+      id: 3,
+      address: "Lake Tana View Point",
+      city: "Bahir Dar",
+      state: "AM",
+      country: "Ethiopia",
+      coordinates: { latitude: 11.596057, longitude: 37.390745 },
+    },
+    {
+      id: 4,
+      address: "Entoto Park",
+      city: "Addis Ababa",
+      state: "AA",
+      country: "Ethiopia",
+      coordinates: { latitude: 9.08427, longitude: 38.763523 },
+    },
+    {
+      id: 5,
+      address: "Hawassa Lake",
+      city: "Hawassa",
+      state: "SN",
+      country: "Ethiopia",
+      coordinates: { latitude: 7.05212, longitude: 38.476105 },
+    },
+    {
+      id: 6,
+      address: "Lalibela Churches",
+      city: "Lalibela",
+      state: "AM",
+      country: "Ethiopia",
+      coordinates: { latitude: 12.031741, longitude: 39.045807 },
+    },
+    {
+      id: 7,
+      address: "Axum Obelisk",
+      city: "Axum",
+      state: "TG",
+      country: "Ethiopia",
+      coordinates: { latitude: 14.130948, longitude: 38.717599 },
+    },
+    {
+      id: 8,
+      address: "Harar Jugol",
+      city: "Harar",
+      state: "HR",
+      country: "Ethiopia",
+      coordinates: { latitude: 9.31413, longitude: 42.132591 },
+    },
+    {
+      id: 9,
+      address: "Jimma University",
+      city: "Jimma",
+      state: "OR",
+      country: "Ethiopia",
+      coordinates: { latitude: 7.678569, longitude: 36.836487 },
+    },
+    {
+      id: 10,
+      address: "Bole International Airport",
+      city: "Addis Ababa",
+      state: "AA",
+      country: "Ethiopia",
+      coordinates: { latitude: 8.979589, longitude: 38.799319 },
+    },
+  ];
+
+  // Geocode an address - mock implementation
+  const geocodeAddress = async (address) => {
+    // Check if the address matches any of our predefined cities
+    const matchedCity = ethiopianCities.find(
+      (city) => address.includes(city.city) || address.includes(city.address)
+    );
+
+    if (matchedCity) {
+      return matchedCity.coordinates;
+    }
+
+    // Generate random coordinates within Ethiopia
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Generate coordinates within Ethiopia's approximate bounds
+        const lat = 8.0 + Math.random() * 6; // ~8 to ~14 degrees
+        const lng = 33.0 + Math.random() * 15; // ~33 to ~48 degrees
+
+        resolve({
+          latitude: parseFloat(lat.toFixed(6)),
+          longitude: parseFloat(lng.toFixed(6)),
+        });
+      }, 300);
+    });
+  };
+
+  // Generate suggestions based on query
   const fetchAddressSuggestions = (query) => {
     if (!query) {
       setSuggestions([]);
       return;
     }
 
-    // Mock implementation - replace with actual API call
-    setTimeout(() => {
-      setSuggestions([
-        { id: 1, address: `${query} Main St`, city: "New York", state: "NY" },
-        {
-          id: 2,
-          address: `${query} Broadway`,
-          city: "Los Angeles",
-          state: "CA",
-        },
-        { id: 3, address: `${query} 5th Ave`, city: "Chicago", state: "IL" },
-      ]);
-    }, 300);
+    // Filter cities that match the query
+    const queryLower = query.toLowerCase();
+    const filteredCities = ethiopianCities.filter(
+      (city) =>
+        city.address.toLowerCase().includes(queryLower) ||
+        city.city.toLowerCase().includes(queryLower) ||
+        city.state.toLowerCase().includes(queryLower)
+    );
+
+    // If we have matches, use them, otherwise create generic suggestions
+    const suggestionsToShow =
+      filteredCities.length > 0
+        ? filteredCities
+        : [
+            {
+              id: 100,
+              address: `${query}`,
+              city: "Addis Ababa",
+              state: "AA",
+              country: "Ethiopia",
+              coordinates: {
+                latitude: 9.0 + Math.random() * 2,
+                longitude: 38.0 + Math.random() * 4,
+              },
+            },
+            {
+              id: 101,
+              address: `${query}`,
+              city: "Dire Dawa",
+              state: "DD",
+              country: "Ethiopia",
+              coordinates: {
+                latitude: 9.5 + Math.random() * 0.5,
+                longitude: 41.8 + Math.random() * 0.5,
+              },
+            },
+          ];
+
+    setSuggestions(suggestionsToShow);
   };
 
-  // Standard input change handler that creates a synthetic event
+  // Handle input changes
   const handleInputChange = (e) => {
-    onChange(e); // Pass the actual event object through
+    onChange(e); // Pass the event up
     fetchAddressSuggestions(e.target.value);
+
+    // Reset selected location when user types
+    setSelectedLocation(null);
   };
 
-  // For suggestion selection, create a synthetic event
-  const handleSelectSuggestion = (suggestion) => {
-    const fullAddress = `${suggestion.address}, ${suggestion.city}, ${suggestion.state}`;
+  // Handle selecting a suggestion
+  const handleSelectSuggestion = async (suggestion) => {
+    const fullAddress = `${suggestion.address}, ${suggestion.city}, ${suggestion.state}, ${suggestion.country}`;
 
     // Create a synthetic event object
     const syntheticEvent = {
@@ -417,19 +570,36 @@ export function AddressInput({
       },
     };
 
+    // Store the selected suggestion coordinates
+    setSelectedLocation(suggestion.coordinates);
+
+    // Update the input text
     onChange(syntheticEvent);
+
+    // Close suggestions dropdown
     setSuggestions([]);
+
+    // Use provided coordinates if available, otherwise geocode
+    const geoLocation =
+      suggestion.coordinates || (await geocodeAddress(fullAddress));
+
+    if (onGeoLocationChange && geoLocation) {
+      onGeoLocationChange(geoLocation);
+    }
   };
 
-  // For current location, create a synthetic event
+  // Handle using current location
   const handleUseCurrentLocation = () => {
+    setIsLocating(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // Mock address - would normally use reverse geocoding
-          const mockAddress = "Current Location (123 Main St)";
+        async (position) => {
+          const { latitude, longitude } = position.coords;
 
-          // Create a synthetic event object
+          // Create a readable address for display
+          const mockAddress = "Your Current Location";
+
+          // Create synthetic event
           const syntheticEvent = {
             target: {
               name,
@@ -437,12 +607,39 @@ export function AddressInput({
             },
           };
 
+          // Update input text
           onChange(syntheticEvent);
+
+          // Store the selected coordinates
+          setSelectedLocation({
+            latitude,
+            longitude,
+          });
+
+          // Update geolocation coordinates
+          if (onGeoLocationChange) {
+            onGeoLocationChange({
+              latitude,
+              longitude,
+            });
+          }
+
+          setIsLocating(false);
         },
         (error) => {
           console.error("Error getting location:", error);
-        }
+          setIsLocating(false);
+
+          // Show error to user
+          alert(
+            "Unable to access your location. Please check your browser settings."
+          );
+        },
+        { enableHighAccuracy: true }
       );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+      setIsLocating(false);
     }
   };
 
@@ -477,8 +674,13 @@ export function AddressInput({
           type="button"
           className="absolute right-3 top-1/2 transform -translate-y-1/2 text-primary hover:text-primary-dark"
           onClick={handleUseCurrentLocation}
+          disabled={isLocating}
         >
-          <FaMapMarkerAlt size={18} />
+          {isLocating ? (
+            <span className="text-sm">Locating...</span>
+          ) : (
+            <FaMapMarkerAlt size={18} />
+          )}
         </button>
 
         {isFocused && suggestions.length > 0 && (
@@ -491,13 +693,28 @@ export function AddressInput({
               >
                 <div className="font-medium">{suggestion.address}</div>
                 <div className="text-gray-500">
-                  {suggestion.city}, {suggestion.state}
+                  {suggestion.city}, {suggestion.state}, {suggestion.country}
                 </div>
+                {suggestion.coordinates && (
+                  <div className="text-gray-400 text-xs">
+                    {suggestion.coordinates.latitude.toFixed(6)},{" "}
+                    {suggestion.coordinates.longitude.toFixed(6)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Display selected coordinates below the input if available */}
+      {selectedLocation && (
+        <div className="mt-1 text-xs text-gray-500">
+          Coordinates: {selectedLocation.latitude.toFixed(6)},{" "}
+          {selectedLocation.longitude.toFixed(6)}
+        </div>
+      )}
+
       {error && errorMessage && (
         <p className="text-error text-xs mt-1">{errorMessage}</p>
       )}
@@ -527,7 +744,7 @@ export const SearchBar = () => {
         className="w-full py-3 pl-4 pr-12 rounded-full border bg-white border-white focus:outline-none focus:ring-2 focus:ring-primary/20"
       />
       <div className="absolute right-1 top-1/2 -translate-y-1/2">
-      <IconButton icon={<Search/>} isActive={true} />
+        <IconButton icon={<Search />} isActive={true} />
       </div>
     </div>
   );

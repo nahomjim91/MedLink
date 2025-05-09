@@ -16,6 +16,7 @@ const typeDefs = gql`
     country: String
     postalCode: String
     geoLocation: GeoPoint
+    geoLocationText: String
   }
 
   type Cart {
@@ -58,6 +59,7 @@ const typeDefs = gql`
     country: String
     postalCode: String
     geoLocation: GeoPointInput
+    geoLocationText: String
   }
 
   input GeoPointInput {
