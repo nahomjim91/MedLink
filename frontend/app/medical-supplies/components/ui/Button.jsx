@@ -59,7 +59,7 @@ export function Button({
   }
 
   return (
-    <button
+    <div
       onClick={onClick}
       disabled={disabled}
       className={`
@@ -73,7 +73,7 @@ export function Button({
       {...props}
     >
       {children}
-    </button>
+    </div>
   );
 }
 
@@ -184,9 +184,9 @@ export function StepButtons({
 
 export const IconButton = ({ icon, badge, isActive, onClick  }) => {
   return (
-    <button
+    <div
       onClick={onClick}
-      className={`relative p-2 md:p-3  rounded-full transition-all ${
+      className={`relative p-2 md:p-3  rounded-full transition-all cursor-pointer ${
         isActive
           ? "bg-primary text-white"
           : "bg-white text-gray-700 "
@@ -200,7 +200,7 @@ export const IconButton = ({ icon, badge, isActive, onClick  }) => {
       ) : (
         ""
       )}
-    </button>
+    </div>
   );
 };
 

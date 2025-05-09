@@ -48,6 +48,8 @@ export function TextInput({
   );
 }
 
+
+
 /**
  * Number Input Component
  */
@@ -707,13 +709,13 @@ export function AddressInput({
         )}
       </div>
 
-      {/* Display selected coordinates below the input if available */}
+      {/* Display selected coordinates below the input if available
       {selectedLocation && (
         <div className="mt-1 text-xs text-gray-500">
           Coordinates: {selectedLocation.latitude.toFixed(6)},{" "}
           {selectedLocation.longitude.toFixed(6)}
         </div>
-      )}
+      )} */}
 
       {error && errorMessage && (
         <p className="text-error text-xs mt-1">{errorMessage}</p>

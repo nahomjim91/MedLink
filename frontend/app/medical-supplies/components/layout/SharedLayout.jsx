@@ -22,6 +22,7 @@ import {
   Package,
   HistoryIcon,
   ShoppingBag,
+  ShoppingCart,
 } from "lucide-react";
 import { SearchBar } from "../ui/Input";
 import { IconButton, ImageIconButton } from "../ui/Button";
@@ -77,7 +78,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   // Navigation items based on user type
   const navigationItems = {
     importer: [
-      { name: "Home", path: "", icon: <Home /> },
+      { name: "Home", path: "/medical-supplies/" + user.role, icon: <Home /> },
       {
         name: "Inventory",
         path: "inventory",
@@ -232,7 +233,8 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   };
 
   // Get current nav items based on user type
-  const currentNavItems = navigationItems[userType] || navigationItems.healthFacility;
+  const currentNavItems =
+    navigationItems[userType] || navigationItems.healthFacility;
 
   // Check if a path is active
   const isActive = (path) => {
@@ -300,7 +302,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`flex items-center text-lg rounded-lg transition-colors ${
+                  className={`flex items-center text-lg rounded-lg transition-colors cursor-pointer ${
                     item.name === "Settings" ? "mt-12" : ""
                   }`}
                 >
@@ -349,8 +351,16 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
             {/* Page title - Desktop only */}
             <div className="hidden md:block">
               <h1 className="text-2xl font-bold text-secondary">
-                {currentNavItems.find((item) => isActive(item.path))?.name ||
-                  "MedLink"}
+                {/* {currentNavItems.find((item) => isActive(item.path))?.name ||
+                  "MedLink"} */}
+                {pathname
+                  .split("/")
+                  .slice(3)
+                  .map(
+                    (segment) =>
+                      segment.charAt(0).toUpperCase() + segment.slice(1)
+                  )
+                  .join(" ")}
               </h1>
             </div>
 
@@ -370,6 +380,18 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                 >
                   <IconButton
                     icon={<MessageCircle />}
+                    isActive={false}
+                    badge={unseenChats}
+                  />
+                </Link>
+
+                {/* Chat Icon */}
+                <Link
+                  href={`${userType}/carts`}
+                  className="hidden md:block relative"
+                >
+                  <IconButton
+                    icon={<ShoppingCart />}
                     isActive={false}
                     badge={unseenChats}
                   />

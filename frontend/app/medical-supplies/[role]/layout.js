@@ -51,8 +51,7 @@ export default function RoleLayout({ children }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <SharedLayout>
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6 capitalize">{role} Portal</h1>
+      <main className="">
         {children}
       </main>
       </SharedLayout>

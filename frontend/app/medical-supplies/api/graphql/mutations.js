@@ -32,6 +32,7 @@ export const UPDATE_MS_USER_PROFILE = gql`
           latitude
           longitude
         }
+        geoLocationText
       }
       profileImageUrl
       efdaLicenseUrl
