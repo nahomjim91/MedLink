@@ -6,36 +6,101 @@ import {
   onAuthStateChanged,
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../api/firebase/config";
 import { usePathname, useRouter } from "next/navigation";
 import { GET_MS_ME } from "../api/graphql/queries";
 import { INITIALIZE_MS_USER_PROFILE } from "../api/graphql/mutations";
 import client from "../api/graphql/client";
-import { useMutation } from '@apollo/client';
-import { ADD_TO_CART, UPDATE_CART_ITEM, REMOVE_FROM_CART, CLEAR_CART } from "../api/graphql/mutations";
+import { useMutation } from "@apollo/client";
+import {
+  ADD_TO_CART,
+  UPDATE_CART_ITEM,
+  REMOVE_FROM_CART,
+  CLEAR_CART,
+} from "../api/graphql/mutations";
 
 const MSAuthContext = createContext();
+
+// Define route permissions based on roles
+const ROUTE_PERMISSIONS = {
+  admin: [
+    "/admin",
+    "/admin/",
+    "/admin/users",
+    "/admin/products",
+    "/admin/orders",
+  ],
+  importer: [
+    "/importer",
+    "/importer/",
+    "/importer/marketplace",
+    "/importer/orders",
+  ],
+  supplier: [
+    "/supplier",
+    "/supplier/",
+    "/supplier/inventory",
+    "/supplier/orders",
+  ],
+  "health-facility": [
+    "/health-facility",
+    "/health-facility/",
+    "/health-facility/purchases",
+    "/health-facility/inventory",
+  ],
+};
+
+// Define route redirections for each role after login/registration
+const ROLE_HOME_ROUTES = {
+  admin: "/admin/",
+  importer: "/importer/",
+  supplier: "/supplier/",
+  "health-facility": "/health-facility/",
+};
 
 export const MSAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  
+
   // Initialize the mutation hook
-  const [initializeMSUserProfileMutation] = useMutation(INITIALIZE_MS_USER_PROFILE, { client });
+  const [initializeMSUserProfileMutation] = useMutation(
+    INITIALIZE_MS_USER_PROFILE,
+    { client }
+  );
 
   useEffect(() => {
     const registrationPath = "/medical-supplies/auth/registering";
-    const dashboardPath = "/medical-supplies/dashboard";
     const loginPath = "/medical-supplies/auth/login";
     const signupPath = "/medical-supplies/auth/signup";
     const homePath = "/medical-supplies/";
-    
+
     // Define public paths that don't require authentication
     const publicPaths = [loginPath, signupPath, homePath];
+
+    // New helper functions for role-based routing
+    const getRoleBasedPath = (userRole) => {
+      if (!userRole) return homePath;
+      const basePath =
+        userRole === "admin"
+          ? "/medical-supplies/admin"
+          : `/medical-supplies/${userRole}`;
+      return basePath;
+    };
+
+    const canAccessCurrentRoute = (userRole, currentPath) => {
+      if (publicPaths.includes(currentPath)) return true;
+      if (!userRole) return false;
+
+      const rolePrefix =
+        userRole === "admin"
+          ? "/medical-supplies/admin"
+          : `/medical-supplies/${userRole}`;
+      return currentPath.startsWith(rolePrefix);
+    };
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
@@ -55,25 +120,38 @@ export const MSAuthProvider = ({ children }) => {
 
             if (queryError) {
               // Handle case where profile might not exist yet
-              console.warn("Profile query error (might be temporary):", queryError);
+              console.warn(
+                "Profile query error (might be temporary):",
+                queryError
+              );
               // Attempt to initialize if it seems like a new user without a profile
-              if (queryError.message.includes("Not found") || queryError.message.includes("null")) {
+              if (
+                queryError.message.includes("Not found") ||
+                queryError.message.includes("null")
+              ) {
                 try {
-                  console.log("Attempting to initialize potentially missing profile...");
-                  await initializeMSUserProfileMutation({ variables: { email: firebaseUser.email } });
-                  // Re-fetch after initialization attempt
-                  const { data: refetchData } = await client.query({ 
-                    query: GET_MS_ME, 
-                    fetchPolicy: "network-only" 
+                  console.log(
+                    "Attempting to initialize potentially missing profile..."
+                  );
+                  await initializeMSUserProfileMutation({
+                    variables: { email: firebaseUser.email },
                   });
-                  
+                  // Re-fetch after initialization attempt
+                  const { data: refetchData } = await client.query({
+                    query: GET_MS_ME,
+                    fetchPolicy: "network-only",
+                  });
+
                   if (refetchData && refetchData.msMe) {
                     handleProfileData(firebaseUser, refetchData.msMe);
                   } else {
                     handleIncompleteProfile(firebaseUser); // Still couldn't get profile
                   }
                 } catch (initError) {
-                  console.error("Error during profile initialization attempt:", initError);
+                  console.error(
+                    "Error during profile initialization attempt:",
+                    initError
+                  );
                   handleIncompleteProfile(firebaseUser); // Initialization failed
                 }
               } else {
@@ -98,22 +176,26 @@ export const MSAuthProvider = ({ children }) => {
       } else {
         // User is signed out - redirect to home if not on a public path
         await handleSignOut();
-        
+
         // Check if user is trying to access a protected route
         if (!publicPaths.includes(pathname) && !pathname.startsWith(homePath)) {
-          console.log("Unauthenticated user trying to access protected route, redirecting to home");
+          console.log(
+            "Unauthenticated user trying to access protected route, redirecting to home"
+          );
           router.push(homePath);
         }
       }
     });
 
     const handleProfileData = (firebaseUser, profileData) => {
+      const userRole = profileData.role;
+
       setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName || profileData.contactName || "",
         photoURL: firebaseUser.photoURL || profileData.profileImageUrl || "",
-        role: profileData.role,
+        role: userRole,
         isApproved: profileData.isApproved || false,
         profileComplete: profileData.profileComplete || false,
         // Include other relevant fields fetched
@@ -123,21 +205,36 @@ export const MSAuthProvider = ({ children }) => {
         address: profileData.address,
         efdaLicenseUrl: profileData.efdaLicenseUrl,
         businessLicenseUrl: profileData.businessLicenseUrl,
-        cart: profileData.cart
-
+        cart: profileData.cart,
       });
-
-     
 
       if (!profileData.profileComplete && pathname !== registrationPath) {
         // If profile is incomplete and user is not on registration page, redirect to registration
         router.push(registrationPath);
-      } else if (profileData.profileComplete && 
-                (pathname === registrationPath || pathname === loginPath || pathname === signupPath)) {
-        // If profile is complete and user is on auth pages, redirect to dashboard
-        router.push(dashboardPath);
+      } else if (profileData.profileComplete) {
+        // If profile is complete
+        if (
+          pathname === registrationPath ||
+          pathname === loginPath ||
+          pathname === signupPath
+        ) {
+          // And user is on auth pages, redirect to appropriate 
+          const roleDashboard = `/medical-supplies${
+            userRole === "admin" ? "/admin" : `/${userRole}`
+          }/`;
+          router.push(roleDashboard);
+        } else if (!canAccessCurrentRoute(userRole, pathname)) {
+          // Or if user is trying to access a route they don't have permission for
+          console.log(
+            `User with role ${userRole} cannot access ${pathname}, redirecting to appropriate `
+          );
+          const roleDashboard = `/medical-supplies${
+            userRole === "admin" ? "/admin" : `/${userRole}`
+          }/`;
+          router.push(roleDashboard);
+        }
       }
-      
+
       setLoading(false);
     };
 
@@ -148,9 +245,9 @@ export const MSAuthProvider = ({ children }) => {
         displayName: firebaseUser.displayName || "",
         photoURL: firebaseUser.photoURL || "",
         role: null,
-        isApproved: false
+        isApproved: false,
       });
-      
+
       if (pathname !== registrationPath) {
         router.push(registrationPath);
       }
@@ -167,9 +264,31 @@ export const MSAuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, [router, pathname, initializeMSUserProfileMutation]);
 
+  // Check if a user can access a specific route based on their role
+  const canAccessRoute = (route) => {
+    if (!user || !user.role) return false;
+
+    // Add the medical-supplies prefix if not already present
+    const normalizedRoute = route.startsWith("/medical-supplies")
+      ? route
+      : `/medical-supplies${route}`;
+
+    // For admin, check if route starts with admin
+    if (user.role === "admin") {
+      return normalizedRoute.startsWith("/medical-supplies/admin");
+    }
+
+    // For other roles, check if route starts with their role
+    return normalizedRoute.startsWith(`/medical-supplies/${user.role}`);
+  };
+
   const signup = async (email, password) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       // Call initializeMSUserProfile mutation AFTER successful Firebase signup
       if (userCredential.user) {
         try {
@@ -177,7 +296,10 @@ export const MSAuthProvider = ({ children }) => {
           console.log("MS User profile initialized via mutation.");
         } catch (mutationError) {
           // Log error, but don't block the signup flow entirely
-          console.error("Error initializing MS user profile via mutation:", mutationError);
+          console.error(
+            "Error initializing MS user profile via mutation:",
+            mutationError
+          );
           // You might want to add retry logic or specific error handling here
         }
       }
@@ -190,7 +312,11 @@ export const MSAuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
       await client.refetchQueries({ include: ["GetMSMe"] }); // Refetch profile on login
       return userCredential.user;
     } catch (error) {
@@ -206,10 +332,17 @@ export const MSAuthProvider = ({ children }) => {
       // Check if profile needs initialization for Google Sign-In too
       try {
         // Attempt to initialize - it's safe if the profile already exists
-        await initializeMSUserProfileMutation({ variables: { email: result.user.email } });
-        console.log("MS User profile initialized/verified via mutation after Google sign-in.");
+        await initializeMSUserProfileMutation({
+          variables: { email: result.user.email },
+        });
+        console.log(
+          "MS User profile initialized/verified via mutation after Google sign-in."
+        );
       } catch (mutationError) {
-        console.error("Error initializing MS user profile after Google sign-in:", mutationError);
+        console.error(
+          "Error initializing MS user profile after Google sign-in:",
+          mutationError
+        );
       }
       await client.refetchQueries({ include: ["GetMSMe"] }); // Refetch profile
       return result.user;
@@ -230,19 +363,25 @@ export const MSAuthProvider = ({ children }) => {
     }
   };
 
-  // Cart operations
-  const addToCart = async (productId, quantity, price, productName, productImage) => {
+  // Cart operations remain the same
+  const addToCart = async (
+    productId,
+    quantity,
+    price,
+    productName,
+    productImage
+  ) => {
     try {
       const { data } = await client.mutate({
         mutation: ADD_TO_CART,
-        variables: { productId, quantity, price, productName, productImage }
+        variables: { productId, quantity, price, productName, productImage },
       });
-      
+
       if (data && data.addToCart) {
         // Update user state with new cart data
-        setUser(prevUser => ({
+        setUser((prevUser) => ({
           ...prevUser,
-          cart: data.addToCart.cart
+          cart: data.addToCart.cart,
         }));
         return data.addToCart;
       }
@@ -257,13 +396,13 @@ export const MSAuthProvider = ({ children }) => {
     try {
       const { data } = await client.mutate({
         mutation: UPDATE_CART_ITEM,
-        variables: { productId, quantity }
+        variables: { productId, quantity },
       });
-      
+
       if (data && data.updateCartItem) {
-        setUser(prevUser => ({
+        setUser((prevUser) => ({
           ...prevUser,
-          cart: data.updateCartItem.cart
+          cart: data.updateCartItem.cart,
         }));
         return data.updateCartItem;
       }
@@ -278,13 +417,13 @@ export const MSAuthProvider = ({ children }) => {
     try {
       const { data } = await client.mutate({
         mutation: REMOVE_FROM_CART,
-        variables: { productId }
+        variables: { productId },
       });
-      
+
       if (data && data.removeFromCart) {
-        setUser(prevUser => ({
+        setUser((prevUser) => ({
           ...prevUser,
-          cart: data.removeFromCart.cart
+          cart: data.removeFromCart.cart,
         }));
         return data.removeFromCart;
       }
@@ -298,13 +437,13 @@ export const MSAuthProvider = ({ children }) => {
   const clearCart = async () => {
     try {
       const { data } = await client.mutate({
-        mutation: CLEAR_CART
+        mutation: CLEAR_CART,
       });
-      
+
       if (data && data.clearCart) {
-        setUser(prevUser => ({
+        setUser((prevUser) => ({
           ...prevUser,
-          cart: data.clearCart.cart
+          cart: data.clearCart.cart,
         }));
         return data.clearCart;
       }
@@ -316,9 +455,11 @@ export const MSAuthProvider = ({ children }) => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (
@@ -333,7 +474,15 @@ export const MSAuthProvider = ({ children }) => {
         addToCart,
         updateCartItem,
         removeFromCart,
-        clearCart
+        clearCart,
+        canAccessRoute, // New utility function for role-based route checks
+        // Helper function to get base path for the current user's role
+        getRolePath: () =>
+          user?.role
+            ? `/medical-supplies${
+                user.role === "admin" ? "/admin" : `/${user.role}`
+              }`
+            : null,
       }}
     >
       {children}

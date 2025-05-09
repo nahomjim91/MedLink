@@ -30,7 +30,7 @@ export function MSLogInFormCard() {
     
     try {
       await login(formData.email, formData.password);
-      router.push("/medical-supplies/dashboard"); // MS dashboard route
+      router.push(`/medical-supplies/${user.role}`); // MS dashboard route
     } catch (error) {
       console.error("Login error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -45,7 +45,7 @@ export function MSLogInFormCard() {
     
     try {
       await signInWithGoogle();
-      router.push("/medical-supplies/dashboard"); // MS dashboard route
+      router.push("/medical-supplies/auth/registering"); // MS registration route
     } catch (error) {
       console.error("Google login error:", error);
       setError(getAuthErrorMessage(error.code));

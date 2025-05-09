@@ -226,7 +226,7 @@ export default function MultiStepSignup({ email }) {
 
   // Navigate to dashboard after completion
   const handleComplete = () => {
-    router.push("/medical-supplies/dashboard");
+    router.push(`/medical-supplies/${userData.role}`);
   };
 
   // Render the appropriate step component
