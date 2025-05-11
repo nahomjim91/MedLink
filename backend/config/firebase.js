@@ -7,7 +7,7 @@ var serviceAccount = require("../serviceAccountKey.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL:
-    "https://medlink-71068-default-rtdb.europe-west1.firebasedatabase.app",
+    "https://medlink-test-1-env-default-rtdb.europe-west1.firebasedatabase.app",
 });
 
 const db = admin.firestore();

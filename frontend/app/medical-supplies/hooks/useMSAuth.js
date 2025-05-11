@@ -23,42 +23,6 @@ import {
 
 const MSAuthContext = createContext();
 
-// Define route permissions based on roles
-const ROUTE_PERMISSIONS = {
-  admin: [
-    "/admin",
-    "/admin/",
-    "/admin/users",
-    "/admin/products",
-    "/admin/orders",
-  ],
-  importer: [
-    "/importer",
-    "/importer/",
-    "/importer/marketplace",
-    "/importer/orders",
-  ],
-  supplier: [
-    "/supplier",
-    "/supplier/",
-    "/supplier/inventory",
-    "/supplier/orders",
-  ],
-  "health-facility": [
-    "/health-facility",
-    "/health-facility/",
-    "/health-facility/purchases",
-    "/health-facility/inventory",
-  ],
-};
-
-// Define route redirections for each role after login/registration
-const ROLE_HOME_ROUTES = {
-  admin: "/admin/",
-  importer: "/importer/",
-  supplier: "/supplier/",
-  "health-facility": "/health-facility/",
-};
 
 export const MSAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

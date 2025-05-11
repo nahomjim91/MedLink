@@ -12,7 +12,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const isTelehealth = pathname.startsWith("/medical-supplies");
+  const isMedicalSupplies = pathname.startsWith("/medical-supplies");
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -35,8 +35,8 @@ export default function Navbar() {
 
   // Dynamic route generation based on whether we're in medical-supplies section
   const getRoute = (path) => {
-    if (isTelehealth) {
-      return `/medical-supplies${path === "/" ? "" : path}`;
+    if (isMedicalSupplies) {
+      return `/medical-supplies${path}`;
     }
     return path;
   };
@@ -46,7 +46,7 @@ export default function Navbar() {
     if (path === "/") {
       return pathname === "/" || pathname === "/medical-supplies";
     }
-    return isTelehealth ? pathname === `/medical-supplies${path}` : pathname === path;
+    return isMedicalSupplies ? pathname === `/medical-supplies${path}` : pathname === path;
   };
 
   // Prevent body scrolling when menu is open
@@ -72,13 +72,11 @@ export default function Navbar() {
           {/* Logo */}
           <div className="flex items-center gap-10">
             <Link
-              href={isTelehealth ? "/medical-supplies" : "/"}
+              href="/medical-supplies" 
               className="flex-shrink-0 text-2xl md:text-4xl font-bold text-secondary"
             >
               MedLink
-              {isTelehealth && (
-                <span className="text-primary text-xl ml-1">Telehealth</span>
-              )}
+             
             </Link>
 
             {/* Desktop Navigation */}
@@ -123,7 +121,6 @@ export default function Navbar() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <div className="">{isTelehealth && <LanguageSelector />}</div>
 
             {/* Desktop auth buttons with hover animations */}
             {user ? (

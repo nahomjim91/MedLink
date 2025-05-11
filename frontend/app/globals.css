@@ -14,7 +14,7 @@
   --color-tertiary: #EEEDE9;  /* Custom tertiary color */
   --color-error: #FF0000;      /* Custom error color */
   --font-primary: 'Poppins';
-}
+} 
 body{
   background-color: var(--background);
   font-family: var(--font-primary);

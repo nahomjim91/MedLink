@@ -78,132 +78,132 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   // Navigation items based on user type
   const navigationItems = {
     importer: [
-      { name: "Home", path: "/medical-supplies/" + user.role, icon: <Home /> },
+      { name: "Home", path: "/medical-supplies/" + user.role + "/", icon: <Home /> },
       {
         name: "Inventory",
-        path: "inventory",
+        path: "/medical-supplies/" +user.role+"/inventory",
         icon: <Package />,
       },
       {
         name: "Analytics",
-        path: "analytics",
+        path: "/medical-supplies/" +user.role+"/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Orders",
-        path: "orders",
+        path: "/medical-supplies/" +user.role+"/orders",
         icon: <ClipboardList />,
       },
       {
         name: "History",
-        path: "history",
+        path: "/medical-supplies/" +user.role+"/history",
         icon: <HistoryIcon />,
       },
 
       {
         name: "Chats",
-        path: "chats",
+        path: "/medical-supplies/" +user.role+"/chats",
         icon: <MessageCircle />,
       },
 
       {
         name: "Settings",
-        path: "settings",
+        path: "/medical-supplies/" +user.role+"/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "helps",
+        path: "/medical-supplies/" +user.role+"/helps",
         icon: <FaQuestion />,
       },
     ],
     supplier: [
-      { name: "Home", path: "", icon: <Home /> },
+      { name: "Home", path: "/medical-supplies/" + user.role + "/", icon: <Home /> },
       {
         name: "Inventory",
-        path: "inventory",
+        path: "/medical-supplies/" +user.role+"/inventory",
         icon: <Package />,
       },
       {
         name: "Analytics",
-        path: "analytics",
+        path: "/medical-supplies/" +user.role+"/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Marketplace",
-        path: "marketplace",
+        path: "/medical-supplies/" +user.role+"/marketplace",
         icon: <ShoppingBag />,
       },
       {
         name: "Orders",
-        path: "orders",
+        path: "/medical-supplies/" +user.role+"/orders",
         icon: <ClipboardList />,
       },
       {
         name: "History",
-        path: "history",
+        path: "/medical-supplies/" +user.role+"/history",
         icon: <HistoryIcon />,
       },
 
       {
         name: "Chats",
-        path: "chats",
+        path: "/medical-supplies/" +user.role+"/chats",
         icon: <MessageCircle />,
       },
 
       {
         name: "Settings",
-        path: "settings",
+        path: "/medical-supplies/" +user.role+"/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "helps",
+        path: "/medical-supplies/" +user.role+"/helps",
         icon: <FaQuestion />,
       },
     ],
     healthFacility: [
-      { name: "Home", path: "", icon: <Menu /> },
+      { name: "Home", path: "/medical-supplies/" + user.role + "/", icon: <Home /> },
 
       {
         name: "Analytics",
-        path: "analytics",
+        path: "/medical-supplies/" +user.role+"/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Marketplace",
-        path: "marketplace",
+        path: "/medical-supplies/" +user.role+"/marketplace",
         icon: <ShoppingBag />,
       },
       {
         name: "Orders",
-        path: "orders",
+        path: "/medical-supplies/" +user.role+"/orders",
         icon: <ClipboardList />,
       },
       {
         name: "History",
-        path: "history",
+        path: "/medical-supplies/" +user.role+"/history",
         icon: <HistoryIcon />,
       },
       {
         name: "Chats",
-        path: "chats",
+        path: "/medical-supplies/" +user.role+"/chats",
         icon: <MessageCircle />,
       },
 
       {
         name: "Settings",
-        path: "settings",
+        path: "/medical-supplies/" +user.role+"/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "helps",
+        path: "/medical-supplies/" +user.role+"/helps",
         icon: <FaQuestion />,
       },
     ],
     admin: [
-      { name: "Home", path: "admin", icon: <Home /> },
+      { name: "Home", path: "/medical-supplies/admin", icon: <Home /> },
       {
         name: "Analytics",
         path: "admin/analytics",
@@ -350,18 +350,25 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
             {/* Page title - Desktop only */}
             <div className="hidden md:block">
-              <h1 className="text-2xl font-bold text-secondary">
-                {/* {currentNavItems.find((item) => isActive(item.path))?.name ||
-                  "MedLink"} */}
-                {pathname
-                  .split("/")
-                  .slice(3)
-                  .map(
-                    (segment) =>
-                      segment.charAt(0).toUpperCase() + segment.slice(1)
-                  )
-                  .join(" ")}
-              </h1>
+              {(() => {
+                const lastPath = pathname.split("/").filter(Boolean).pop();
+                const isDashboard = lastPath === user.role;
+
+                return (
+                  <>
+                    <h1 className="text-2xl font-bold text-secondary">
+                      {isDashboard
+                        ? "MedLink"
+                        : lastPath.charAt(0).toUpperCase() + lastPath.slice(1)}
+                    </h1>
+                    {isDashboard && (
+                      <p className="text-base text-secondary/50">
+                        Explore information and activity about you properties
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Search Bar, Chat and Notification Icons */}

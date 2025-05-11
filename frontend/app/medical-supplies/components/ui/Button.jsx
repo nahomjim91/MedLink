@@ -59,11 +59,11 @@ export function Button({
   }
 
   return (
-    <div
+    <button
       onClick={onClick}
       disabled={disabled}
       className={`
-          rounded-full font-medium transition-colors focus:outline-none focus:ring-4
+          rounded-full font-medium transition-colors focus:outline-none focus:ring-4 text-center
           ${colorClasses}
           ${sizeClasses}
           ${fullWidth ? "w-full" : ""}
@@ -73,7 +73,7 @@ export function Button({
       {...props}
     >
       {children}
-    </div>
+    </button>
   );
 }
 
@@ -229,3 +229,68 @@ export const ImageIconButton = ({
     </button>
   );
 };
+
+export function TablePageButtons({
+  onPrevious,
+  onNext,
+  previousLabel = "Previous Step",
+  nextLabel = "Next Step",
+  showPrevious = true,
+  showNext = true,
+  className = "",
+  page=1,
+  totalPages=3,
+  onPageChange
+}) {
+  const handlePrevious = () => {
+    if (page > 1) {
+      onPageChange(page - 1);
+      onPrevious();
+    }
+  };
+  const handleNext = () => {
+    if (page < totalPages) {
+      onPageChange(page + 1);
+      onNext();
+    }
+  };
+  const isPreviousDisabled = page === 1;
+  const isNextDisabled = page === totalPages;
+  const previousButtonClass = isPreviousDisabled
+    ? "opacity-50 cursor-not-allowed"
+    : "";
+  const nextButtonClass = isNextDisabled
+    ? "opacity-50 cursor-not-allowed"
+    : "";
+  return (
+    <div className={`flex justify-between mt-2   ${className}`}>
+      <div >
+        {showPrevious  && (
+          <Button
+            variant="outline"
+            color="primary"
+            onClick={onPrevious}
+            className={`  flex-1 sm:flex-initial text-sm md:text-base ${previousButtonClass}`}
+            disabled={isPreviousDisabled}
+          >
+            {previousLabel}
+          </Button>
+        )}
+      </div>
+<div className="flex items-center text-secondary/80">{page} of {totalPages} pages</div>
+      <div>
+        {showNext && (
+          <Button
+            variant="fill"
+            color="primary"
+            onClick={onNext}
+              className={`flex-1 sm:flex-initial text-sm md:text-base ${nextButtonClass}`}
+            disabled={isNextDisabled}
+          >
+            {nextLabel}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
