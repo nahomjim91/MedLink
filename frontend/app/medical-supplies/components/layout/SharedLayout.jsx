@@ -543,7 +543,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         </AnimatePresence>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        <main className="flex-1 overflow-y-auto px-2">
           {children}
         </main>
       </div>

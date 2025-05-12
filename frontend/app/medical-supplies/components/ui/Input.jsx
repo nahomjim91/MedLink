@@ -1,8 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Check, ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Check, ChevronDown , Search , Send, Plus } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
-import { Search } from "lucide-react";
 import { IconButton } from "./Button";
 
 export function TextInput({
@@ -751,3 +750,61 @@ export const SearchBar = () => {
     </div>
   );
 };
+
+
+export function ChatInput({
+  placeholder = "Your message",
+  value,
+  onChange,
+  onSend,
+  fullWidth = true,
+  className = "",
+  ...props
+}) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (value.trim()) {
+      onSend();
+    }
+  };
+
+  return (
+    <div className={`${fullWidth ? "w-full" : ""} ${className}`}>
+      <form
+        onSubmit={handleSubmit}
+        className={`
+          flex items-center px-4 py-1 rounded-xl border-2 transition-all
+          ${isFocused 
+            ? "border-primary ring-2 ring-primary/20" 
+            : "border-secondary/40"
+          }
+        `}
+      >
+        <button 
+          type="button"
+          className="p-1 bg-primary text-white rounded-full hover:bg-emerald-600"
+        >
+          <Plus size={28} />
+        </button>
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className="flex-1 p-2 mx-2 bg-transparent focus:outline-none text-gray-600 text-xs md:text-sm"
+          {...props}
+        />
+        <button 
+          type="submit"
+          className="p-2 bg-primary text-white rounded-full hover:bg-emerald-600 transition-colors"
+        >
+          <Send size={24} />
+        </button>
+      </form>
+    </div>
+  );
+}
