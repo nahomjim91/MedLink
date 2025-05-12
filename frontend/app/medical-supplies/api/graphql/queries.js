@@ -110,6 +110,7 @@ export const GET_PENDING_APPROVAL_USERS = gql`
       createdAt
       efdaLicenseUrl
       businessLicenseUrl
+      rejectionReason
     }
   }
 `;

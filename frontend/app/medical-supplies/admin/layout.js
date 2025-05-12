@@ -47,7 +47,7 @@ export default function AdminLayout({ children }) {
   return (
     <div className="min-h-screen ">
       <SharedLayout>
-        <main className="container mx-auto px-4">
+        <main className="pl-2">
           {children}
         </main>
       </SharedLayout>

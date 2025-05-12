@@ -169,6 +169,7 @@ export default function InventoryPage() {
           onFilter={() => handleAction('Filter Products')}
           onDownload={() => handleAction('Download Products')}
         />
+        {/* add product card */}
       </div>
     </div>
   );

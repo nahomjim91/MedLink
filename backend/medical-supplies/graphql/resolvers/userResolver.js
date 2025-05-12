@@ -1,7 +1,7 @@
 // /graphql/ms-resolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
-const MSUserModel = require("../models/msUser");
+const MSUserModel = require("../../models/msUser");
 const {
   AuthenticationError,
   ForbiddenError,

@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 export function Button({
+  type ,
   variant = "fill",
   color = "primary",
   onClick,
@@ -60,6 +61,7 @@ export function Button({
 
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={`
