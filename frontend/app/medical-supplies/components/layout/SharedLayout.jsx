@@ -206,27 +206,33 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       { name: "Home", path: "/medical-supplies/admin", icon: <Home /> },
       {
         name: "Analytics",
-        path: "admin/analytics",
+        path: "/medical-supplies/" +user.role+"/analytics",
         icon: <BarChart2 />,
       },
       {
+        name: "Pending Users",
+        path: "/medical-supplies/" +user.role+"/pending-users",
+        icon: <ClipboardList />,
+      },
+
+      {
         name: "History",
-        path: "admin/history",
+        path: "/medical-supplies/" +user.role+"/history",
         icon: <HistoryIcon />,
       },
       {
         name: "Users",
-        path: "admin/users",
+        path: "/medical-supplies/" +user.role+"/users",
         icon: <Users />,
       },
       {
         name: "Settings",
-        path: "admin/settings",
+        path: "/medical-supplies/" +user.role+"/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "admin/helps",
+        path: "/medical-supplies/" +user.role+"/helps",
         icon: <FaQuestion />,
       },
     ],

@@ -34,6 +34,8 @@ export const UPDATE_MS_USER_PROFILE = gql`
         }
         geoLocationText
       }
+      profileComplete
+      rejectionReason
       profileImageUrl
       efdaLicenseUrl
       businessLicenseUrl

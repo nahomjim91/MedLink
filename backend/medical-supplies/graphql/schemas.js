@@ -44,6 +44,7 @@ const typeDefs = gql`
     profileImageUrl: String
     createdAt: Date
     isApproved: Boolean
+    rejectionReason: String
     approvedBy: String
     approvedAt: Date
     efdaLicenseUrl: String
@@ -85,6 +86,8 @@ const typeDefs = gql`
     profileImageUrl: String
     efdaLicenseUrl: String
     businessLicenseUrl: String
+    profileComplete: Boolean
+    rejectionReason: String
   }
 
   type Query {

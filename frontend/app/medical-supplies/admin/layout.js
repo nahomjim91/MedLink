@@ -45,10 +45,9 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen ">
       <SharedLayout>
-        <main className="container mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold mb-6">Admin Portal</h1>
+        <main className="container mx-auto px-4">
           {children}
         </main>
       </SharedLayout>

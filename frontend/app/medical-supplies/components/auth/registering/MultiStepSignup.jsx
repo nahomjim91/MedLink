@@ -42,11 +42,12 @@ export default function MultiStepSignup({ email }) {
     profileImage: null,
     efdaLicenseUrl: user?.efdaLicenseUrl || "",
     businessLicenseUrl: user?.businessLicenseUrl || "",
-  
   });
 
   // Set up GraphQL mutation
-  const [completeMSRegistration] = useMutation(COMPLETE_MS_REGISTRATION, { client });
+  const [completeMSRegistration] = useMutation(COMPLETE_MS_REGISTRATION, {
+    client,
+  });
 
   // Pre-fill form fields if user data is available
   useEffect(() => {
@@ -64,11 +65,14 @@ export default function MultiStepSignup({ email }) {
           state: user?.address?.state || prevData.address.state,
           country: user?.address?.country || prevData.address.country,
           postalCode: user?.address?.postalCode || prevData.address.postalCode,
-          geoLocation: user?.address?.geoLocation || prevData.address.geoLocation,
-          geoLocationText: user?.address?.geoLocationText || prevData.address.geoLocationText,
+          geoLocation:
+            user?.address?.geoLocation || prevData.address.geoLocation,
+          geoLocationText:
+            user?.address?.geoLocationText || prevData.address.geoLocationText,
         },
         efdaLicenseUrl: user.efdaLicenseUrl || prevData.efdaLicenseUrl,
-        businessLicenseUrl: user.businessLicenseUrl || prevData.businessLicenseUrl,
+        businessLicenseUrl:
+          user.businessLicenseUrl || prevData.businessLicenseUrl,
       }));
     }
   }, [user]);
@@ -84,6 +88,23 @@ export default function MultiStepSignup({ email }) {
       default:
         return 5; // Default to maximum
     }
+  };
+
+  // Function to remove __typename from objects
+  const removeTypename = (obj) => {
+    if (obj === null || typeof obj !== "object") return obj;
+
+    const newObj = { ...obj };
+    delete newObj.__typename;
+
+    // Recursively remove __typename from nested objects
+    for (const key in newObj) {
+      if (newObj[key] && typeof newObj[key] === "object") {
+        newObj[key] = removeTypename(newObj[key]);
+      }
+    }
+
+    return newObj;
   };
 
   const handleNext = async () => {
@@ -154,7 +175,7 @@ export default function MultiStepSignup({ email }) {
         "contactName",
         "phoneNumber",
       ];
-      
+
       for (const field of requiredBaseFields) {
         if (!userData[field]) {
           setError(`Please complete all required fields. Missing: ${field}`);
@@ -164,7 +185,13 @@ export default function MultiStepSignup({ email }) {
       }
 
       // Validate address fields
-      const requiredAddressFields = ["street", "city", "state", "country", "postalCode"];
+      const requiredAddressFields = [
+        "street",
+        "city",
+        "state",
+        "country",
+        "postalCode",
+      ];
       for (const field of requiredAddressFields) {
         if (!userData.address[field]) {
           setError(`Please complete all address fields. Missing: ${field}`);
@@ -174,7 +201,7 @@ export default function MultiStepSignup({ email }) {
       }
 
       // For suppliers and facilities, validate licenses
-      // if ((userData.role === "supplier" || userData.role === "health Facility" || userData.role === "importer") && 
+      // if ((userData.role === "supplier" || userData.role === "health Facility" || userData.role === "importer") &&
       //     (!userData.efdaLicenseUrl || !userData.businessLicenseUrl)) {
       //   setError("Please upload all required license documents.");
       //   setIsLoading(false);
@@ -204,10 +231,13 @@ export default function MultiStepSignup({ email }) {
 
       console.log("Submitting registration data:", input);
 
+      const cleanInput = removeTypename(input);
+      console.log("Cleaned input:", cleanInput);
+
       // Call the completeMSRegistration mutation
       const { data } = await completeMSRegistration({
         variables: {
-          input,
+          input: cleanInput,
         },
       });
 
@@ -263,7 +293,7 @@ export default function MultiStepSignup({ email }) {
             isLoading={isLoading}
           />
         );
-        
+
       case 3:
         return (
           <ProfileUpload
@@ -274,7 +304,7 @@ export default function MultiStepSignup({ email }) {
             isLoading={isLoading}
           />
         );
-        
+
       case 4:
         return (
           <ConfirmationStep
@@ -287,9 +317,9 @@ export default function MultiStepSignup({ email }) {
 
       case 5:
         return (
-          <SignupSuccess 
-            userData={userData} 
-            onComplete={handleComplete} 
+          <SignupSuccess
+            userData={userData}
+            onComplete={handleComplete}
             message="Your registration is complete! Your account is pending approval from our administrators. You will be notified once your account is approved."
           />
         );

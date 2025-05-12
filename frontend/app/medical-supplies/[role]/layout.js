@@ -48,6 +48,12 @@ export default function RoleLayout({ children }) {
     return null;
   }
 
+  // if not apprved, show waiting for approval
+  // if (!user.isApproved) {
+  //   console.log("user" , user)
+  //  return router.push('/medical-supplies/'+user.role+'/waiting-for-approval');
+  // }
+
   return (
     <div className="min-h-screen ">
       <SharedLayout>

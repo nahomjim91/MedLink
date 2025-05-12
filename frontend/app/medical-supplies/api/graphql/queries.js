@@ -26,6 +26,7 @@ export const GET_MS_ME = gql`
       profileImageUrl
       createdAt
       isApproved
+      rejectionReason
       profileComplete
       approvedBy
       approvedAt
