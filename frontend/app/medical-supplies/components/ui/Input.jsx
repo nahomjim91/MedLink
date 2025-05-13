@@ -1,6 +1,15 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Check, ChevronDown , Search , Send, Plus } from "lucide-react";
+import {
+  X,
+  Eye,
+  EyeOff,
+  Upload,
+  ChevronDown,
+  Search,
+  Send,
+  Plus,
+} from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { IconButton } from "./Button";
 
@@ -46,8 +55,6 @@ export function TextInput({
     </div>
   );
 }
-
-
 
 /**
  * Number Input Component
@@ -247,6 +254,123 @@ export function SelectInput({
           <ChevronDown size={18} />
         </div>
       </div>
+      {error && errorMessage && (
+        <p className="text-error text-xs mt-1">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
+export function NumberWithUnitInput({
+  label,
+  name,
+  value = "",
+  unit = "",
+  onChange,
+  unitOptions = [],
+  error = false,
+  errorMessage = "",
+  placeholder = "Enter a value",
+  fullWidth = false,
+  required = false,
+  className = "",
+  ...props
+}) {
+  // Default to first unit option if none provided and options exist
+  const effectiveUnit =
+    unit || (unitOptions.length > 0 ? unitOptions[0].value : "");
+
+  // Handle number input change
+  const handleNumberChange = (e) => {
+    if (onChange) {
+      onChange({
+        ...e,
+        target: {
+          ...e.target,
+          name: name || e.target.name,
+          value: e.target.value,
+          unit: effectiveUnit,
+        },
+      });
+    }
+  };
+
+  // Handle unit select change
+  const handleUnitChange = (e) => {
+    if (onChange) {
+      onChange({
+        ...e,
+        target: {
+          ...e.target,
+          name: name || e.target.name,
+          value: value,
+          unit: e.target.value,
+        },
+      });
+    }
+  };
+
+  return (
+    <div className={`mb-4 ${fullWidth ? "w-full" : ""} ${className}`}>
+      {label && (
+        <label className="block text-secondary mb-1 text-xs md:text-sm">
+          {label} {required && <span className="text-error">*</span>}
+        </label>
+      )}
+
+      <div className="flex rounded-xl overflow-hidden">
+        {/* Number Input */}
+        <input
+          type="number"
+          name={name}
+          value={value}
+          onChange={handleNumberChange}
+          placeholder={placeholder}
+          className={`
+            flex-grow px-4 py-3 border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
+            rounded-l-xl border-r-0
+            ${
+              error
+                ? "border-error focus:border-error focus:ring-error/30"
+                : "border-gray-200 focus:border-primary focus:ring-primary/20"
+            }
+          `}
+          required={required}
+          {...props}
+        />
+
+        {/* Unit Selector */}
+        <div className="relative">
+          <select
+            name={`${name}-unit`}
+            value={effectiveUnit}
+            onChange={handleUnitChange}
+            className={`
+              px-2 py-3 border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
+              appearance-none bg-white rounded-r-xl border-l-0 pr-8
+              ${
+                error
+                  ? "border-error focus:border-error focus:ring-error/30"
+                  : "border-gray-200 focus:border-primary focus:ring-primary/20"
+              }
+            `}
+          >
+            {unitOptions.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+                className="text-gray-900"
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+            <ChevronDown size={16} />
+          </div>
+        </div>
+      </div>
+
       {error && errorMessage && (
         <p className="text-error text-xs mt-1">{errorMessage}</p>
       )}
@@ -751,7 +875,6 @@ export const SearchBar = () => {
   );
 };
 
-
 export function ChatInput({
   placeholder = "Your message",
   value,
@@ -776,13 +899,14 @@ export function ChatInput({
         onSubmit={handleSubmit}
         className={`
           flex items-center px-4 py-1 rounded-xl border-2 transition-all
-          ${isFocused 
-            ? "border-primary ring-2 ring-primary/20" 
-            : "border-secondary/40"
+          ${
+            isFocused
+              ? "border-primary ring-2 ring-primary/20"
+              : "border-secondary/40"
           }
         `}
       >
-        <button 
+        <button
           type="button"
           className="p-1 bg-primary text-white rounded-full hover:bg-emerald-600"
         >
@@ -798,13 +922,376 @@ export function ChatInput({
           className="flex-1 p-2 mx-2 bg-transparent focus:outline-none text-gray-600 text-xs md:text-sm"
           {...props}
         />
-        <button 
+        <button
           type="submit"
           className="p-2 bg-primary text-white rounded-full hover:bg-emerald-600 transition-colors"
         >
           <Send size={24} />
         </button>
       </form>
+    </div>
+  );
+}
+
+/**
+ * TextAreaInput Component
+ */
+export function TextAreaInput({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder = "Enter description",
+  error = false,
+  errorMessage = "",
+  required = false,
+  rows = 5,
+  className = "",
+  ...props
+}) {
+  return (
+    <div className={`mb-4 w-full ${className}`}>
+      {label && (
+        <label className="block text-secondary/90 text-sm font-medium mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      <textarea
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+        className={`
+          w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm
+          ${
+            error
+              ? "border-red-500 focus:border-red-500 focus:ring-red-300/30"
+              : "border-gray-200 focus:border-teal-500 focus:ring-teal-500/20"
+          }
+        `}
+        required={required}
+        {...props}
+      />
+      {error && errorMessage && (
+        <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * RadioGroup Component
+ */
+export function RadioGroup({
+  label,
+  name,
+  value,
+  onChange,
+  options = [],
+  error = false,
+  errorMessage = "",
+  required = false,
+  className = "",
+  ...props
+}) {
+  // Handler to update the value when a radio option is clicked
+  const handleRadioChange = (optionValue) => {
+    // Create a synthetic event object to pass to the onChange handler
+    const event = {
+      target: {
+        name,
+        value: optionValue,
+      },
+    };
+    onChange(event);
+  };
+
+  return (
+    <div className={`mb-4 w-full ${className}`}>
+      {label && (
+        <label className="block text-gray-700 text-sm font-medium mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      <div className="flex items-center space-x-6">
+        {options.map((option) => (
+          <div key={option.value} className="flex items-center">
+            <input
+              type="radio"
+              id={`${name}-${option.value}`}
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => handleRadioChange(option.value)}
+              className="hidden"
+              {...props}
+            />
+            <label
+              htmlFor={`${name}-${option.value}`}
+              className={`
+                relative pl-8 cursor-pointer text-sm
+                before:content-[''] before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2
+                before:w-5 before:h-5 before:rounded-full before:border-2 
+                ${
+                  value === option.value
+                    ? "before:border-teal-500 after:content-[''] after:absolute after:w-3 after:h-3 after:rounded-full after:bg-teal-500 after:left-1 after:top-1/2 after:-translate-y-1/2"
+                    : "before:border-gray-300"
+                }
+              `}
+              onClick={() => handleRadioChange(option.value)}
+            >
+              {option.label}
+            </label>
+          </div>
+        ))}
+      </div>
+      {error && errorMessage && (
+        <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * DynamicList Component
+ */
+export function DynamicList({
+  label,
+  name,
+  value = [], // Changed from values to value for consistency with other form components
+  onChange,
+  placeholder = "Enter item",
+  error = false,
+  errorMessage = "",
+  required = false,
+  className = "",
+  ...props
+}) {
+  // Ensure value is always an array, even if null or undefined is passed
+  const items = Array.isArray(value) ? value : [];
+
+  // Correctly handle onChange to match your form's expected format
+  const handleChange = (newValues) => {
+    // Create a synthetic event object similar to native input events
+    const event = {
+      target: {
+        name,
+        value: newValues,
+      },
+    };
+    onChange(event);
+  };
+
+  const handleAddItem = () => {
+    // If there are no items or the list is empty, add the first item
+    if (items.length === 0) {
+      handleChange([""]);
+      return;
+    }
+
+    // Otherwise, check if the last item is empty
+    if (items[items.length - 1] === "" || items[items.length - 1] === null) {
+      // Don't add a new item if previous is empty or null
+      return;
+    }
+    handleChange([...items, ""]);
+  };
+
+  const handleRemoveItem = (index) => {
+    const newValues = [...items];
+    newValues.splice(index, 1);
+    handleChange(newValues);
+  };
+
+  const handleChangeItem = (index, itemValue) => {
+    const newValues = [...items];
+    newValues[index] = itemValue;
+    handleChange(newValues);
+  };
+
+  // Import X and Plus icons from wherever you're using them
+  // For this example, I'll assume they're from lucide-react
+  const X = (props) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={props.size || 24}
+      height={props.size || 24}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 6 6 18"></path>
+      <path d="m6 6 12 12"></path>
+    </svg>
+  );
+
+  const Plus = (props) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={props.size || 24}
+      height={props.size || 24}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 5v14"></path>
+      <path d="M5 12h14"></path>
+    </svg>
+  );
+
+  return (
+    <div className={`mb-4 w-full ${className}`}>
+      {label && (
+        <label className="block text-secondary/90 text-sm font-medium mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+
+      <div className="space-y-2">
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center space-x-2">
+            <input
+              type="text"
+              value={item || ""}
+              onChange={(e) => handleChangeItem(index, e.target.value)}
+              placeholder={placeholder}
+              className={`
+                flex-grow px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm
+                ${
+                  error
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-300/30"
+                    : "border-gray-200 focus:border-teal-500 focus:ring-teal-500/20"
+                }
+              `}
+              {...props}
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveItem(index)}
+              className="p-2 text-gray-500 hover:text-red-500"
+              aria-label="Remove item"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        ))}
+
+        <div className="relative">
+          <input
+            type="text"
+            placeholder={`${placeholder}...`}
+            className={`
+              w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm
+              ${
+                error
+                  ? "border-red-500 focus:border-red-500 focus:ring-red-300/30"
+                  : "border-gray-200 focus:border-teal-500 focus:ring-teal-500/20"
+              }
+            `}
+            readOnly
+            onClick={handleAddItem}
+          />
+          <button
+            type="button"
+            onClick={handleAddItem}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-teal-500 text-white rounded-full hover:bg-teal-600"
+            aria-label="Add item"
+          >
+            <Plus size={20} />
+          </button>
+        </div>
+      </div>
+
+      {error && errorMessage && (
+        <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * FileInput Component
+ */
+export function FileInput({
+  label,
+  name,
+  onChange,
+  accept = "",
+  error = false,
+  errorMessage = "",
+  required = false,
+  className = "",
+  ...props
+}) {
+  const [fileNames, setFileNames] = useState("");
+
+  const handleChange = (e) => {
+    const files = e.target.files;
+    if (files.length > 0) {
+      const namesList = Array.from(files)
+        .map((file) => file.name)
+        .join(", ");
+      setFileNames(namesList);
+    } else {
+      setFileNames("");
+    }
+
+    if (onChange) {
+      onChange(e);
+    }
+  };
+
+  return (
+    <div className={`mb-4 w-full ${className}`}>
+      {label && (
+        <label className="block text-secondary/90 text-sm font-medium mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+
+      <div className="relative">
+        <input
+          type="file"
+          id={`${name}-file-input`}
+          name={name}
+          onChange={handleChange}
+          accept={accept}
+          className="hidden"
+          required={required}
+          {...props}
+        />
+
+        <label
+          htmlFor={`${name}-file-input`}
+          className={`
+            w-full flex items-center px-4 py-3 rounded-xl border-2 focus:outline-none text-sm
+            cursor-pointer
+            ${
+              error ? "border-red-500" : "border-gray-200 hover:border-teal-500"
+            }
+          `}
+        >
+          <span
+            className={`flex-grow truncate ${
+              fileNames ? "text-secondary" : "text-secondary/50"
+            }`}
+          >
+            {fileNames || accept || "Select file..."}
+          </span>
+          <Upload className="text-teal-500" size={20} />
+        </label>
+      </div>
+
+      {error && errorMessage && (
+        <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+      )}
     </div>
   );
 }

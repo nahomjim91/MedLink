@@ -61,7 +61,7 @@ const productSchema = gql`
     brandName: String
     modelNumber: String
     warrantyInfo: String
-    sparePartInfo: String
+    sparePartInfo: [String]
     documentUrls: [String]
   }
 
@@ -140,7 +140,7 @@ const productSchema = gql`
     brandName: String
     modelNumber: String
     warrantyInfo: String
-    sparePartInfo: String
+    sparePartInfo: [String]
     documentUrls: [String]
   }
 
@@ -165,7 +165,7 @@ const productSchema = gql`
     brandName: String
     modelNumber: String
     warrantyInfo: String
-    sparePartInfo: String
+    sparePartInfo: [String]
     documentUrls: [String]
   }
 

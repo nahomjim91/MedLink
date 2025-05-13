@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
-import {TableCard, StatCard } from "../../components/ui/Cards";
+import { TableCard, StatCard } from "../../components/ui/Cards";
 import { BookMinus } from "lucide-react";
+import AddProductMultiSteps from "../../components/ui/product/AddProductMultiSteps";
 
 const icons = {
   categories: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -39,49 +40,85 @@ const icons = {
 };
 
 const productsData = [
-  { id: 1, name: "Maggi", buyingPrice: "$430", quantity: "43 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "In- stock" },
-  { id: 2, name: "Bru", buyingPrice: "$257", quantity: "22 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "Out of stock" },
-  { id: 3, name: "Red Bull", buyingPrice: "$405", quantity: "36 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "In- stock" },
-  { id: 4, name: "Bourn Vita", buyingPrice: "$502", quantity: "14 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "Out of stock" },
-  { id: 5, name: "Horlicks", buyingPrice: "$530", quantity: "5 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "In- stock" },
-  { id: 6, name: "Harpic", buyingPrice: "$605", quantity: "10 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "Out of stock" },
-  { id: 7, name: "Ariel", buyingPrice: "$408", quantity: "23 Packets", stockLevel: "12 Packets", closestExpiry: "11/12/22", availability: "Out of stock" },
-];
-
-const ordersData = [
-  { id: 1, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Ongoing" },
-  { id: 2, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Cancel" },
-  { id: 3, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Out For delivery" },
-  { id: 4, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Cancel" },
-  { id: 5, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Delivered" },
-  { id: 6, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Ongoing" },
-  { id: 7, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Delivered" },
-  // { id: 8, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Cancel" },
-  // { id: 9, orderBy: "XYZ", orderValue: "$430", items: "43 Packets", orderNo: "#12345678", expectedDelivery: "11/12/22", status: "Ongoing" },
+  {
+    id: 1,
+    name: "Maggi",
+    buyingPrice: "$430",
+    quantity: "43 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "In- stock",
+  },
+  {
+    id: 2,
+    name: "Bru",
+    buyingPrice: "$257",
+    quantity: "22 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "Out of stock",
+  },
+  {
+    id: 3,
+    name: "Red Bull",
+    buyingPrice: "$405",
+    quantity: "36 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "In- stock",
+  },
+  {
+    id: 4,
+    name: "Bourn Vita",
+    buyingPrice: "$502",
+    quantity: "14 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "Out of stock",
+  },
+  {
+    id: 5,
+    name: "Horlicks",
+    buyingPrice: "$530",
+    quantity: "5 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "In- stock",
+  },
+  {
+    id: 6,
+    name: "Harpic",
+    buyingPrice: "$605",
+    quantity: "10 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "Out of stock",
+  },
+  {
+    id: 7,
+    name: "Ariel",
+    buyingPrice: "$408",
+    quantity: "23 Packets",
+    stockLevel: "12 Packets",
+    closestExpiry: "11/12/22",
+    availability: "Out of stock",
+  },
 ];
 
 const productsColumns = [
-  { key: 'name', label: 'Products' },
-  { key: 'buyingPrice', label: 'Buying Price' },
-  { key: 'quantity', label: 'Quantity' },
-  { key: 'stockLevel', label: 'Stock Level' },
-  { key: 'closestExpiry', label: 'Closest Expiry' },
-  { key: 'availability', label: 'Availability' },
+  { key: "name", label: "Products" },
+  { key: "buyingPrice", label: "Buying Price" },
+  { key: "quantity", label: "Quantity" },
+  { key: "stockLevel", label: "Stock Level" },
+  { key: "closestExpiry", label: "Closest Expiry" },
+  { key: "availability", label: "Availability" },
 ];
 
-const ordersColumns = [
-  { key: 'orderBy', label: 'Order By' },
-  { key: 'orderValue', label: 'Order Value' },
-  { key: 'items', label: 'Items' },
-  { key: 'orderNo', label: 'Order No.' },
-  { key: 'expectedDelivery', label: 'Expected Delivery' },
-  { key: 'status', label: 'Status' },
-];
+
 
 export default function InventoryPage() {
-  const [ordersPage, setOrdersPage] = useState(1);
   const [productsPage, setProductsPage] = useState(1);
-
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   return (
     <div className="flex flex-col gap-2">
@@ -147,29 +184,24 @@ export default function InventoryPage() {
         />
       </div>
       <div className="w-full ">
-      {/* <TableCard 
-          title="Orders"
-          data={ordersData}
-          columns={ordersColumns}
-          page={ordersPage}
-          totalPages={10}
-          onPageChange={setOrdersPage}
-          onAddItem={() => handleAction('Add Order')}
-          onFilter={() => handleAction('Filter Orders')}
-          onDownload={() => handleAction('Order History')}
-        /> */}
-         <TableCard 
+        <TableCard
           title="Products"
           data={productsData}
           columns={productsColumns}
           page={productsPage}
           totalPages={10}
           onPageChange={setProductsPage}
-          onAddItem={() => handleAction('Add Product')}
-          onFilter={() => handleAction('Filter Products')}
-          onDownload={() => handleAction('Download Products')}
+          onAddItem={() => setIsAddingProduct(true)}
+          onFilter={() => handleAction("Filter Products")}
+          onDownload={() => handleAction("Download Products")}
         />
         {/* add product card */}
+        {isAddingProduct && (
+          <AddProductMultiSteps
+            onClose={() => setIsAddingProduct(false)}
+            onSubmit={() => setIsAddingProduct(false)}
+          />
+        )}
       </div>
     </div>
   );

@@ -16,10 +16,17 @@ export function FileUploader({
   const [files, setFiles] = useState(initialFiles || (multiple ? [] : null));
   
   useEffect(() => {
-    if (initialFiles) {
+    // Make sure we're always handling initialFiles correctly
+    if (initialFiles === null) {
+      setFiles(multiple ? [] : null);
+    } else if (Array.isArray(initialFiles)) {
       setFiles(initialFiles);
+    } else {
+      // If initialFiles is provided but not an array and multiple is true,
+      // wrap it in an array, otherwise use as is
+      setFiles(multiple ? [initialFiles] : initialFiles);
     }
-  }, [initialFiles]);
+  }, [initialFiles, multiple]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -71,12 +78,14 @@ export function FileUploader({
   const renderPreview = () => {
     if (!showPreview || !files) return null;
 
+    // Handle single file
     if (!multiple) {
+      // For image preview type
       if (previewType === "image" && files) {
         return (
           <div className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
             <img 
-              src={URL.createObjectURL(files)} 
+              src={typeof files === 'string' ? files : URL.createObjectURL(files)} 
               alt="Preview" 
               className="w-full h-full object-cover rounded-full" 
             />
@@ -94,9 +103,12 @@ export function FileUploader({
         );
       }
       
+      // For document preview type
       return (
         <div className="flex items-center justify-between bg-gray-100 p-2 rounded mb-2 w-full">
-          <span className="text-xs md:text-sm truncate max-w-[85%]">{files.name}</span>
+          <span className="text-xs md:text-sm truncate max-w-[85%]">
+            {typeof files === 'string' ? files.split('/').pop() : files.name}
+          </span>
           <button 
             type="button"
             onClick={(e) => {
@@ -111,26 +123,52 @@ export function FileUploader({
       );
     }
     
+    // Handle multiple files
     return (
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
         {files.map((file, index) => (
-          <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
-            <span className="text-xs md:text-sm truncate max-w-[80%]">{file.name}</span>
-            <button 
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                removeFile(file, index);
-              }}
-              className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
-            >
-              ×
-            </button>
-          </div>
+          previewType === "image" ? (
+            <div key={index} className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
+              <img 
+                src={typeof file === 'string' ? file : URL.createObjectURL(file)} 
+                alt="Preview" 
+                className="w-full h-full object-cover rounded-full" 
+              />
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFile(file, index);
+                }}
+                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+              <span className="text-xs md:text-sm truncate max-w-[80%]">
+                {typeof file === 'string' ? file.split('/').pop() : file.name}
+              </span>
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFile(file, index);
+                }}
+                className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
+              >
+                ×
+              </button>
+            </div>
+          )
         ))}
       </div>
     );
   };
+
+  // Check if we have files to display
+  const hasFiles = multiple ? (Array.isArray(files) && files.length > 0) : files !== null;
 
   return (
     <div className={`mb-4 ${className}`}>
@@ -146,7 +184,7 @@ export function FileUploader({
         onDrop={handleDrop}
         onClick={() => document.getElementById(`fileInput-${label}`).click()}
       >
-        {files && (multiple ? files.length > 0 : files) ? (
+        {hasFiles ? (
           <div className="text-center w-full">
             {renderPreview()}
             <p className="text-xs md:text-sm text-secondary/60 mt-1">

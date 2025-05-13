@@ -423,7 +423,7 @@ export function TableCard({
             {data.map((item, index) => (
               <>
                 <tr
-                  key={item.id || item.orderNo || index}
+                  key={item.id  || index}
                   className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                 >
                   {columns.map((column) => (
