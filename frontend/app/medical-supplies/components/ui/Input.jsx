@@ -24,6 +24,7 @@ export function TextInput({
   fullWidth = false,
   required = false,
   className = "",
+  isDesabled = false,
   ...props
 }) {
   return (
@@ -38,6 +39,7 @@ export function TextInput({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        disabled={isDesabled}
         className={`
             w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2  text-xs md:text-sm
             ${
@@ -993,11 +995,13 @@ export function RadioGroup({
   errorMessage = "",
   required = false,
   className = "",
+  disabled = false,
   ...props
 }) {
   // Handler to update the value when a radio option is clicked
   const handleRadioChange = (optionValue) => {
     // Create a synthetic event object to pass to the onChange handler
+
     const event = {
       target: {
         name,

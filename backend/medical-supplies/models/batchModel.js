@@ -1,6 +1,6 @@
 // models/BatchModel.js
-const { db } = require('../../config/firebase');
-const { formatDoc, formatDocs, sanitizeInput, timestamp, paginationParams } = require('../../config/firebase'); 
+const { db ,admin} = require('../../config/firebase');
+const { formatDoc, formatDocs, sanitizeInput, timestamp, paginationParams } = require('../../utils/helpers'); 
 
 const batchesRef = db.collection('batches');
 const productsRef = db.collection('products'); // To verify product exists and get its type

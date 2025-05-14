@@ -1,7 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { StepButtons } from "../Button";
 import { TextInput, NumberInput, DateInput, FileInput, SelectInput } from "../Input";
+
+// Validation helper
+const validateField = (value) => {
+  if (typeof value === 'number') return value > 0;
+  return value !== undefined && value !== "" && value !== null;
+};
 
 export default function ProductDrugInventory({
   productData,
@@ -24,6 +30,26 @@ export default function ProductDrugInventory({
     license: productData.batch?.license || null,
   });
 
+  // Field validation state
+  const [validationState, setValidationState] = useState({
+    batchNumber: false,
+    expiryDate: false,
+    quantity: false,
+    costPrice: false,
+    sellingPrice: false,
+    sizePerPackage: false,
+    manufacturer: false,
+    manufacturerCountry: false,
+    // Optional fields don't need validation entries
+  });
+
+  // Country options - could be fetched from an API
+  const countryOptions = [
+    { label: "Country 1", value: "country1" },
+    { label: "Country 2", value: "country2" },
+    { label: "Country 3", value: "country3" },
+  ];
+
   // Update local state when productData prop changes
   useEffect(() => {
     if (productData.batch) {
@@ -42,153 +68,169 @@ export default function ProductDrugInventory({
     }
   }, [productData]);
 
-  const handleChange = (e) => {
+  // Update validation state when batch data changes
+  useEffect(() => {
+    setValidationState({
+      batchNumber: validateField(batchData.batchNumber),
+      expiryDate: validateField(batchData.expiryDate),
+      quantity: validateField(batchData.quantity) && batchData.quantity > 0,
+      costPrice: validateField(batchData.costPrice) && batchData.costPrice > 0,
+      sellingPrice: validateField(batchData.sellingPrice) && batchData.sellingPrice > 0,
+      sizePerPackage: validateField(batchData.sizePerPackage) && batchData.sizePerPackage > 0,
+      manufacturer: validateField(batchData.manufacturer),
+      manufacturerCountry: validateField(batchData.manufacturerCountry),
+    });
+  }, [batchData]);
+
+  // Handle input changes - memoized to prevent unnecessary re-renders
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
+    
     // For number inputs, convert the value to a number
-    if (name === "quantity" || name === "costPrice" || name === "sellingPrice" || name === "sizePerPackage") {
+    if (["quantity", "costPrice", "sellingPrice", "sizePerPackage"].includes(name)) {
       setBatchData((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
     } else {
       setBatchData((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }, []);
 
-  const handleFileChange = (name, file) => {
+  // Handle file change - memoized to prevent unnecessary re-renders
+  const handleFileChange = useCallback((name, file) => {
     setBatchData((prev) => ({ ...prev, [name]: file }));
-  };
+  }, []);
 
-  const handleSubmit = (e) => {
+  // Submit form data - memoized to prevent unnecessary re-renders
+  const handleSubmit = useCallback((e) => {
     if (e) e.preventDefault();
+    
     // Pass the complete batch data to the parent component
     onUpdate(batchData);
     onNext();
-  };
+  }, [batchData, onUpdate, onNext]);
 
-  const isFormValid =true
-    // batchData.batchNumber &&
-    // batchData.expiryDate &&
-    // batchData.quantity > 0 &&
-    // batchData.costPrice > 0 &&
-    // batchData.sellingPrice > 0 &&
-    // batchData.sizePerPackage > 0 &&
-    // batchData.manufacturer &&
-    // batchData.manufacturerCountry;
+  // Check if all required fields are valid
+  const isFormValid = Object.values(validationState).every(Boolean);
 
   return (
     <div className="px-6">
       <h2 className="text-xl font-semibold text-secondary/80 mb-6">
-        Inventory
+        Inventory Details
       </h2>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Batch Information Section */}
         <div className="grid md:grid-cols-2 md:gap-4">
-          <div>
-            <TextInput
-              name="batchNumber"
-              label="Batch number"
-              placeholder="#1234567"
-              value={batchData.batchNumber}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-            />
-          </div>
+          <TextInput
+            name="batchNumber"
+            label="Batch Number"
+            placeholder="#1234567"
+            value={batchData.batchNumber}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+          />
 
-          <div>
-            <DateInput
-              name="expiryDate"
-              label="Expiration date (visual warning for short dates)"
-              placeholder="mm/dd/yyyy"
-              value={batchData.expiryDate}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-            />
-          </div>
+          <DateInput
+            name="expiryDate"
+            label="Expiration Date"
+            placeholder="mm/dd/yyyy"
+            value={batchData.expiryDate}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+            // helpText="Short expiry products will be visually flagged"
+          />
         </div>
 
+        {/* Pricing and Quantity Section */}
         <div className="grid md:grid-cols-3 md:gap-4">
-          <div>
-            <NumberInput
-              name="quantity"
-              label="Quantity"
-              value={batchData.quantity}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-              min={0}
-            />
-          </div>
+          <NumberInput
+            name="quantity"
+            label="Quantity"
+            value={batchData.quantity}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+            min={0}
+          />
 
-          <div>
-            <NumberInput
-              name="costPrice"
-              label="Cost price (Birr)"
-              value={batchData.costPrice}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-              min={0}
-              prefix="$"
-            />
-          </div>
+          <NumberInput
+            name="costPrice"
+            label="Cost Price (Birr)"
+            value={batchData.costPrice}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+            min={0}
+            prefix="$"
+          />
 
-          <div>
-            <NumberInput
-              name="sellingPrice"
-              label="Selling price (Birr)"
-              value={batchData.sellingPrice}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-              min={0}
-              prefix="$"
-            />
-          </div>
+          <NumberInput
+            name="sellingPrice"
+            label="Selling Price (Birr)"
+            value={batchData.sellingPrice}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+            min={0}
+            prefix="$"
+          />
         </div>
 
+        {/* Package Information */}
         <div className="grid md:grid-cols-2 md:gap-4">
-          <div>
-            <NumberInput
-              name="sizePerPackage"
-              label="Size per package"
-              placeholder="100 tablets per bottle"
-              value={batchData.sizePerPackage}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-              min={0}
-            />
-          </div>
+          <NumberInput
+            name="sizePerPackage"
+            label="Size Per Package"
+            placeholder="100 tablets per bottle"
+            value={batchData.sizePerPackage}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+            min={0}
+          />
         </div>
 
+        {/* Manufacturer Information */}
         <div className="grid md:grid-cols-2 md:gap-4">
-          <div>
-            <TextInput
-              name="manufacturer"
-              label="Manufacturer"
-              placeholder="Item Name"
-              value={batchData.manufacturer}
-              onChange={handleChange}
-              required={true}
-              className="w-full"
-            />
-          </div>
+          <TextInput
+            name="manufacturer"
+            label="Manufacturer"
+            placeholder="Manufacturer name"
+            value={batchData.manufacturer}
+            onChange={handleChange}
+            required={true}
+            className="w-full"
+          />
 
-          <div>
-            <SelectInput
-              name="manufacturerCountry"
-              label="Manufacturer country"
-              placeholder="Select country"
-              value={batchData.manufacturerCountry}
-              onChange={handleChange}
-              required={true}
-              options={[
-                { label: "Country 1", value: "country1" },
-                { label: "Country 2", value: "country2" },
-                { label: "Country 3", value: "country3" },
-              ]}
-            />
-          </div>
+          <SelectInput
+            name="manufacturerCountry"
+            label="Manufacturer Country"
+            placeholder="Select country"
+            value={batchData.manufacturerCountry}
+            onChange={handleChange}
+            required={true}
+            options={countryOptions}
+          />
+        </div>
+
+        {/* Optional Documentation */}
+        <div className="grid md:grid-cols-2 md:gap-4">
+          <FileInput
+            name="fdaCertificate"
+            label="FDA Certificate (Optional)"
+            onChange={(file) => handleFileChange("fdaCertificate", file)}
+            accept=".pdf,.doc,.docx"
+            className="w-full"
+          />
+
+          <FileInput
+            name="license"
+            label="License (Optional)"
+            onChange={(file) => handleFileChange("license", file)}
+            accept=".pdf,.doc,.docx"
+            className="w-full"
+          />
         </div>
 
         <div className="pt-4">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, FileText, Star } from 'lucide-react';
+import { Download, ExternalLink , FileText, Star , Image, FileArchive, File  } from 'lucide-react';
 
 // Base form field component that other components will extend
 const FormField = ({ label, children, className = '' , bigSize  }) => {
@@ -28,12 +28,12 @@ export const TextField = ({ label, value, icon: Icon, iconColor = "text-primary"
 };
 
 // File field with icon
-export const FileField = ({ label, fileName, fileType }) => {
+export const FileField = ({ label, fileName, fileType  }) => {
   return (
     <FormField label={label}>
       <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
         <FileText className="text-green-500 mr-2" size={20} />
-        <span className="text-gray-500 flex-grow">{fileName}</span>
+        <span className="text-secondary/50 flex-grow">{fileName}</span>
       </div>
     </FormField>
   );
@@ -86,3 +86,129 @@ export const Rating = ({ label, value, showValue = true, maxStars = 5 }) => {
       </div>
   );
 };
+
+
+// FileViewer component that displays file name with icon based on file type
+export default function FileViewer({ fileName, fileType, fileUrl }) {
+  console.log("FileViewer props:", { fileName, fileType, fileUrl });
+  // Extract file name from URL if provided
+  const extractFileNameFromUrl = (url) => {
+    if (!url) return fileName;
+    
+    // Try to extract the filename from the URL
+    const urlParts = url.split('/');
+    const potentialFileName = urlParts[urlParts.length - 1].split('?')[0]; // Remove query params
+    
+    // If we found something that looks like a filename, return it
+    if (potentialFileName && potentialFileName.includes('.')) {
+      return decodeURIComponent(potentialFileName);
+    }
+    
+    // Fall back to the provided fileName or a default
+    return fileName || 'file';
+  };
+
+  // The name to display (either from props or extracted from URL)
+  const displayName = fileUrl ? extractFileNameFromUrl(fileUrl) : fileName;
+
+  // Function to truncate long file names
+  const truncateFileName = (name) => {
+    const maxLength = 20;
+    if (!name || name.length <= maxLength) return name || '';
+    
+    // Split the name into filename and extension
+    const lastDotIndex = name.lastIndexOf('.');
+    let extension = '';
+    let baseName = name;
+    
+    if (lastDotIndex !== -1) {
+      extension = name.substring(lastDotIndex);
+      baseName = name.substring(0, lastDotIndex);
+    }
+    
+    // Truncate the base name and add the extension back
+    return `${baseName.substring(0, maxLength - 3)}...${extension}`;
+  };
+
+  // Determine file type from URL if not provided
+  const determineFileType = () => {
+    if (fileType) return fileType;
+    
+    if (!fileUrl) return '';
+    
+    // Extract extension from URL
+    const extension = fileUrl.split('.').pop().toLowerCase();
+    
+    // Map common extensions to MIME types
+    const mimeMap = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'pdf': 'application/pdf',
+      'zip': 'application/zip',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    };
+    
+    return mimeMap[extension] || '';
+  };
+
+  const currentFileType = determineFileType();
+
+  // Function to determine the appropriate icon based on file type
+  const getFileIcon = () => {
+    if (!currentFileType) return <File className="text-gray-500" size={20} />;
+    
+    if (currentFileType.startsWith('image/')) {
+      return <Image className="text-teal-500" size={20} />;
+    } else if (currentFileType.includes('pdf')) {
+      return <FileText className="text-red-500" size={20} />;
+    } else if (currentFileType.includes('zip') || currentFileType.includes('archive')) {
+      return <FileArchive className="text-yellow-500" size={20} />;
+    } else {
+      return <FileText className="text-gray-500" size={20} />;
+    }
+  };
+
+  // Handle click on the file
+  const handleFileClick = () => {
+    if (!fileUrl) return;
+    
+    // If it's an image, we might want to open it in a new tab
+    if (currentFileType.startsWith('image/')) {
+      window.open(fileUrl, '_blank');
+    } else {
+      // For other types, try to download it
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = displayName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  return (
+    <div 
+      className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 w-full max-w-xs cursor-pointer hover:bg-gray-100 transition-colors"
+      onClick={fileUrl ? handleFileClick : undefined}
+      title={fileUrl ? `Click to ${currentFileType.startsWith('image/') ? 'view' : 'download'} ${displayName}` : displayName}
+    >
+      <div className="mr-3">
+        {getFileIcon()}
+      </div>
+      <div className="truncate text-gray-700 flex-grow">
+        {truncateFileName(displayName)}
+      </div>
+      {fileUrl && (
+        <div className="ml-2 text-gray-500">
+          {currentFileType.startsWith('image/') ? 
+            <ExternalLink size={16} /> : 
+            <Download size={16} />
+          }
+        </div>
+      )}
+    </div>
+  );
+}

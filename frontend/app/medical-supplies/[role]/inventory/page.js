@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
-import { TableCard, StatCard } from "../../components/ui/Cards";
-import { BookMinus } from "lucide-react";
-import AddProductMultiSteps from "../../components/ui/product/AddProductMultiSteps";
+import { useState, useEffect } from 'react';
+import { useQuery } from '@apollo/client';
+import { GET_PRODUCTS } from "../../api/graphql/productQueries"
+import { StatCard } from '../../components/ui/Cards';
+import { TableCard } from '../../components/ui/Cards';
+import AddProductMultiSteps from '../../components/ui/product/AddProductMultiSteps';
+// import icons from '../lib/icons';
 
 const icons = {
   categories: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -39,86 +42,84 @@ const icons = {
 </svg>`,
 };
 
-const productsData = [
-  {
-    id: 1,
-    name: "Maggi",
-    buyingPrice: "$430",
-    quantity: "43 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "In- stock",
-  },
-  {
-    id: 2,
-    name: "Bru",
-    buyingPrice: "$257",
-    quantity: "22 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "Out of stock",
-  },
-  {
-    id: 3,
-    name: "Red Bull",
-    buyingPrice: "$405",
-    quantity: "36 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "In- stock",
-  },
-  {
-    id: 4,
-    name: "Bourn Vita",
-    buyingPrice: "$502",
-    quantity: "14 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "Out of stock",
-  },
-  {
-    id: 5,
-    name: "Horlicks",
-    buyingPrice: "$530",
-    quantity: "5 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "In- stock",
-  },
-  {
-    id: 6,
-    name: "Harpic",
-    buyingPrice: "$605",
-    quantity: "10 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "Out of stock",
-  },
-  {
-    id: 7,
-    name: "Ariel",
-    buyingPrice: "$408",
-    quantity: "23 Packets",
-    stockLevel: "12 Packets",
-    closestExpiry: "11/12/22",
-    availability: "Out of stock",
-  },
-];
-
-const productsColumns = [
-  { key: "name", label: "Products" },
-  { key: "buyingPrice", label: "Buying Price" },
-  { key: "quantity", label: "Quantity" },
-  { key: "stockLevel", label: "Stock Level" },
-  { key: "closestExpiry", label: "Closest Expiry" },
-  { key: "availability", label: "Availability" },
-];
-
-
-
 export default function InventoryPage() {
   const [productsPage, setProductsPage] = useState(1);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [productType, setProductType] = useState('DRUG'); // For filtering by product type
+  
+  // Pagination
+  const ITEMS_PER_PAGE = 10;
+  const offset = (productsPage - 1) * ITEMS_PER_PAGE;
+  
+  // Fetch products from GraphQL API
+  const { loading, error, data, refetch } = useQuery(GET_PRODUCTS, {
+    variables: { 
+      productType: productType,
+      limit: ITEMS_PER_PAGE, 
+      offset: offset 
+    },
+    fetchPolicy: 'cache-and-network',
+  });
+  
+  // Format products data for the table
+  const formatProductsData = (products) => {
+    console.log("Formatted products data:", products);
+    if (!products) return [];
+    
+    return products.map(product => {
+      // Extract the first batch information if available (we'll need a separate query for this in a full implementation)
+      // For now, using placeholder data for batch-related fields
+      
+      // Determine availability based on quantity (simplified logic)
+      const availability = product.isActive ? "In-stock" : "Out of stock";
+      
+      return {
+        id: product.productId,
+        name: product.name,
+        buyingPrice: "$XXX", // This would come from batch information
+        quantity: "X Packets", // This would come from batch information
+        stockLevel: "X Packets", // This would come from batch information
+        closestExpiry: product.__typename === "DrugProduct" ? "XX/XX/XX" : "N/A", // This would come from batch information
+        availability: availability,
+        category: product.category,
+        productType: product.productType,
+        // Add more fields as needed for detail view
+      };
+    });
+  };
+  
+  const productsData = data ? formatProductsData(data.products) : [];
+  const totalCount = data?.products?.length || 0; // In a real implementation, you'd get total count from the API
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+  
+  // Category counts - in a real implementation, you'd get these from the API
+  const drugCount = data?.products?.filter(p => p.__typename === "DrugProduct").length || 0;
+  const equipmentCount = data?.products?.filter(p => p.__typename === "EquipmentProduct").length || 0;
+  
+  const productsColumns = [
+    { key: "name", label: "Products" },
+    { key: "category", label: "Category" },
+    { key: "buyingPrice", label: "Buying Price" },
+    { key: "quantity", label: "Quantity" },
+    { key: "stockLevel", label: "Stock Level" },
+    { key: "closestExpiry", label: "Closest Expiry" },
+    { key: "availability", label: "Availability" },
+  ];
+
+  // Handle product type filter
+  const handleFilter = (type) => {
+    setProductType(type);
+    setProductsPage(1); // Reset to first page when filtering
+    refetch({ productType: type, limit: ITEMS_PER_PAGE, offset: 0 });
+  };
+
+  // Handle product add form submission
+  const handleAddProduct = (newProduct) => {
+    // In a real implementation, you'd call a mutation to add the product
+    // Then refetch to update the list
+    refetch();
+    setIsAddingProduct(false);
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -126,26 +127,23 @@ export default function InventoryPage() {
         <StatCard
           title="Categories"
           metrics={[
-            { value: "Drugs", label: "" },
-            { value: "Equipment", label: "" },
-            { value: "15", label: "" },
-            { value: "12", label: "" },
+            { value: "Drugs", label: `${drugCount} items` },
+            { value: "Equipment", label: `${equipmentCount} items` },
           ]}
-          // icon={<BookMinus />}
           icon={
             <div
               dangerouslySetInnerHTML={{ __html: icons.categories }}
               className="text-primary"
             />
           }
-          subtitle="Last 7 days"
+          subtitle="Product Categories"
         />
 
         <StatCard
           title="Total Products"
           metrics={[
-            { value: "150", label: "Last 7 days" },
-            { value: "$254", label: "Revenue" },
+            { value: totalCount.toString(), label: "All Products" },
+            { value: "Active", label: `${productsData.filter(p => p.availability === "In-stock").length} items` },
           ]}
           icon={
             <div
@@ -158,8 +156,8 @@ export default function InventoryPage() {
         <StatCard
           title="Top Selling"
           metrics={[
-            { value: "150", label: "Last 7 days" },
-            { value: "$254", label: "Cost" },
+            { value: "N/A", label: "Last 7 days" },
+            { value: "$N/A", label: "Revenue" },
           ]}
           icon={
             <div
@@ -172,8 +170,8 @@ export default function InventoryPage() {
         <StatCard
           title="Low Stocks"
           metrics={[
-            { value: "12", label: "Ordered" },
-            { value: "3", label: "Not in stock" },
+            { value: "N/A", label: "Below threshold" },
+            { value: "N/A", label: "Out of stock" },
           ]}
           icon={
             <div
@@ -183,23 +181,40 @@ export default function InventoryPage() {
           }
         />
       </div>
-      <div className="w-full ">
-        <TableCard
-          title="Products"
-          data={productsData}
-          columns={productsColumns}
-          page={productsPage}
-          totalPages={10}
-          onPageChange={setProductsPage}
-          onAddItem={() => setIsAddingProduct(true)}
-          onFilter={() => handleAction("Filter Products")}
-          onDownload={() => handleAction("Download Products")}
-        />
+      <div className="w-full">
+        {loading ? (
+          <div className="text-center py-10">Loading products...</div>
+        ) : error ? (
+          <div className="text-center py-10 text-red-500">Error loading products: {error.message}</div>
+        ) : (
+          <TableCard
+            title="Products"
+            data={productsData}
+            columns={productsColumns}
+            page={productsPage}
+            totalPages={totalPages}
+            onPageChange={(page) => {
+              setProductsPage(page);
+              refetch({ 
+                productType: productType,
+                limit: ITEMS_PER_PAGE, 
+                offset: (page - 1) * ITEMS_PER_PAGE 
+              });
+            }}
+            onAddItem={() => setIsAddingProduct(true)}
+            onFilter={() => setProductType(productType === "DRUG" ? "EQUIPMENT" : productType === "EQUIPMENT" ? null : "DRUG")}
+            onDownload={() => {
+              // Implement download functionality
+              alert("Download functionality will be implemented here");
+            }}
+            isLoading={loading}
+          />
+        )}
         {/* add product card */}
         {isAddingProduct && (
           <AddProductMultiSteps
             onClose={() => setIsAddingProduct(false)}
-            onSubmit={() => setIsAddingProduct(false)}
+            onSubmit={handleAddProduct}
           />
         )}
       </div>

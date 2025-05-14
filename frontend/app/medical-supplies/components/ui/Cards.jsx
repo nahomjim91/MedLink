@@ -13,7 +13,7 @@ import {
   Plus,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button, TablePageButtons } from "./Button";
 
 // Define types for our props
@@ -421,11 +421,8 @@ export function TableCard({
           </thead>
           <tbody>
             {data.map((item, index) => (
-              <>
-                <tr
-                  key={item.id  || index}
-                  className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                >
+              <React.Fragment key={item.id || item.orderNo || `row-${index}`}>
+                <tr className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   {columns.map((column) => (
                     <td
                       key={`${item.id || item.orderNo || index}-${column.key}`}
@@ -453,7 +450,7 @@ export function TableCard({
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -541,14 +538,15 @@ export const OrderStatCard = ({ title, metrics = [], subtitle = "" }) => {
 
       <div className="flex gap-x-8 justify-around ">
         {metrics.map((metric, index) => (
-            <span className="text-xl font-medium text-secondary/80">
-              {metric.value}
-            </span>
+          <span className="text-xl font-medium text-secondary/80">
+            {metric.value}
+          </span>
         ))}
       </div>
 
       <div className="flex items-center gap-2 mb-1 justify-around">
-       <div className="text-sm text-secondary/50">Last 7 days</div> {subtitle && (
+        <div className="text-sm text-secondary/50">Last 7 days</div>{" "}
+        {subtitle && (
           <div className="text-sm text-secondary/50">{subtitle}</div>
         )}
       </div>

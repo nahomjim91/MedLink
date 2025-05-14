@@ -1,14 +1,15 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { StepButtons } from "../Button";
 import {
   TextInput,
   SelectInput,
-  NumberWithUnitInput,
   TextAreaInput,
   DynamicList,
-  RadioGroup,
 } from "../Input";
+
+// Validation helper
+const validateField = (value) => value !== undefined && value !== "";
 
 export default function ProductDetailsEquipment({
   productData,
@@ -17,9 +18,7 @@ export default function ProductDetailsEquipment({
   onPrevious,
   isLoading,
 }) {
-  // Create a ref to track if data has been submitted
-  const hasSubmittedRef = useRef(false);
-  
+  // Local form state that syncs with parent component
   const [formData, setFormData] = useState({
     name: productData.name || "",
     category: productData.category || "",
@@ -29,56 +28,67 @@ export default function ProductDetailsEquipment({
     sparePartInfo: productData.sparePartInfo || [],
   });
 
-  // Update local form state when userData prop changes
+  // Field validation state
+  const [validationState, setValidationState] = useState({
+    name: false,
+    category: false,
+    brandName: false,
+    modelNumber: false,
+    description: false,
+    // sparePartInfo is optional
+  });
+
+  // Category options - could be fetched from API
+  const categoryOptions = [
+    { label: "Category 1", value: "category1" },
+    { label: "Category 2", value: "category2" },
+    { label: "Category 3", value: "category3" },
+  ];
+
+  // Update local form state when parent data changes
   useEffect(() => {
-    setFormData({
-      name: productData.name || "",
-      category: productData.category || "",
-      brandName: productData.brandName || "",
-      modelNumber: productData.modelNumber || "",
-      description: productData.description || "",
-      sparePartInfo: productData.sparePartInfo || [],
-    });
+    if (productData) {
+      setFormData({
+        name: productData.name || "",
+        category: productData.category || "",
+        brandName: productData.brandName || "",
+        modelNumber: productData.modelNumber || "",
+        description: productData.description || "",
+        sparePartInfo: productData.sparePartInfo || [],
+      });
+    }
   }, [productData]);
 
-  // Effect to handle async update and navigation
+  // Handle form validation on data change
   useEffect(() => {
-    // If data has been submitted and the local formData name matches the productData name,
-    // it means the update was successful and we can proceed
-    if (
-      hasSubmittedRef.current && 
-      productData.name === formData.name && 
-      productData.description === formData.description
-    ) {
-      hasSubmittedRef.current = false; // Reset the flag
-      onNext(); // Proceed to next step
-    }
-  }, [productData, formData, onNext]);
+    setValidationState({
+      name: validateField(formData.name),
+      category: validateField(formData.category),
+      brandName: validateField(formData.brandName),
+      modelNumber: validateField(formData.modelNumber),
+      description: validateField(formData.description),
+    });
+  }, [formData]);
 
-  const handleChange = (e) => {
+  // Handle input changes
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleSubmit = (e) => {
+  // Submit form data and proceed
+  const handleSubmit = useCallback((e) => {
     if (e) e.preventDefault();
-    console.log("Form data:", formData);
-
-    // Set the submission flag to true
-    hasSubmittedRef.current = true;
     
     // Update parent component with form data
     onUpdate(formData);
     
-    // The navigation to next step will happen in the useEffect after the productData is updated
-  };
+    // Proceed to next step
+    onNext();
+  }, [formData, onUpdate, onNext]);
 
-  const isFormValid =
-    formData.name &&
-    formData.category &&
-    formData.brandName &&
-    formData.modelNumber &&
-    formData.description;
+  // Check if all required fields are valid
+  const isFormValid = Object.values(validationState).every(Boolean);
 
   return (
     <div className="px-6">
@@ -105,14 +115,11 @@ export default function ProductDetailsEquipment({
             placeholder="Select category"
             value={formData.category}
             onChange={handleChange}
-            options={[
-              { label: "Category 1", value: "category1" },
-              { label: "Category 2", value: "category2" },
-              { label: "Category 3", value: "category3" },
-            ]}
+            options={categoryOptions}
             required={true}
           />
         </div>
+        
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextInput
             name="brandName"
@@ -123,6 +130,7 @@ export default function ProductDetailsEquipment({
             onChange={handleChange}
             required={true}
           />
+          
           <TextInput
             name="modelNumber"
             label="Model Number"
@@ -133,6 +141,7 @@ export default function ProductDetailsEquipment({
             required={true}
           />
         </div>
+        
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextAreaInput
             name="description"
@@ -143,6 +152,7 @@ export default function ProductDetailsEquipment({
             onChange={handleChange}
             required={true}
           />
+          
           <DynamicList
             name="sparePartInfo"
             label="Spare Part Info"
@@ -150,7 +160,7 @@ export default function ProductDetailsEquipment({
             value={formData.sparePartInfo}
             onChange={handleChange}
             placeholder="Enter spare part information"
-            required={true}
+            // Not required
           />
         </div>
 

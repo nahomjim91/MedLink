@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { StepButtons } from "../Button";
 import {
   TextInput,
@@ -8,7 +8,9 @@ import {
   TextAreaInput,
   RadioGroup,
 } from "../Input";
-import { FileUploader } from "../FileUploader";
+
+// Validation helper
+const validateField = (value) => value !== undefined && value !== "";
 
 export default function ProductDetailsDrug({
   productData,
@@ -17,9 +19,7 @@ export default function ProductDetailsDrug({
   onPrevious,
   isLoading,
 }) {
-  // Create a ref to track if data has been submitted
-  const hasSubmittedRef = useRef(false);
-  
+  // Local form state that syncs with parent component
   const [formData, setFormData] = useState({
     name: productData.name || "",
     category: productData.category || "",
@@ -29,70 +29,97 @@ export default function ProductDetailsDrug({
     requiresPrescription: productData.requiresPrescription === true,
   });
 
-  // Update local form state when userData prop changes
+  // Field validation state
+  const [validationState, setValidationState] = useState({
+    name: false,
+    category: false,
+    packageType: false,
+    concentration: false,
+    description: false,
+    requiresPrescription: true, // Default to true since it's a boolean
+  });
+
+  // Category options - could be fetched from API
+  const categoryOptions = [
+    { label: "Category 1", value: "category1" },
+    { label: "Category 2", value: "category2" },
+    { label: "Category 3", value: "category3" },
+  ];
+
+  // Package type options - could be fetched from API 
+  const packageTypeOptions = [
+    { label: "Package Type 1", value: "packageType1" },
+    { label: "Package Type 2", value: "packageType2" },
+    { label: "Package Type 3", value: "packageType3" },
+  ];
+
+  // Concentration unit options
+  const concentrationUnitOptions = [
+    { label: "mg", value: "mg" },
+    { label: "g", value: "g" },
+    { label: "mL", value: "mL" },
+    { label: "%", value: "%" },
+  ];
+
+  // Update local form state when parent data changes
   useEffect(() => {
-    setFormData({
-      name: productData.name || "",
-      category: productData.category || "",
-      packageType: productData.packageType || "",
-      concentration: productData.concentration || "",
-      description: productData.description || "",
-      requiresPrescription: productData.requiresPrescription === true,
-    });
+    if (productData) {
+      setFormData({
+        name: productData.name || "",
+        category: productData.category || "",
+        packageType: productData.packageType || "",
+        concentration: productData.concentration || "",
+        description: productData.description || "",
+        requiresPrescription: productData.requiresPrescription === true,
+      });
+    }
   }, [productData]);
 
-  // Effect to handle async update and navigation
+  // Handle form validation on data change
   useEffect(() => {
-    // If data has been submitted and the local formData name matches the productData name,
-    // it means the update was successful and we can proceed
-    if (
-      hasSubmittedRef.current && 
-      productData.name === formData.name && 
-      productData.description === formData.description
-    ) {
-      hasSubmittedRef.current = false; // Reset the flag
-      onNext(); // Proceed to next step
-    }
-  }, [productData, formData, onNext]);
+    setValidationState({
+      name: validateField(formData.name),
+      category: validateField(formData.category),
+      packageType: validateField(formData.packageType),
+      concentration: validateField(formData.concentration),
+      description: validateField(formData.description),
+      requiresPrescription: true, // Always valid as it's a boolean
+    });
+  }, [formData]);
 
-  const handleChange = (e) => {
+  // Handle input changes
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     
-    // Handle radio button value conversion for requiresPrescription
+    // Special handling for radio buttons
     if (name === "requiresPrescription") {
       const boolValue = value === "true" || value === true;
       setFormData((prev) => ({ ...prev, [name]: boolValue }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }, []);
 
-  const handleSubmit = (e) => {
+  // Submit form data and proceed
+  const handleSubmit = useCallback((e) => {
     if (e) e.preventDefault();
-
-    console.log("Form data:", formData);
-    
-    // Set the submission flag to true
-    hasSubmittedRef.current = true;
     
     // Update parent component with form data
     onUpdate(formData);
     
-    // The navigation to next step will happen in the useEffect after the productData is updated
-  };
+    // Proceed to next step
+    onNext();
+  }, [formData, onUpdate, onNext]);
 
-  const isFormValid =
-    formData.name &&
-    formData.category &&
-    formData.packageType &&
-    formData.concentration &&
-    formData.description;
+  // Check if all required fields are valid
+  const isFormValid = Object.values(validationState).every(Boolean);
 
   return (
     <div className="px-6">
       <h2 className="text-xl font-semibold text-secondary/80 mb-2">
         Product Details
       </h2>
+      
       <form onSubmit={handleSubmit}>
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextInput
@@ -112,14 +139,11 @@ export default function ProductDetailsDrug({
             placeholder="Select category"
             value={formData.category}
             onChange={handleChange}
-            options={[
-              { label: "Category 1", value: "category1" },
-              { label: "Category 2", value: "category2" },
-              { label: "Category 3", value: "category3" },
-            ]}
+            options={categoryOptions}
             required={true}
           />
         </div>
+        
         <div className="grid md:grid-cols-2 md:gap-4">
           <SelectInput
             name="packageType"
@@ -128,13 +152,10 @@ export default function ProductDetailsDrug({
             placeholder="Select package type"
             value={formData.packageType}
             onChange={handleChange}
-            options={[
-              { label: "Package Type 1", value: "packageType1" },
-              { label: "Package Type 2", value: "packageType2" },
-              { label: "Package Type 3", value: "packageType3" },
-            ]}
+            options={packageTypeOptions}
             required={true}
           />
+          
           <NumberWithUnitInput
             name="concentration"
             label="Concentration"
@@ -143,12 +164,10 @@ export default function ProductDetailsDrug({
             value={formData.concentration}
             onChange={handleChange}
             required={true}
-            unitOptions={[
-              { label: "mg", value: "mg" },
-              { label: "g", value: "g" },
-            ]}
+            unitOptions={concentrationUnitOptions}
           />
         </div>
+        
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextAreaInput
             name="description"
@@ -159,6 +178,7 @@ export default function ProductDetailsDrug({
             onChange={handleChange}
             required={true}
           />
+          
           <RadioGroup
             name="requiresPrescription"
             label="Requires Prescription"
