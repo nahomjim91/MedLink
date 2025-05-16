@@ -33,7 +33,7 @@ const setupApolloServer = async (app) => {
       {
         // Basic logging plugin
         requestDidStart(requestContext) {
-          console.log(`Request started: ${requestContext.request.operationName || 'unnamed operation'}`);
+          console.log(`Request started: ${requestContext.request.operationName  || 'unnamed operation'}` , " query ", requestContext.request.query);
           
           return {
             didEncounterErrors(context) {

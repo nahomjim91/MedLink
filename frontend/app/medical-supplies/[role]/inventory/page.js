@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { GET_PRODUCTS } from "../../api/graphql/productQueries"
+import { GET_MY_PRODUCTS } from "../../api/graphql/productQueries"
 import { StatCard } from '../../components/ui/Cards';
 import { TableCard } from '../../components/ui/Cards';
 import AddProductMultiSteps from '../../components/ui/product/AddProductMultiSteps';
@@ -45,14 +45,14 @@ const icons = {
 export default function InventoryPage() {
   const [productsPage, setProductsPage] = useState(1);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [productType, setProductType] = useState('DRUG'); // For filtering by product type
+  const [productType, setProductType] = useState(''); // For filtering by product type
   
   // Pagination
   const ITEMS_PER_PAGE = 10;
   const offset = (productsPage - 1) * ITEMS_PER_PAGE;
   
   // Fetch products from GraphQL API
-  const { loading, error, data, refetch } = useQuery(GET_PRODUCTS, {
+  const { loading, error, data, refetch } = useQuery(GET_MY_PRODUCTS, {
     variables: { 
       productType: productType,
       limit: ITEMS_PER_PAGE, 
@@ -88,13 +88,13 @@ export default function InventoryPage() {
     });
   };
   
-  const productsData = data ? formatProductsData(data.products) : [];
-  const totalCount = data?.products?.length || 0; // In a real implementation, you'd get total count from the API
+  const productsData = data ? formatProductsData(data.myProducts) : [];
+  const totalCount = data?.myProducts?.length || 0; // In a real implementation, you'd get total count from the API
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
   
   // Category counts - in a real implementation, you'd get these from the API
-  const drugCount = data?.products?.filter(p => p.__typename === "DrugProduct").length || 0;
-  const equipmentCount = data?.products?.filter(p => p.__typename === "EquipmentProduct").length || 0;
+  const drugCount = data?.myProducts?.filter(p => p.__typename === "DrugProduct").length || 0;
+  const equipmentCount = data?.myProducts?.filter(p => p.__typename === "EquipmentProduct").length || 0;
   
   const productsColumns = [
     { key: "name", label: "Products" },

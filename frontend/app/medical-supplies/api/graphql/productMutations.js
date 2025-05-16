@@ -1,11 +1,11 @@
-// src/lib/graphql/product-mutations.js
+// src/lib/graphql/productMutations.js
 import { gql } from '@apollo/client';
 import { 
   DRUG_PRODUCT_FIELDS, 
   EQUIPMENT_PRODUCT_FIELDS,
   DRUG_BATCH_FIELDS,
   EQUIPMENT_BATCH_FIELDS
-} from './productQueries';
+} from './productFragments';
 
 // Product Mutations
 export const CREATE_DRUG_PRODUCT = gql`
@@ -91,4 +91,19 @@ export const DELETE_BATCH = gql`
   mutation DeleteBatch($batchId: ID!) {
     deleteBatch(batchId: $batchId)
   }
+`;
+
+export const PURCHASE_PRODUCT = gql`
+  mutation PurchaseProduct($input: PurchaseProductInput!) {
+    purchaseProduct(input: $input) {
+      ... on DrugProduct {
+        ...DrugProductFields
+      }
+      ... on EquipmentProduct {
+        ...EquipmentProductFields
+      }
+    }
+  }
+  ${DRUG_PRODUCT_FIELDS}
+  ${EQUIPMENT_PRODUCT_FIELDS}
 `;

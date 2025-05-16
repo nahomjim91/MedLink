@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation } from "@apollo/client";
 import { StepProgressIndicator } from "../StepProgressIndicator";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 
 // GraphQL Mutations
 import { 
@@ -63,9 +64,10 @@ const initialProductData = {
   },
 };
 
-export default function AddProductMultiSteps({ onClose, userData }) {
+export default function AddProductMultiSteps({ onClose }) {
   // Core state
   const [currentStep, setCurrentStep] = useState(1);
+  const userData = useMSAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [submissionComplete, setSubmissionComplete] = useState(false);
