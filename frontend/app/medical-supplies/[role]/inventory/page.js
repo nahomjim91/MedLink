@@ -42,10 +42,12 @@ const icons = {
 </svg>`,
 };
 
+
 export default function InventoryPage() {
   const [productsPage, setProductsPage] = useState(1);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [productType, setProductType] = useState(''); // For filtering by product type
+  const [activeTab, setActiveTab] = useState('all'); // Default active tab
   
   // Pagination
   const ITEMS_PER_PAGE = 10;
@@ -61,41 +63,168 @@ export default function InventoryPage() {
     fetchPolicy: 'cache-and-network',
   });
   
+  // Helper function to format currency
+  const formatCurrency = (amount) => {
+    return `$${parseFloat(amount).toFixed(2)}`;
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  // Find closest expiry batch for a product
+  const getClosestExpiryBatch = (batches) => {
+    if (!batches || batches.length === 0) return null;
+    
+    // Filter out batches without expiry dates
+    const batchesWithExpiry = batches.filter(batch => batch.__typename === "DrugBatch" && batch.expiryDate);
+    
+    if (batchesWithExpiry.length === 0) return null;
+    
+    // Sort by expiry date (ascending)
+    return batchesWithExpiry.sort((a, b) => 
+      new Date(a.expiryDate) - new Date(b.expiryDate)
+    )[0];
+  };
+
+  // Calculate total quantity across all batches for a product
+  const calculateTotalQuantity = (batches) => {
+    if (!batches || batches.length === 0) return 0;
+    return batches.reduce((sum, batch) => sum + (batch.quantity || 0), 0);
+  };
+
+  // Determine stock level status
+  const getStockLevelStatus = (quantity) => {
+    // Define thresholds based on your business logic
+    if (quantity <= 0) return "Out of stock";
+    if (quantity < 5) return "Low stock";
+    if (quantity < 10) return "Medium stock";
+    return "High stock";
+  };
+  
   // Format products data for the table
   const formatProductsData = (products) => {
-    console.log("Formatted products data:", products);
     if (!products) return [];
     
     return products.map(product => {
-      // Extract the first batch information if available (we'll need a separate query for this in a full implementation)
-      // For now, using placeholder data for batch-related fields
+      const totalQuantity = calculateTotalQuantity(product.batches);
+      const closestExpiryBatch = getClosestExpiryBatch(product.batches);
+      const stockLevel = getStockLevelStatus(totalQuantity);
       
-      // Determine availability based on quantity (simplified logic)
-      const availability = product.isActive ? "In-stock" : "Out of stock";
+      // Get the first batch's cost price for buying price
+      const firstBatch = product.batches && product.batches.length > 0 ? product.batches[0] : null;
+      const buyingPrice = firstBatch ? formatCurrency(firstBatch.costPrice) : 'N/A';
+      
+      // Format expiry date
+      const closestExpiry = closestExpiryBatch 
+        ? formatDate(closestExpiryBatch.expiryDate)
+        : (product.__typename === "DrugProduct" ? "No expiry data" : "N/A");
+      
+      // Determine availability based on quantity and isActive
+      const availability = product.isActive && totalQuantity > 0 ? "In-stock" : "Out of stock";
       
       return {
         id: product.productId,
         name: product.name,
-        buyingPrice: "$XXX", // This would come from batch information
-        quantity: "X Packets", // This would come from batch information
-        stockLevel: "X Packets", // This would come from batch information
-        closestExpiry: product.__typename === "DrugProduct" ? "XX/XX/XX" : "N/A", // This would come from batch information
+        buyingPrice: buyingPrice,
+        quantity: `${totalQuantity} ${product.__typename === "DrugProduct" ? "Units" : "Items"}`,
+        stockLevel: stockLevel,
+        closestExpiry: closestExpiry,
         availability: availability,
         category: product.category,
         productType: product.productType,
-        // Add more fields as needed for detail view
       };
     });
   };
-  console.log("Formatted products data:",data);
   
-  const productsData = data ? formatProductsData(data.myProducts) : [];
-  const totalCount = data?.myProducts?.length || 0; // In a real implementation, you'd get total count from the API
+  const allProductsData = data ? formatProductsData(data.myProducts) : [];
+  const totalCount = data?.myProducts?.length || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
   
-  // Category counts - in a real implementation, you'd get these from the API
-  const drugCount = data?.myProducts?.filter(p => p.__typename === "DrugProduct").length || 0;
-  const equipmentCount = data?.myProducts?.filter(p => p.__typename === "EquipmentProduct").length || 0;
+  // Prepare data for tabs
+  const prepareTabData = () => {
+    if (!allProductsData) return {};
+    
+    // All products tab (unfiltered)
+    const all = allProductsData;
+    
+    // In stock products
+    const inStock = allProductsData.filter(product => 
+      product.availability === "In-stock"
+    );
+    
+    // Out of stock products
+    const outOfStock = allProductsData.filter(product => 
+      product.availability === "Out of stock"
+    );
+    
+    // Low stock products
+    const lowStock = allProductsData.filter(product => 
+      product.stockLevel === "Low stock"
+    );
+    
+    // Drug products
+    const drugs = allProductsData.filter(product => 
+      product.productType === "DRUG"
+    );
+    
+    // Equipment products
+    const equipment = allProductsData.filter(product => 
+      product.productType === "EQUIPMENT"
+    );
+    
+    return {
+      all,
+      inStock,
+      outOfStock,
+      lowStock,
+      drugs,
+      equipment
+    };
+  };
+  
+  const tabData = prepareTabData();
+  
+  // Calculate stats for cards
+  const calculateStats = () => {
+    if (!data || !data.myProducts) return {
+      drugCount: 0,
+      equipmentCount: 0,
+      activeCount: 0,
+      lowStockCount: 0,
+      outOfStockCount: 0,
+      topSellingProduct: "N/A",
+      topSellingRevenue: "N/A"
+    };
+
+    const formattedProducts = formatProductsData(data.myProducts);
+    
+    return {
+      drugCount: data.myProducts.filter(p => p.__typename === "DrugProduct").length,
+      equipmentCount: data.myProducts.filter(p => p.__typename === "EquipmentProduct").length,
+      activeCount: formattedProducts.filter(p => p.availability === "In-stock").length,
+      lowStockCount: formattedProducts.filter(p => p.stockLevel === "Low stock").length,
+      outOfStockCount: formattedProducts.filter(p => p.availability === "Out of stock").length,
+      // Placeholder for top selling - would need sales data
+      topSellingProduct: "N/A",
+      topSellingRevenue: "N/A"
+    };
+  };
+
+  const stats = calculateStats();
+  
+  // Define table tabs
+  const productTabs = [
+    { id: 'all', label: 'All Products', count: tabData.all?.length || 0 },
+    { id: 'inStock', label: 'In Stock', count: tabData.inStock?.length || 0 },
+    { id: 'outOfStock', label: 'Out of Stock', count: tabData.outOfStock?.length || 0 },
+    { id: 'lowStock', label: 'Low Stock', count: tabData.lowStock?.length || 0 },
+    { id: 'drugs', label: 'Drugs', count: tabData.drugs?.length || 0 },
+    { id: 'equipment', label: 'Equipment', count: tabData.equipment?.length || 0 },
+  ];
   
   const productsColumns = [
     { key: "name", label: "Products" },
@@ -122,14 +251,20 @@ export default function InventoryPage() {
     setIsAddingProduct(false);
   };
 
+  // Handle tab change
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setProductsPage(1); // Reset to first page when changing tabs
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <div className="w-full flex gap-4">
         <StatCard
           title="Categories"
           metrics={[
-            { value: "Drugs", label: `${drugCount} items` },
-            { value: "Equipment", label: `${equipmentCount} items` },
+            { value: "Drugs", label: `${stats.drugCount} items` },
+            { value: "Equipment", label: `${stats.equipmentCount} items` },
           ]}
           icon={
             <div
@@ -144,7 +279,7 @@ export default function InventoryPage() {
           title="Total Products"
           metrics={[
             { value: totalCount.toString(), label: "All Products" },
-            { value: "Active", label: `${productsData.filter(p => p.availability === "In-stock").length} items` },
+            { value: "Active", label: `${stats.activeCount} items` },
           ]}
           icon={
             <div
@@ -157,8 +292,8 @@ export default function InventoryPage() {
         <StatCard
           title="Top Selling"
           metrics={[
-            { value: "N/A", label: "Last 7 days" },
-            { value: "$N/A", label: "Revenue" },
+            { value: stats.topSellingProduct, label: "Last 7 days" },
+            { value: stats.topSellingRevenue, label: "Revenue" },
           ]}
           icon={
             <div
@@ -171,8 +306,8 @@ export default function InventoryPage() {
         <StatCard
           title="Low Stocks"
           metrics={[
-            { value: "N/A", label: "Below threshold" },
-            { value: "N/A", label: "Out of stock" },
+            { value: stats.lowStockCount.toString(), label: "Below threshold" },
+            { value: stats.outOfStockCount.toString(), label: "Out of stock" },
           ]}
           icon={
             <div
@@ -190,7 +325,7 @@ export default function InventoryPage() {
         ) : (
           <TableCard
             title="Products"
-            data={productsData}
+            data={allProductsData} // This becomes fallback data
             columns={productsColumns}
             page={productsPage}
             totalPages={totalPages}
@@ -209,6 +344,11 @@ export default function InventoryPage() {
               alert("Download functionality will be implemented here");
             }}
             isLoading={loading}
+            // New tab properties
+            tabs={productTabs}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            tabData={tabData}
           />
         )}
         {/* add product card */}
