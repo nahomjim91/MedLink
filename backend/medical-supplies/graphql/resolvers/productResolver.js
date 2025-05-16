@@ -1,4 +1,3 @@
-
 // resolvers/productResolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
@@ -72,85 +71,7 @@ const dateScalar = new GraphQLScalarType({
 const productResolvers = {
   Date: dateScalar,
 
-  Product: {
-    __resolveType(product, context, info) {
-      if (product.productType === "DRUG") {
-        return "DrugProduct";
-      }
-      if (product.productType === "EQUIPMENT") {
-        return "EquipmentProduct";
-      }
-      console.error("Could not resolve product type:", product);
-      return null; // Should not happen if productType is always set
-    },
-    batches: async (parentProduct, { limit, offset }, context) => {
-      await isAuthenticated(context);
-      if (!parentProduct.productId) return [];
-      try {
-        const batches = await BatchModel.getByProductId(
-          parentProduct.productId,
-          { limit, offset }
-        );
-        // Add productType to each batch for Batch.__resolveType, if not already done by model
-        return batches.map((b) => ({
-          ...b,
-          productType: parentProduct.productType,
-        }));
-      } catch (error) {
-        console.error(
-          `Error fetching batches for product ${parentProduct.productId}:`,
-          error
-        );
-        throw new ApolloError("Failed to fetch batches.", "BATCH_FETCH_ERROR");
-      }
-    },
-  },
 
-  Batch: {
-    __resolveType(batch, context, info) {
-      if (batch.productType === "DRUG") {
-        return "DrugBatch";
-      }
-      if (batch.productType === "EQUIPMENT") {
-        return "EquipmentBatch";
-      }
-      console.error("Could not resolve batch type:", batch);
-      return null;
-    },
-    product: async (parentBatch, _, context) => {
-      await isAuthenticated(context);
-      if (!parentBatch.productId) {
-        console.error("Missing productId in batch:", parentBatch);
-        throw new ApolloError(
-          "Batch has no associated product ID.",
-          "BATCH_MISSING_PRODUCT_ID"
-        );
-      }
-
-      try {
-        const product = await ProductModel.getById(parentBatch.productId);
-        if (!product) {
-          console.error(
-            `Product not found for batch ${parentBatch.batchId} with productId ${parentBatch.productId}`
-          );
-          throw new ApolloError(
-            "Product not found for batch.",
-            "PRODUCT_NOT_FOUND"
-          );
-        }
-        return product;
-      } catch (error) {
-        console.error(
-          `Error fetching product for batch ${parentBatch.batchId}:`,
-          error
-        );
-        throw new ApolloError(
-          "Failed to fetch product for batch.",
-          "PRODUCT_FETCH_ERROR"
-        );
-      }
-    },
-  },
 
   Query: {
     productById: async (_, { productId }, context) => {
@@ -319,6 +240,10 @@ const productResolvers = {
       input.originalListerId = user.uid;
       input.originalListerName =
         user.companyName || user.displayName || user.email;
+
+      // IMPORTANT: Also set the ownerId and ownerName fields
+      input.ownerId = user.uid;
+      input.ownerName = user.companyName || user.displayName || user.email;
 
       try {
         return ProductModel.create({ ...input, productType: "DRUG" });
@@ -621,6 +546,196 @@ const productResolvers = {
         if (error instanceof UserInputError || error instanceof ForbiddenError)
           throw error;
         throw new ApolloError("Failed to delete batch.", "BATCH_DELETE_ERROR");
+      }
+    },
+  },
+  Product: {
+    __resolveType(product, context, info) {
+      if (product.productType === "DRUG") {
+        return "DrugProduct";
+      }
+      if (product.productType === "EQUIPMENT") {
+        return "EquipmentProduct";
+      }
+      console.error("Could not resolve product type:", product);
+      return null; // Should not happen if productType is always set
+    },
+    batches: async (parentProduct, { limit, offset }, context) => {
+      console.log(
+        "BATCHES RESOLVER CALLED for product:",
+        parentProduct.productId
+      );
+
+      try {
+        // Check if context and context.user exist before authentication
+        console.log(
+          "Context in batches resolver:",
+          context ? "exists" : "missing"
+        );
+        console.log(
+          "User in context:",
+          context && context.user ? "exists" : "missing"
+        );
+
+        try {
+          await isAuthenticated(context);
+          console.log("Authentication passed for batches resolver");
+        } catch (authError) {
+          console.error(
+            "Authentication failed in batches resolver:",
+            authError
+          );
+          return []; // Return empty array on auth failure
+        }
+
+        if (!parentProduct.productId) {
+          console.warn("Missing productId in product:", parentProduct);
+          return []; // Return empty array, not null
+        }
+
+        console.log("Fetching batches for product:", parentProduct.productId);
+
+        // Add try-catch to prevent errors from bubbling up
+        try {
+          console.log("Calling BatchModel.getByProductId with:", {
+            productId: parentProduct.productId,
+            limit,
+            offset,
+          });
+
+          const batches = await BatchModel.getByProductId(
+            parentProduct.productId,
+            { limit, offset }
+          );
+
+          console.log(
+            `Retrieved ${batches.length} batches for product ${parentProduct.productId}`
+          );
+
+          // Always return an array (even empty), never null
+          return batches.map((b) => {
+            console.log("Processing batch:", b.batchId);
+            return {
+              ...b,
+              productType: b.productType || parentProduct.productType,
+            };
+          });
+        } catch (error) {
+          console.error(
+            `Error fetching batches for product ${parentProduct.productId}:`,
+            error
+          );
+          // Return empty array on error, never null
+          return [];
+        }
+      } catch (error) {
+        console.error("Unexpected error in batches resolver:", error);
+        // Even for unexpected errors, return empty array, never null
+        return [];
+      }
+    },
+  },
+
+  Batch: {
+    __resolveType(batch, context, info) {
+      if (batch.productType === "DRUG") {
+        return "DrugBatch";
+      }
+      if (batch.productType === "EQUIPMENT") {
+        return "EquipmentBatch";
+      }
+      console.error("Could not resolve batch type:", batch);
+      return null;
+    },
+    product: async (parentBatch, _, context) => {
+      await isAuthenticated(context);
+      if (!parentBatch.productId) {
+        console.error("Missing productId in batch:", parentBatch);
+        throw new ApolloError(
+          "Batch has no associated product ID.",
+          "BATCH_MISSING_PRODUCT_ID"
+        );
+      }
+
+      try {
+        const product = await ProductModel.getById(parentBatch.productId);
+        if (!product) {
+          console.error(
+            `Product not found for batch ${parentBatch.batchId} with productId ${parentBatch.productId}`
+          );
+          throw new ApolloError(
+            "Product not found for batch.",
+            "PRODUCT_NOT_FOUND"
+          );
+        }
+        return product;
+      } catch (error) {
+        console.error(
+          `Error fetching product for batch ${parentBatch.batchId}:`,
+          error
+        );
+        throw new ApolloError(
+          "Failed to fetch product for batch.",
+          "PRODUCT_FETCH_ERROR"
+        );
+      }
+    },
+  },
+   // Add explicit type resolvers for implementing types
+   DrugProduct: {
+    batches: async (parentProduct, args, context) => {
+      console.log("DrugProduct.batches resolver called for:", parentProduct.productId);
+      // Use the same logic as Product.batches
+      try {
+        await isAuthenticated(context);
+        
+        if (!parentProduct.productId) {
+          console.warn("Missing productId in DrugProduct:", parentProduct);
+          return []; 
+        }
+        
+        // Get batches logic
+        const batches = await BatchModel.getByProductId(
+          parentProduct.productId,
+          args
+        );
+        
+        return batches.map((b) => ({
+          ...b,
+          productType: b.productType || "DRUG",
+        }));
+      } catch (error) {
+        console.error("Error in DrugProduct.batches resolver:", error);
+        return [];
+      }
+    },
+  },
+
+  EquipmentProduct: {
+    batches: async (parentProduct, args, context) => {
+      console.log("EquipmentProduct.batches resolver called for:", parentProduct.productId);
+      // Use the same logic as Product.batches
+      try {
+        await isAuthenticated(context);
+        
+        if (!parentProduct.productId) {
+          console.warn("Missing productId in EquipmentProduct:", parentProduct);
+          return []; 
+        }
+        
+        // Get batches logic
+        const batches = await BatchModel.getByProductId(
+          parentProduct.productId,
+          args
+        );
+        
+        return batches.map((b) => ({
+          ...b,
+          productType: b.productType || "EQUIPMENT",
+        }));
+      } catch (error) {
+        console.error("Error in EquipmentProduct.batches resolver:", error);
+        return [];
       }
     },
   },

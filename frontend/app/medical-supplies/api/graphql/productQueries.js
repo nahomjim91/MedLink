@@ -1,6 +1,10 @@
-import { gql } from '@apollo/client';
-import { DRUG_BATCH_FIELDS, DRUG_PRODUCT_FIELDS, EQUIPMENT_BATCH_FIELDS, EQUIPMENT_PRODUCT_FIELDS } from './productFragments';
-
+import { gql } from "@apollo/client";
+import {
+  DRUG_BATCH_FIELDS,
+  DRUG_PRODUCT_FIELDS,
+  EQUIPMENT_BATCH_FIELDS,
+  EQUIPMENT_PRODUCT_FIELDS,
+} from "./productFragments";
 
 // Query to get a product by ID
 export const GET_PRODUCT_BY_ID = gql`
@@ -30,30 +34,62 @@ export const GET_PRODUCT_BY_ID = gql`
   ${EQUIPMENT_BATCH_FIELDS}
 `;
 
-// Query to get all products, optionally filtered by type
-export const GET_PRODUCTS = gql`
-  query GetProducts($productType: String, $ownerId: ID, $category: String, $limit: Int, $offset: Int) {
-    products(
-      productType: $productType, 
-      ownerId: $ownerId, 
-      category: $category, 
-      limit: $limit, 
+export const GET_MY_PRODUCTS = gql`
+  query GetMyProducts(
+    $productType: String
+    $category: String
+    $limit: Int
+    $offset: Int
+  ) {
+    myProducts(
+      productType: $productType
+      category: $category
+      limit: $limit
       offset: $offset
     ) {
       ... on DrugProduct {
-        ...DrugProductFields
+        productId
+        productType
+        name
+        originalListerId
+        originalListerName
+        ownerId
+        ownerName
+        category
+        description
+        imageList
+        isActive
+        createdAt
+        lastUpdatedAt
+        packageType
+        concentration
+        requiresPrescription
       }
       ... on EquipmentProduct {
-        ...EquipmentProductFields
+        productId
+        productType
+        name
+        originalListerId
+        originalListerName
+        ownerId
+        ownerName
+        category
+        description
+        imageList
+        isActive
+        createdAt
+        lastUpdatedAt
+        brandName
+        modelNumber
+        warrantyInfo
+        sparePartInfo
+        documentUrls
       }
     }
   }
-  ${DRUG_PRODUCT_FIELDS}
-  ${EQUIPMENT_PRODUCT_FIELDS}
 `;
-
-// Query to get my products
-export const GET_MY_PRODUCTS = gql`
+// Fix the EquipmentProduct fragment in your GraphQL query
+export const GET_MY_PRODUCTS_WITH_BATCHES = gql`
   query GetMyProducts($productType: String, $category: String, $limit: Int, $offset: Int) {
     myProducts(
       productType: $productType, 
@@ -62,15 +98,78 @@ export const GET_MY_PRODUCTS = gql`
       offset: $offset
     ) {
       ... on DrugProduct {
-        ...DrugProductFields
+        productId
+        productType
+        name
+        originalListerId
+        originalListerName
+        ownerId
+        ownerName
+        category
+        description
+        imageList
+        isActive
+        createdAt
+        lastUpdatedAt
+        packageType
+        concentration
+        requiresPrescription
+        batches {
+          ... on DrugBatch {
+            batchId
+            productId
+            currentOwnerId
+            currentOwnerName
+            quantity
+            costPrice
+            sellingPrice
+            addedAt
+            lastUpdatedAt
+            sourceOriginalBatchId
+            expiryDate
+            sizePerPackage
+            manufacturer
+            manufacturerCountry
+          }
+        }
       }
       ... on EquipmentProduct {
-        ...EquipmentProductFields
+        productId
+        productType
+        name
+        originalListerId
+        originalListerName
+        ownerId
+        ownerName
+        category
+        description
+        imageList
+        isActive
+        createdAt
+        lastUpdatedAt
+        brandName
+        modelNumber
+        warrantyInfo
+        sparePartInfo
+        documentUrls
+        batches {
+          ... on EquipmentBatch {
+            batchId
+            productId
+            currentOwnerId
+            currentOwnerName  
+            quantity
+            costPrice
+            sellingPrice
+            addedAt
+            lastUpdatedAt
+            sourceOriginalBatchId
+            serialNumbers
+          }
+        }
       }
     }
   }
-  ${DRUG_PRODUCT_FIELDS}
-  ${EQUIPMENT_PRODUCT_FIELDS}
 `;
 
 // Query to get a batch by ID
@@ -107,11 +206,16 @@ export const GET_PRODUCT_BATCHES = gql`
 
 // Query to get all batches with pagination
 export const GET_ALL_BATCHES = gql`
-  query GetAllBatches($ownerId: ID, $productType: String, $limit: Int, $offset: Int) {
+  query GetAllBatches(
+    $ownerId: ID
+    $productType: String
+    $limit: Int
+    $offset: Int
+  ) {
     allBatches(
-      ownerId: $ownerId,
-      productType: $productType,
-      limit: $limit, 
+      ownerId: $ownerId
+      productType: $productType
+      limit: $limit
       offset: $offset
     ) {
       ... on DrugBatch {
@@ -129,11 +233,7 @@ export const GET_ALL_BATCHES = gql`
 // Query to get my batches
 export const GET_MY_BATCHES = gql`
   query GetMyBatches($productType: String, $limit: Int, $offset: Int) {
-    myBatches(
-      productType: $productType,
-      limit: $limit, 
-      offset: $offset
-    ) {
+    myBatches(productType: $productType, limit: $limit, offset: $offset) {
       ... on DrugBatch {
         ...DrugBatchFields
       }

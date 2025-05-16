@@ -19,7 +19,7 @@ const productSchema = gql`
     createdAt: Date!
     lastUpdatedAt: Date!
     # Relationship to batches
-    batches: [Batch!]!
+    batches: [Batch]
   }
 
   "Represents a Drug Product"
@@ -38,7 +38,7 @@ const productSchema = gql`
     isActive: Boolean!
     createdAt: Date!
     lastUpdatedAt: Date!
-    batches: [Batch!]!
+    batches: [Batch]
 
     # Drug-specific fields
     packageType: String
@@ -62,7 +62,7 @@ const productSchema = gql`
     isActive: Boolean!
     createdAt: Date!
     lastUpdatedAt: Date!
-    batches: [Batch!]!
+    batches: [Batch]
 
     # Equipment-specific fields
     brandName: String

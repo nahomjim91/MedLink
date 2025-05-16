@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useQuery } from '@apollo/client';
-import { GET_MY_PRODUCTS } from "../../api/graphql/productQueries"
+import { GET_MY_PRODUCTS, GET_MY_PRODUCTS_WITH_BATCHES } from "../../api/graphql/productQueries"
 import { StatCard } from '../../components/ui/Cards';
 import { TableCard } from '../../components/ui/Cards';
 import AddProductMultiSteps from '../../components/ui/product/AddProductMultiSteps';
@@ -52,7 +52,7 @@ export default function InventoryPage() {
   const offset = (productsPage - 1) * ITEMS_PER_PAGE;
   
   // Fetch products from GraphQL API
-  const { loading, error, data, refetch } = useQuery(GET_MY_PRODUCTS, {
+  const { loading, error, data, refetch } = useQuery(GET_MY_PRODUCTS_WITH_BATCHES, {
     variables: { 
       productType: productType,
       limit: ITEMS_PER_PAGE, 
@@ -87,6 +87,7 @@ export default function InventoryPage() {
       };
     });
   };
+  console.log("Formatted products data:",data);
   
   const productsData = data ? formatProductsData(data.myProducts) : [];
   const totalCount = data?.myProducts?.length || 0; // In a real implementation, you'd get total count from the API

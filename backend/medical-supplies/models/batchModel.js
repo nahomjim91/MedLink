@@ -35,33 +35,86 @@ const BatchModel = {
     { limit, offset, sortBy = "addedAt", sortOrder = "desc" }
   ) {
     try {
+      console.log("BATCH MODEL: getByProductId called with:", {
+        productId,
+        limit,
+        offset,
+        sortBy,
+        sortOrder
+      });
+
+      // Guard against invalid productId
+      if (!productId) {
+        console.warn("getByProductId called with invalid productId");
+        return []; // Return empty array, not null
+      }
+
       const { limit: limitVal, offset: offsetVal } = paginationParams(
         limit,
         offset
       );
+      
+      console.log("After pagination params:", {
+        limitVal,
+        offsetVal
+      });
+
       let query = batchesRef
         .where("productId", "==", productId)
         .orderBy(sortBy, sortOrder);
 
+      console.log("Query constructed with productId filter and sorting");
+
       if (offsetVal > 0) {
+        console.log("Applying offset pagination:", offsetVal);
         const offsetSnapshot = await query.limit(offsetVal).get();
+        console.log("Offset snapshot empty?", offsetSnapshot.empty);
+        
         if (!offsetSnapshot.empty) {
           const lastVisible =
             offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
           query = query.startAfter(lastVisible);
+          console.log("Applied startAfter for pagination");
         }
       }
 
+      console.log("Executing main query with limit:", limitVal);
       const snapshot = await query.limit(limitVal).get();
-      // Optionally enrich with productType here as well if needed for all items in a list
-      // For performance, it might be better to pass productType from the calling context (e.g., resolver)
-      return formatDocs(snapshot.docs);
+      console.log("Main query executed. Empty?", snapshot.empty);
+
+      // Ensure we always return an array, even if empty
+      const results = snapshot.empty ? [] : formatDocs(snapshot.docs);
+      console.log(`Query returned ${results.length} results`);
+
+      // Get product type to add to each batch
+      let productType = null;
+      try {
+        console.log("Fetching product details for type:", productId);
+        const productDoc = await productsRef.doc(productId).get();
+        console.log("Product exists?", productDoc.exists);
+        
+        if (productDoc.exists) {
+          productType = productDoc.data().productType;
+          console.log("Product type:", productType);
+        }
+      } catch (err) {
+        console.error("Error fetching product type:", err);
+      }
+
+      // Add productType to each batch if available
+      const enrichedResults = results.map((batch) => ({
+        ...batch,
+        productType: productType || batch.productType, // Use existing or new
+      }));
+      
+      console.log("Returning enriched batches:", enrichedResults.length);
+      return enrichedResults;
     } catch (error) {
       console.error("Error getting batches by product ID:", error);
-      throw error;
+      // Always return empty array on error, never null
+      return [];
     }
   },
-
   async getAll({ limit, offset, sortBy = "addedAt", sortOrder = "desc" }) {
     try {
       const { limit: limitVal, offset: offsetVal } = paginationParams(
@@ -80,10 +133,10 @@ const BatchModel = {
       }
 
       const snapshot = await query.limit(limitVal).get();
-      return formatDocs(snapshot.docs);
+      return snapshot.empty ? [] : formatDocs(snapshot.docs);
     } catch (error) {
       console.error("Error getting all batches:", error);
-      throw error;
+      return []; // Return empty array on error
     }
   },
 

@@ -118,7 +118,7 @@ const ProductModel = {
       const results = formatDocs(snapshot.docs);
 
       console.log(`Found ${results.length} products for user ${userId}`);
-      console.log(results);
+      // console.log(results);
       return results;
     } catch (error) {
       console.error("Error getting user products:", error);
