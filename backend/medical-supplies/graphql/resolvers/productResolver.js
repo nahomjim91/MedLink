@@ -148,7 +148,7 @@ const productResolvers = {
     searchProducts: async (_, { searchInput }, context) => {
       await isAuthenticated(context);
       try {
-        return ProductModel.search(searchInput);
+        return ProductModel.searchProducts(searchInput);
       } catch (error) {
         console.error("Error in searchProducts resolver:", error);
         throw new ApolloError(

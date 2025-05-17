@@ -5,18 +5,18 @@ import { Syringe, Pill, Upload, Trash, Plus, X } from "lucide-react";
 
 
 
-export const ProductImageGallery = ({ images = [], type }) => {
+export const ProductImageGallery = ({ images = [], type , imageSize = 'h-48' }) => {
   const [selectedImage, setSelectedImage] = useState(images[0] || null);
   
   // Determine which icon to use based on product type
   const isEquipment = type === "EQUIPMENT";
   const ProductIcon = isEquipment ? Syringe : Pill;
   return (
-    <div className="w-1/2 pl-4">
+    <div className="pl-4">
       <div className="rounded-md p-4 flex flex-col items-center">
         {/* Main product image */}
         {selectedImage ? (
-          <div className="relative w-full h-48 mb-4">
+          <div className={`relative w-full ${imageSize} mb-4`}>
             <Image
               src={selectedImage}
               alt={ `${type} image`}
@@ -26,7 +26,7 @@ export const ProductImageGallery = ({ images = [], type }) => {
             />
           </div>
         ) : (
-          <div className="flex items-center justify-center w-full h-48 mb-4 bg-gray-50">
+          <div className={`flex items-center justify-center w-full ${imageSize} mb-4 bg-gray-50 rounded-2xl`}>
             <ProductIcon size={80} className="text-gray-400" />
           </div>
         )}

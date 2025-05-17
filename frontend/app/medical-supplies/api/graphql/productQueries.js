@@ -303,3 +303,47 @@ export const GET_MY_BATCHES = gql`
   ${DRUG_BATCH_FIELDS}
   ${EQUIPMENT_BATCH_FIELDS}
 `;
+
+// Query to searching products
+export const SEARCH_PRODUCTS = gql`
+  query SearchProducts($searchInput: SearchProductsInput!) {
+    searchProducts(searchInput: $searchInput) {
+      productId
+      productType
+      name
+      originalListerId
+      originalListerName
+      ownerId
+      ownerName
+      category
+      description
+      imageList
+      isActive
+      createdAt
+      lastUpdatedAt
+      ... on DrugProduct {
+        packageType
+        concentration
+        requiresPrescription
+      }
+      ... on EquipmentProduct {
+        brandName
+        modelNumber
+        warrantyInfo
+      }
+      batches {
+        batchId
+        quantity
+        sellingPrice
+        costPrice
+        ... on DrugBatch {
+          expiryDate
+          manufacturer
+        }
+        ... on EquipmentBatch {
+          serialNumbers
+        }
+      }
+    }
+  }
+`;
