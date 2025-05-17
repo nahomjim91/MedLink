@@ -31,9 +31,6 @@ const dateScalar = new GraphQLScalarType({
       // If it's a JS timestamp number
       return new Date(value).toISOString();
     }
-    // For values coming from Firestore that might already be toDate().getTime() if not handled carefully
-    // This serialize needs to be robust based on how data is passed.
-    // Ideally, models pass Firestore Timestamps directly.
     console.warn("Date scalar: Unhandled value type for serialization:", value);
     return null;
   },
@@ -201,10 +198,7 @@ const productResolvers = {
           sortBy,
           sortOrder,
         });
-        // This is tricky for __resolveType without N+1 product lookups.
-        // A more optimized BatchModel.getAll might join/denormalize productType or
-        // you might need DataLoader if performance becomes an issue here.
-        // For now, let's fetch productType for each (can be slow for large lists):
+     
         const enrichedBatches = [];
         for (const batch of batches) {
           if (batch.productId) {
@@ -682,7 +676,7 @@ const productResolvers = {
     },
   },
    // Add explicit type resolvers for implementing types
-   DrugProduct: {
+  DrugProduct: {
     batches: async (parentProduct, args, context) => {
       console.log("DrugProduct.batches resolver called for:", parentProduct.productId);
       // Use the same logic as Product.batches

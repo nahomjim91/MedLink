@@ -159,7 +159,7 @@ export default function MultiStepSignup({ email }) {
 
   // Save all user data via GraphQL - only called after confirmation
   const saveUserData = async () => {
-    if (!user?.uid) {
+    if (!user?.userId) {
       setError("No user authenticated. Please log in again.");
       return;
     }

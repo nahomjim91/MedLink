@@ -1,10 +1,15 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { useQuery } from '@apollo/client';
-import { GET_MY_PRODUCTS, GET_MY_PRODUCTS_WITH_BATCHES } from "../../api/graphql/productQueries"
-import { StatCard } from '../../components/ui/Cards';
-import { TableCard } from '../../components/ui/Cards';
-import AddProductMultiSteps from '../../components/ui/product/AddProductMultiSteps';
+import { useState, useEffect } from "react";
+import { useQuery } from "@apollo/client";
+import {
+  GET_MY_PRODUCTS,
+  GET_MY_PRODUCTS_WITH_BATCHES,
+} from "../../api/graphql/productQueries";
+import { StatCard } from "../../components/ui/Cards";
+import { TableCard } from "../../components/ui/Cards";
+import AddProductMultiSteps from "../../components/ui/product/AddProductMultiSteps";
+import { useRouter } from "next/navigation";
+import { useMSAuth } from "../../hooks/useMSAuth";
 // import icons from '../lib/icons';
 
 const icons = {
@@ -42,27 +47,32 @@ const icons = {
 </svg>`,
 };
 
-
 export default function InventoryPage() {
   const [productsPage, setProductsPage] = useState(1);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [productType, setProductType] = useState(''); // For filtering by product type
-  const [activeTab, setActiveTab] = useState('all'); // Default active tab
-  
+  const [productType, setProductType] = useState(""); // For filtering by product type
+  const [activeTab, setActiveTab] = useState("all"); // Default active tab
+  const router = useRouter();
+  const {user} = useMSAuth();
+  const role = user.role;
+
   // Pagination
   const ITEMS_PER_PAGE = 10;
   const offset = (productsPage - 1) * ITEMS_PER_PAGE;
-  
+
   // Fetch products from GraphQL API
-  const { loading, error, data, refetch } = useQuery(GET_MY_PRODUCTS_WITH_BATCHES, {
-    variables: { 
-      productType: productType,
-      limit: ITEMS_PER_PAGE, 
-      offset: offset 
-    },
-    fetchPolicy: 'cache-and-network',
-  });
-  
+  const { loading, error, data, refetch } = useQuery(
+    GET_MY_PRODUCTS_WITH_BATCHES,
+    {
+      variables: {
+        productType: productType,
+        limit: ITEMS_PER_PAGE,
+        offset: offset,
+      },
+      fetchPolicy: "cache-and-network",
+    }
+  );
+
   // Helper function to format currency
   const formatCurrency = (amount) => {
     return `$${parseFloat(amount).toFixed(2)}`;
@@ -70,7 +80,7 @@ export default function InventoryPage() {
 
   // Helper function to format date
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString();
   };
@@ -78,15 +88,17 @@ export default function InventoryPage() {
   // Find closest expiry batch for a product
   const getClosestExpiryBatch = (batches) => {
     if (!batches || batches.length === 0) return null;
-    
+
     // Filter out batches without expiry dates
-    const batchesWithExpiry = batches.filter(batch => batch.__typename === "DrugBatch" && batch.expiryDate);
-    
+    const batchesWithExpiry = batches.filter(
+      (batch) => batch.__typename === "DrugBatch" && batch.expiryDate
+    );
+
     if (batchesWithExpiry.length === 0) return null;
-    
+
     // Sort by expiry date (ascending)
-    return batchesWithExpiry.sort((a, b) => 
-      new Date(a.expiryDate) - new Date(b.expiryDate)
+    return batchesWithExpiry.sort(
+      (a, b) => new Date(a.expiryDate) - new Date(b.expiryDate)
     )[0];
   };
 
@@ -104,33 +116,43 @@ export default function InventoryPage() {
     if (quantity < 10) return "Medium stock";
     return "High stock";
   };
-  
+
   // Format products data for the table
   const formatProductsData = (products) => {
     if (!products) return [];
-    
-    return products.map(product => {
+
+    return products.map((product) => {
       const totalQuantity = calculateTotalQuantity(product.batches);
       const closestExpiryBatch = getClosestExpiryBatch(product.batches);
       const stockLevel = getStockLevelStatus(totalQuantity);
-      
+
       // Get the first batch's cost price for buying price
-      const firstBatch = product.batches && product.batches.length > 0 ? product.batches[0] : null;
-      const buyingPrice = firstBatch ? formatCurrency(firstBatch.costPrice) : 'N/A';
-      
+      const firstBatch =
+        product.batches && product.batches.length > 0
+          ? product.batches[0]
+          : null;
+      const buyingPrice = firstBatch
+        ? formatCurrency(firstBatch.costPrice)
+        : "N/A";
+
       // Format expiry date
-      const closestExpiry = closestExpiryBatch 
+      const closestExpiry = closestExpiryBatch
         ? formatDate(closestExpiryBatch.expiryDate)
-        : (product.__typename === "DrugProduct" ? "No expiry data" : "N/A");
-      
+        : product.__typename === "DrugProduct"
+        ? "No expiry data"
+        : "N/A";
+
       // Determine availability based on quantity and isActive
-      const availability = product.isActive && totalQuantity > 0 ? "In-stock" : "Out of stock";
-      
+      const availability =
+        product.isActive && totalQuantity > 0 ? "In-stock" : "Out of stock";
+
       return {
         id: product.productId,
         name: product.name,
         buyingPrice: buyingPrice,
-        quantity: `${totalQuantity} ${product.__typename === "DrugProduct" ? "Units" : "Items"}`,
+        quantity: `${totalQuantity} ${
+          product.__typename === "DrugProduct" ? "Units" : "Items"
+        }`,
         stockLevel: stockLevel,
         closestExpiry: closestExpiry,
         availability: availability,
@@ -139,93 +161,115 @@ export default function InventoryPage() {
       };
     });
   };
-  
+
   const allProductsData = data ? formatProductsData(data.myProducts) : [];
   const totalCount = data?.myProducts?.length || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-  
+
   // Prepare data for tabs
   const prepareTabData = () => {
     if (!allProductsData) return {};
-    
+
     // All products tab (unfiltered)
     const all = allProductsData;
-    
+
     // In stock products
-    const inStock = allProductsData.filter(product => 
-      product.availability === "In-stock"
+    const inStock = allProductsData.filter(
+      (product) => product.availability === "In-stock"
     );
-    
+
     // Out of stock products
-    const outOfStock = allProductsData.filter(product => 
-      product.availability === "Out of stock"
+    const outOfStock = allProductsData.filter(
+      (product) => product.availability === "Out of stock"
     );
-    
+
     // Low stock products
-    const lowStock = allProductsData.filter(product => 
-      product.stockLevel === "Low stock"
+    const lowStock = allProductsData.filter(
+      (product) => product.stockLevel === "Low stock"
     );
-    
+
     // Drug products
-    const drugs = allProductsData.filter(product => 
-      product.productType === "DRUG"
+    const drugs = allProductsData.filter(
+      (product) => product.productType === "DRUG"
     );
-    
+
     // Equipment products
-    const equipment = allProductsData.filter(product => 
-      product.productType === "EQUIPMENT"
+    const equipment = allProductsData.filter(
+      (product) => product.productType === "EQUIPMENT"
     );
-    
+
     return {
       all,
       inStock,
       outOfStock,
       lowStock,
       drugs,
-      equipment
+      equipment,
     };
   };
-  
+
   const tabData = prepareTabData();
-  
+
   // Calculate stats for cards
   const calculateStats = () => {
-    if (!data || !data.myProducts) return {
-      drugCount: 0,
-      equipmentCount: 0,
-      activeCount: 0,
-      lowStockCount: 0,
-      outOfStockCount: 0,
-      topSellingProduct: "N/A",
-      topSellingRevenue: "N/A"
-    };
+    if (!data || !data.myProducts)
+      return {
+        drugCount: 0,
+        equipmentCount: 0,
+        activeCount: 0,
+        lowStockCount: 0,
+        outOfStockCount: 0,
+        topSellingProduct: "N/A",
+        topSellingRevenue: "N/A",
+      };
 
     const formattedProducts = formatProductsData(data.myProducts);
-    
+
     return {
-      drugCount: data.myProducts.filter(p => p.__typename === "DrugProduct").length,
-      equipmentCount: data.myProducts.filter(p => p.__typename === "EquipmentProduct").length,
-      activeCount: formattedProducts.filter(p => p.availability === "In-stock").length,
-      lowStockCount: formattedProducts.filter(p => p.stockLevel === "Low stock").length,
-      outOfStockCount: formattedProducts.filter(p => p.availability === "Out of stock").length,
+      drugCount: data.myProducts.filter((p) => p.__typename === "DrugProduct")
+        .length,
+      equipmentCount: data.myProducts.filter(
+        (p) => p.__typename === "EquipmentProduct"
+      ).length,
+      activeCount: formattedProducts.filter(
+        (p) => p.availability === "In-stock"
+      ).length,
+      lowStockCount: formattedProducts.filter(
+        (p) => p.stockLevel === "Low stock"
+      ).length,
+      outOfStockCount: formattedProducts.filter(
+        (p) => p.availability === "Out of stock"
+      ).length,
       // Placeholder for top selling - would need sales data
       topSellingProduct: "N/A",
-      topSellingRevenue: "N/A"
+      topSellingRevenue: "N/A",
     };
   };
 
   const stats = calculateStats();
-  
+
   // Define table tabs
   const productTabs = [
-    { id: 'all', label: 'All Products', count: tabData.all?.length || 0 },
-    { id: 'inStock', label: 'In Stock', count: tabData.inStock?.length || 0 },
-    { id: 'outOfStock', label: 'Out of Stock', count: tabData.outOfStock?.length || 0 },
-    { id: 'lowStock', label: 'Low Stock', count: tabData.lowStock?.length || 0 },
-    { id: 'drugs', label: 'Drugs', count: tabData.drugs?.length || 0 },
-    { id: 'equipment', label: 'Equipment', count: tabData.equipment?.length || 0 },
+    { id: "all", label: "All Products", count: tabData.all?.length || 0 },
+    { id: "inStock", label: "In Stock", count: tabData.inStock?.length || 0 },
+    {
+      id: "outOfStock",
+      label: "Out of Stock",
+      count: tabData.outOfStock?.length || 0,
+    },
+    {
+      id: "lowStock",
+      label: "Low Stock",
+      count: tabData.lowStock?.length || 0,
+    },
+    { id: "drugs", label: "Drugs", count: tabData.drugs?.length || 0 },
+    {
+      id: "equipment",
+      label: "Equipment",
+      count: tabData.equipment?.length || 0,
+    },
   ];
-  
+
   const productsColumns = [
     { key: "name", label: "Products" },
     { key: "category", label: "Category" },
@@ -256,6 +300,16 @@ export default function InventoryPage() {
     setActiveTab(tabId);
     setProductsPage(1); // Reset to first page when changing tabs
   };
+
+  const onClikeRow = (product) => {
+    console.log("Product clicked:", product);
+  router.push(`/medical-supplies/${role}/inventory/product?id=${product.id}`);
+  };
+  // const gotoRegister = () => {
+  //   router.push( "/telehealth/auth/registering" ,
+  //     { state: { email: formData.email } }
+  //   );
+  // };
 
   return (
     <div className="flex flex-col gap-2">
@@ -321,7 +375,9 @@ export default function InventoryPage() {
         {loading ? (
           <div className="text-center py-10">Loading products...</div>
         ) : error ? (
-          <div className="text-center py-10 text-red-500">Error loading products: {error.message}</div>
+          <div className="text-center py-10 text-red-500">
+            Error loading products: {error.message}
+          </div>
         ) : (
           <TableCard
             title="Products"
@@ -331,14 +387,22 @@ export default function InventoryPage() {
             totalPages={totalPages}
             onPageChange={(page) => {
               setProductsPage(page);
-              refetch({ 
+              refetch({
                 productType: productType,
-                limit: ITEMS_PER_PAGE, 
-                offset: (page - 1) * ITEMS_PER_PAGE 
+                limit: ITEMS_PER_PAGE,
+                offset: (page - 1) * ITEMS_PER_PAGE,
               });
             }}
             onAddItem={() => setIsAddingProduct(true)}
-            onFilter={() => setProductType(productType === "DRUG" ? "EQUIPMENT" : productType === "EQUIPMENT" ? null : "DRUG")}
+            onFilter={() =>
+              setProductType(
+                productType === "DRUG"
+                  ? "EQUIPMENT"
+                  : productType === "EQUIPMENT"
+                  ? null
+                  : "DRUG"
+              )
+            }
             onDownload={() => {
               // Implement download functionality
               alert("Download functionality will be implemented here");
@@ -349,6 +413,8 @@ export default function InventoryPage() {
             activeTab={activeTab}
             onTabChange={handleTabChange}
             tabData={tabData}
+            isClickable={true}
+            onClickRow={onClikeRow}
           />
         )}
         {/* add product card */}

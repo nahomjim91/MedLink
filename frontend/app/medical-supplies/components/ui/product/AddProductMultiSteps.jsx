@@ -73,7 +73,7 @@ export default function AddProductMultiSteps({ onClose }) {
   const [submissionComplete, setSubmissionComplete] = useState(false);
   const [productData, setProductData] = useState({
     ...initialProductData,
-    originalListerId: userData?.uid || "",
+    originalListerId: userData?.userId || "",
     originalListerName: userData?.companyName || userData?.email || "",
   });
   const [createdProductId, setCreatedProductId] = useState(null);

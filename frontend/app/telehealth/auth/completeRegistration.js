@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   
-  const { uid, email, subscribeNewsletter, role } = req.body;
+  const { email, subscribeNewsletter, role } = req.body;
 
   // Adjust the endpoint URL and/or authentication as needed.
   const client = new ApolloClient({

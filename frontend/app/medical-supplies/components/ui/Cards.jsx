@@ -320,6 +320,10 @@ export function TableCard({
   activeTab = 'all', // Default active tab
   tabData = {}, // Data for each tab: {all: [...], active: [...], etc.}
   isLoading = false,
+  isClickable = false,
+  onClickRow = () => {},
+  isAddButton = true,
+  isOrderButton = true
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [currentTab, setCurrentTab] = useState(activeTab);
@@ -398,7 +402,7 @@ export function TableCard({
       <div className="px-4 pt-2 flex justify-between items-center">
         <h2 className="text-xl font-medium">{title}</h2>
         <div className="flex gap-x-2">
-          <Button color="primary" onClick={onAddItem}>
+          <Button color="primary" className={`${!isAddButton ? "hidden" : ""}`} onClick={onAddItem}>
             Add Product
           </Button>
 
@@ -415,7 +419,7 @@ export function TableCard({
             variant="outline"
             color="primary"
             onClick={onDownload}
-            className="flex gap-3 items-center px-5"
+            className={`${!isOrderButton ? "hidden" : "flex"}  gap-3 items-center px-5`}
           >
             Order History
           </Button>
@@ -472,7 +476,7 @@ export function TableCard({
             <tbody>
               {displayData.map((item, index) => (
                 <React.Fragment key={item.id || item.orderNo || `row-${index}`}>
-                  <tr className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <tr className={index % 2 === 0 ? "bg-white" : "bg-gray-50"} onClick={ isClickable ? () => onClickRow(item) : null}>
                     {columns.map((column) => (
                       <td
                         key={`${item.id || item.orderNo || index}-${column.key}`}

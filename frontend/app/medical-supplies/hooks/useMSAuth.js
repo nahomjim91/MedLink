@@ -167,7 +167,7 @@ export const MSAuthProvider = ({ children }) => {
 
       setUser({
         //
-        uid: firebaseUser.uid, //
+        userId: firebaseUser.uid, //
         email: firebaseUser.email, //
         displayName: firebaseUser.displayName || profileData.contactName || "", //
         photoURL: firebaseUser.photoURL || profileData.profileImageUrl || "", //
@@ -257,7 +257,7 @@ export const MSAuthProvider = ({ children }) => {
       //
       setUser({
         //
-        id: firebaseUser.uid, //
+        userId: firebaseUser.uid, //
         email: firebaseUser.email, //
         displayName: firebaseUser.displayName || "", //
         photoURL: firebaseUser.photoURL || "", //

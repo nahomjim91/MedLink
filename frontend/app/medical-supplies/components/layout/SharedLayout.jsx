@@ -330,7 +330,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               <LogOut />
             </div>
             <Link
-              href={`${userType}/profile`}
+              href={`/medical-supplies/${userType}/profile`}
               className="flex items-center px-4 py-3 text-lg text-secondary rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ImageIconButton
