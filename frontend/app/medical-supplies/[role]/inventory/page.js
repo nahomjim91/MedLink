@@ -302,14 +302,10 @@ export default function InventoryPage() {
   };
 
   const onClikeRow = (product) => {
-    console.log("Product clicked:", product);
+    // console.log("Product clicked:", product);
   router.push(`/medical-supplies/${role}/inventory/product?id=${product.id}`);
   };
-  // const gotoRegister = () => {
-  //   router.push( "/telehealth/auth/registering" ,
-  //     { state: { email: formData.email } }
-  //   );
-  // };
+
 
   return (
     <div className="flex flex-col gap-2">
@@ -420,8 +416,7 @@ export default function InventoryPage() {
         {/* add product card */}
         {isAddingProduct && (
           <AddProductMultiSteps
-            onClose={() => setIsAddingProduct(false)}
-            onSubmit={handleAddProduct}
+            onClose={handleAddProduct}
           />
         )}
       </div>

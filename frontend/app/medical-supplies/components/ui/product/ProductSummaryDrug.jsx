@@ -1,15 +1,6 @@
 "use client";
 import { useState } from "react";
 import { StepButtons } from "../Button";
-import {
-  TextInput,
-  SelectInput,
-  NumberWithUnitInput,
-  TextAreaInput,
-  RadioGroup,
-  DateInput,
-  NumberInput,
-} from "../Input";
 import FileViewer from "../FormField";
 import { Info, Printer } from "lucide-react";
 

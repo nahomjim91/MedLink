@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { StepButtons } from "../Button";
-import { TextInput, NumberInput, TextAreaInput, SelectInput } from "../Input";
-import { FileUploader } from "../FileUploader";
+import { StepButtons } from "../../Button";
+import { TextInput, NumberInput, TextAreaInput, SelectInput } from "../../Input";
+import { FileUploader } from "../../FileUploader";
 
 export default function ProductEquipmentInventory({
   productType,

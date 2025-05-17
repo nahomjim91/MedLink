@@ -8,7 +8,6 @@ export const ProductImageGallery = ({ images = [], type }) => {
   // Determine which icon to use based on product type
   const isEquipment = type === "EQUIPMENT";
   const ProductIcon = isEquipment ? Syringe : Pill;
-console.log("images", images);
   return (
     <div className="w-1/2 pl-4">
       <div className="rounded-md p-4 flex flex-col items-center">

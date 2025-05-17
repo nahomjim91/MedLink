@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { StepButtons } from "../Button";
-import { TextInput, NumberInput, DateInput, FileInput, SelectInput } from "../Input";
+import { StepButtons } from "../../Button";
+import { TextInput, NumberInput, DateInput, FileInput, SelectInput } from "../../Input";
 
 // Validation helper
 const validateField = (value) => {

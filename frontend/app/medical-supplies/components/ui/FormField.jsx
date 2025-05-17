@@ -2,10 +2,11 @@ import React from 'react';
 import { Download, ExternalLink , FileText, Star , Image, FileArchive, File  } from 'lucide-react';
 
 // Base form field component that other components will extend
-const FormField = ({ label, children, className = '' , bigSize  }) => {
+
+const FormField = ({ label, children, className = '', bigSize }) => {
   return (
-    <div className={`flex flex-col md:flex-row items-start md:items-center w-full mb-4 ${className}`}>
-      <label className={`text-gray-800 font-medium text-base  ${!bigSize ? 'md:w-1/2' : 'md:w-1/4'} mb-1 md:mb-0`}>
+    <div className={`flex flex-col md:flex-row items-start w-full mb-4 ${className}`}>
+      <label className={`text-gray-800 font-medium text-base ${!bigSize ? 'md:w-1/2' : 'md:w-1/4'} mb-1 md:mb-0`}>
         {label}
       </label>
       <div className={`${!bigSize ? 'md:w-1/2' : 'md:w-3/4'} w-full`}>
@@ -15,18 +16,51 @@ const FormField = ({ label, children, className = '' , bigSize  }) => {
   );
 };
 
-// Text field with optional icon
-export const TextField = ({ label, value, icon: Icon, iconColor = "text-primary" , bigSize = true }) => {
+// Improved Text field with proper text wrapping
+export const TextField = ({ label, value, icon: Icon, iconColor = "text-primary", bigSize = true }) => {
   return (
     <FormField label={label} bigSize={bigSize}>
-      <div className="bg-gray-50 rounded-lg p-3 flex items-center">
-        {Icon && <Icon className={`mr-2 ${iconColor}`} size={20} />}
-        <span className="text-gray-500">{value}</span>
+      <div className="bg-gray-50 rounded-lg p-3 flex items-start">
+        {Icon && <Icon className={`mr-2 ${iconColor} flex-shrink-0 mt-1`} size={20} />}
+        <span className="text-gray-500 break-words whitespace-pre-wrap">{value || "—"}</span>
       </div>
     </FormField>
   );
 };
 
+// Long text field specifically for descriptions and other lengthy content
+export const LongTextField = ({ label, value, icon: Icon, iconColor = "text-primary", bigSize = true, maxHeight = null }) => {
+  return (
+    <FormField label={label} bigSize={bigSize}>
+      <div className="bg-gray-50 rounded-lg p-3 flex items-start">
+        {Icon && <Icon className={`mr-2 ${iconColor} flex-shrink-0 mt-1`} size={20} />}
+        <div 
+          className={`text-gray-500 break-words whitespace-pre-wrap overflow-y-auto w-full ${maxHeight ? '' : 'max-h-40'}`}
+          style={maxHeight ? { maxHeight } : {}}
+        >
+          {value || "—"}
+        </div>
+      </div>
+    </FormField>
+  );
+};
+
+// Read-only textarea field for multiline content display
+export const TextAreaField = ({ label, value, icon: Icon, iconColor = "text-primary", bigSize = true, rows = 3 }) => {
+  return (
+    <FormField label={label} bigSize={bigSize}>
+      <div className="bg-gray-50 rounded-lg p-3 w-full">
+        {Icon && <Icon className={`mb-2 ${iconColor}`} size={20} />}
+        <textarea
+          className="w-full bg-transparent border-0 text-gray-500 resize-none focus:ring-0"
+          value={value || ""}
+          rows={rows}
+          readOnly
+        />
+      </div>
+    </FormField>
+  );
+};
 // File field with icon
 export const FileField = ({ label, fileName, fileType  }) => {
   return (

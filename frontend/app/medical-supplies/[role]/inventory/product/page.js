@@ -6,9 +6,10 @@ import { useMSAuth } from "../../../hooks/useMSAuth";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Pen, Plus } from "lucide-react";
-import { TextField } from "../../../components/ui/FormField";
+import { TextField , LongTextField } from "../../../components/ui/FormField";
 import { TableCard } from "../../../components/ui/Cards";
 import { ProductImageGallery } from "../../../components/ui/ProductImageGallery";
+import AddBatchMultiSteps from "../../../components/ui/product/batch/AddBatchMultiSteps";
 
 export default function ProductPage() {
   const searchParams = useSearchParams();
@@ -18,12 +19,14 @@ export default function ProductPage() {
   const [productData, setProductData] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [batchesPage, setBatchesPage] = useState(1);
+  const [isAddingBatch, setIsAddingBatch] = useState(false);
+
 
   // Pagination
   const ITEMS_PER_PAGE = 10;
   const offset = (batchesPage - 1) * ITEMS_PER_PAGE;
 
-  const { data, loading, error } = useQuery(GET_PRODUCT_BY_ID, {
+  const { data, loading, error , refetch } = useQuery(GET_PRODUCT_BY_ID, {
     variables: { productId },
     skip: !productId, // skip if no ID
   });
@@ -40,8 +43,8 @@ export default function ProductPage() {
     } else {
       setIsOwner(false);
     }
-    console.log("product", data.productById);
-    console.log("user", user);
+    // console.log("product", data.productById);
+    // console.log("user", user);
 
     setProductData(data.productById);
   }, [user, loading, data]);
@@ -100,6 +103,11 @@ export default function ProductPage() {
       }
     });
   };
+
+    const handleAddBatch = () => {
+      refetch();
+      setIsAddingBatch(false);
+    };
   
   const allProductsData = productData.batches ? formatProductsData(productData.batches) : [];
   const totalCount = productData.batches.length || 0;
@@ -116,7 +124,7 @@ export default function ProductPage() {
             <Pen className="w-4 h-4" />
             Edit
           </Button>
-          <Button className="flex gap-1 items-center bg-teal-500 text-white hover:bg-teal-600">
+          <Button className="flex gap-1 items-center bg-teal-500 text-white hover:bg-teal-600" onClick={() => setIsAddingBatch(true)}>
             <Plus className="w-4 h-4" />
             Add
           </Button>
@@ -162,7 +170,7 @@ export default function ProductPage() {
                   label="Concentration"
                   value={productData.concentration}
                 />
-                <TextField
+                <LongTextField
                   label="Description"
                   value={productData.description}
                 />
@@ -206,6 +214,13 @@ export default function ProductPage() {
           </div>
         )}
       </div>
+       {isAddingBatch && (
+                <AddBatchMultiSteps
+                productData={productData}
+                productId={productId}
+                  onClose={handleAddBatch}
+                />
+              )}
     </div>
   );
 }
