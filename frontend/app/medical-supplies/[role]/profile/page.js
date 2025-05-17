@@ -8,96 +8,9 @@ import ProfileImage from "../../components/ui/ProfileImage";
 import { Button } from "../../components/ui/Button";
 import { FileField, Rating, TextField } from "../../components/ui/FormField";
 import { FileText, MapPin, Save, X } from "lucide-react";
-import { AddressInput } from "../../components/ui/Input";
+import { AddressInput, EditableFileField, EditableTextField } from "../../components/ui/Input";
 
 // Create editable versions of our form fields
-const EditableTextField = ({
-  label,
-  value,
-  onChange,
-  name,
-  icon: Icon,
-  iconColor = "text-primary",
-  bigSize = true,
-  error,
-}) => {
-  return (
-    <FormField label={label} bigSize={bigSize}>
-      <div className=" rounded-lg p-2 flex items-center">
-        {Icon && <Icon className={`mr-2 ${iconColor}`} size={20} />}
-        <input
-          type="text"
-          name={name}
-          value={value}
-          onChange={onChange}
-          className={`
-            w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2  text-xs md:text-sm
-            ${
-              error
-                ? "border-error focus:border-error focus:ring-error/30"
-                : "border-gray-200 focus:border-primary focus:ring-primary/20"
-            }
-          `}
-        />
-      </div>
-    </FormField>
-  );
-};
-
-const EditableFileField = ({ label, value, onChange, name }) => {
-  const [fileName, setFileName] = useState(
-    value ? value.split("/").pop() : "No file selected"
-  );
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFileName(file.name);
-      onChange({ target: { name, value: file } });
-    }
-  };
-
-  return (
-    <FormField label={label}>
-      <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
-        <FileText className="text-primary mr-2" size={20} />
-        <span className="text-secondary flex-grow">{fileName}</span>
-        <input
-          type="file"
-          onChange={handleFileChange}
-          className="hidden"
-          id={`file-upload-${name}`}
-        />
-        <label
-          htmlFor={`file-upload-${name}`}
-          className="bg-primary text-white text-xs px-2 py-1 rounded cursor-pointer"
-        >
-          Browse
-        </label>
-      </div>
-    </FormField>
-  );
-};
-
-// FormField component to maintain consistency
-const FormField = ({ label, children, className = "", bigSize }) => {
-  return (
-    <div
-      className={`flex flex-col md:flex-row items-start md:items-center w-full  ${className}`}
-    >
-      <label
-        className={`text-gray-800 font-medium text-base ${
-          !bigSize ? "md:w-1/2" : "md:w-1/4"
-        } mb-1 md:mb-0`}
-      >
-        {label}
-      </label>
-      <div className={`${!bigSize ? "md:w-1/2" : "md:w-3/4"} w-full`}>
-        {children}
-      </div>
-    </div>
-  );
-};
 
 export default function ProfilePage() {
   const { user } = useMSAuth();

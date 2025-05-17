@@ -234,6 +234,19 @@ const productSchema = gql`
     notes: String
   }
 
+  # Input for searching products
+  input SearchProductsInput {
+    searchTerm: String
+    productType: String
+    category: String
+    expiryDateStart: Date
+    expiryDateEnd: Date
+    limit: Int
+    offset: Int
+    sortBy: String
+    sortOrder: String
+  }
+
   type Query {
     "Get a product by its ID. Returns either DrugProduct or EquipmentProduct"
     productById(productId: ID!): Product
@@ -254,6 +267,12 @@ const productSchema = gql`
       limit: Int
       offset: Int
     ): [Product!]!
+
+    "Search products by various criteria"
+    searchProducts(
+      searchInput: SearchProductsInput!
+    ): [Product!]!
+
 
     "Get a batch by its ID. Returns either DrugBatch or EquipmentBatch"
     batchById(batchId: ID!): Batch

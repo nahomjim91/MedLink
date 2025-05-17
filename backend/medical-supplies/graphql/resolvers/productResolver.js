@@ -145,6 +145,18 @@ const productResolvers = {
         );
       }
     },
+    searchProducts: async (_, { searchInput }, context) => {
+      await isAuthenticated(context);
+      try {
+        return ProductModel.search(searchInput);
+      } catch (error) {
+        console.error("Error in searchProducts resolver:", error);
+        throw new ApolloError(
+          "Failed to search products.",
+          "PRODUCT_SEARCH_ERROR"
+        );
+      }
+    },
     batchById: async (_, { batchId }, context) => {
       await isAuthenticated(context);
       try {
@@ -543,6 +555,7 @@ const productResolvers = {
       }
     },
   },
+
   Product: {
     __resolveType(product, context, info) {
       if (product.productType === "DRUG") {

@@ -9,6 +9,8 @@ const {
 } = require("../../utils/helpers");
 
 const productsRef = db.collection("products");
+const batchesRef = db.collection("batches");
+
 
 const ProductModel = {
   async getById(productId) {
@@ -122,6 +124,199 @@ const ProductModel = {
       return results;
     } catch (error) {
       console.error("Error getting user products:", error);
+      throw error;
+    }
+  },
+  async searchProducts({ 
+    searchTerm, 
+    productType,
+    limit = 20, 
+    offset = 0, 
+    sortBy = "createdAt", 
+    sortOrder = "desc",
+    expiryDateStart,
+    expiryDateEnd
+  }) {
+    try {
+      console.log("Starting product search with parameters:", {
+        searchTerm, 
+        productType,
+        limit, 
+        offset, 
+        sortBy, 
+        sortOrder,
+        expiryDateStart,
+        expiryDateEnd
+      });
+
+      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
+      
+      // Base query - we'll collect all products first and then filter in memory
+      // This approach is needed because Firestore doesn't support text search directly
+      let query = productsRef;
+      
+      // Apply productType filter if provided (exact match)
+      if (productType && productType.trim() !== "") {
+        query = query.where("productType", "==", productType);
+      }
+      
+      // Apply sorting
+      query = query.orderBy(sortBy, sortOrder);
+      
+      // Get all products that match the base criteria
+      let snapshot = await query.get();
+      let allProducts = formatDocs(snapshot.docs);
+      console.log(`Base query found ${allProducts.length} products before filtering`);
+      
+      // If no search term provided, return all products with base filters
+      if (!searchTerm || searchTerm.trim() === "") {
+        // Apply pagination
+        const paginatedResults = allProducts.slice(offsetVal, offsetVal + limitVal);
+        console.log(`Returning ${paginatedResults.length} products - no searchTerm filtering`);
+        return paginatedResults;
+      }
+      
+      // Convert search term to lowercase for case-insensitive comparison
+      const lowerSearchTerm = searchTerm.toLowerCase().trim();
+      console.log(`Filtering for search term: "${lowerSearchTerm}"`);
+      
+      // For each product, we need to check if it matches the search criteria
+      // We'll also need to load its batches for some batch-specific filters
+      const matchingProducts = [];
+      const processedProductIds = new Set(); // To avoid duplicates
+      
+      // Function to check if a product matches the search criteria
+      const productMatchesSearch = (product) => {
+        // Check name, description, category (case-insensitive)
+        if (product.name?.toLowerCase().includes(lowerSearchTerm)) return true;
+        if (product.description?.toLowerCase().includes(lowerSearchTerm)) return true;
+        if (product.category?.toLowerCase().includes(lowerSearchTerm)) return true;
+        
+        // Drug-specific fields
+        if (product.productType === "DRUG") {
+          if (product.concentration?.toLowerCase().includes(lowerSearchTerm)) return true;
+          if (product.packageType?.toLowerCase().includes(lowerSearchTerm)) return true;
+        }
+        
+        // Equipment-specific fields
+        if (product.productType === "EQUIPMENT") {
+          if (product.brandName?.toLowerCase().includes(lowerSearchTerm)) return true;
+          if (product.modelNumber?.toLowerCase().includes(lowerSearchTerm)) return true;
+        }
+        
+        return false;
+      };
+      
+      // First pass: Check for matches in the product fields
+      for (const product of allProducts) {
+        if (productMatchesSearch(product)) {
+          if (!processedProductIds.has(product.productId)) {
+            matchingProducts.push(product);
+            processedProductIds.add(product.productId);
+          }
+        }
+      }
+      
+      console.log(`Found ${matchingProducts.length} products that match in product fields`);
+      
+      // Second pass: Check for matches in the batch fields (for non-matched products)
+      const remainingProducts = allProducts.filter(p => !processedProductIds.has(p.productId));
+      console.log(`Checking ${remainingProducts.length} remaining products for matches in batch fields`);
+      
+      if (remainingProducts.length > 0) {
+        // Get batches in batch queries to avoid overloading Firestore
+        const batchSize = 10;
+        for (let i = 0; i < remainingProducts.length; i += batchSize) {
+          const batch = remainingProducts.slice(i, i + batchSize);
+          const batchPromises = batch.map(async (product) => {
+            try {
+              // Query for batches related to this product
+              let batchQuery = batchesRef.where("productId", "==", product.productId);
+              
+              // Apply expiry date filters if provided (for drug batches)
+              if (expiryDateStart || expiryDateEnd) {
+                // We need to fetch all batches and filter in memory since
+                // we can't combine "where" queries with OR conditions
+                console.log(`Applying expiry date filters for product ${product.productId}`);
+              }
+              
+              const batchesSnapshot = await batchQuery.get();
+              const batches = formatDocs(batchesSnapshot.docs);
+              
+              // No batches found, skip further processing
+              if (batches.length === 0) return null;
+              
+              // Check each batch for matches
+              for (const batch of batches) {
+                // Skip if we've already matched this product
+                if (processedProductIds.has(product.productId)) continue;
+                
+                // Apply expiry date filtering if provided (for drug batches only)
+                if (product.productType === "DRUG" && (expiryDateStart || expiryDateEnd)) {
+                  const expiryDate = batch.expiryDate instanceof Date ? 
+                    batch.expiryDate : 
+                    new Date(batch.expiryDate);
+                    
+                  if (expiryDateStart) {
+                    const startDate = new Date(expiryDateStart);
+                    if (expiryDate < startDate) continue;
+                  }
+                  
+                  if (expiryDateEnd) {
+                    const endDate = new Date(expiryDateEnd);
+                    if (expiryDate > endDate) continue;
+                  }
+                }
+                
+                // Check for text matches in batch fields
+                // For drug batches
+                if (product.productType === "DRUG") {
+                  if (batch.manufacturer?.toLowerCase().includes(lowerSearchTerm)) {
+                    matchingProducts.push(product);
+                    processedProductIds.add(product.productId);
+                    break;
+                  }
+                  if (batch.manufacturerCountry?.toLowerCase().includes(lowerSearchTerm)) {
+                    matchingProducts.push(product);
+                    processedProductIds.add(product.productId);
+                    break;
+                  }
+                }
+                
+                // For equipment batches
+                if (product.productType === "EQUIPMENT" && batch.serialNumbers) {
+                  for (const serialNumber of batch.serialNumbers) {
+                    if (serialNumber.toLowerCase().includes(lowerSearchTerm)) {
+                      matchingProducts.push(product);
+                      processedProductIds.add(product.productId);
+                      break;
+                    }
+                  }
+                  // If we've already matched this product, skip further checks
+                  if (processedProductIds.has(product.productId)) break;
+                }
+              }
+              
+              return null;
+            } catch (error) {
+              console.error(`Error processing batches for product ${product.productId}:`, error);
+              return null;
+            }
+          });
+          
+          await Promise.all(batchPromises);
+        }
+      }
+      
+      console.log(`Total matching products after batch processing: ${matchingProducts.length}`);
+      
+      // Apply pagination to final results
+      const paginatedResults = matchingProducts.slice(offsetVal, offsetVal + limitVal);
+      console.log(`Returning ${paginatedResults.length} products after pagination`);
+      
+      return paginatedResults;
+    } catch (error) {
+      console.error("Error searching products:", error);
       throw error;
     }
   },

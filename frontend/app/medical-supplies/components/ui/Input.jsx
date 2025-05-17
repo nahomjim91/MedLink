@@ -267,7 +267,6 @@ export function NumberWithUnitInput({
   label,
   name,
   value = "",
-  unit = "",
   onChange,
   unitOptions = [],
   error = false,
@@ -278,20 +277,47 @@ export function NumberWithUnitInput({
   className = "",
   ...props
 }) {
-  // Default to first unit option if none provided and options exist
-  const effectiveUnit =
-    unit || (unitOptions.length > 0 ? unitOptions[0].value : "");
+  // Parse the value if it's a string with unit
+  const parseValueAndUnit = () => {
+    if (!value) return { numValue: "", unitValue: unitOptions[0]?.value || "" };
+
+    // If value is already an object with numValue and unitValue
+    if (typeof value === "object" && value.numValue !== undefined) {
+      return value;
+    }
+
+    // Try to parse a string like "10mg" or "10 mg"
+    const valueStr = String(value);
+    for (const unitOption of unitOptions) {
+      if (valueStr.endsWith(unitOption.value)) {
+        const numPart = valueStr
+          .substring(0, valueStr.length - unitOption.value.length)
+          .trim();
+        return { numValue: numPart, unitValue: unitOption.value };
+      }
+    }
+
+    // If no unit found, assume it's just a number
+    return { numValue: valueStr, unitValue: unitOptions[0]?.value || "" };
+  };
+
+  const { numValue, unitValue } = parseValueAndUnit();
 
   // Handle number input change
   const handleNumberChange = (e) => {
+    const newNumValue = e.target.value;
+
     if (onChange) {
+      // Format with up to 2 decimal places if it has decimals
+      const formattedValue = newNumValue + unitValue;
       onChange({
         ...e,
         target: {
           ...e.target,
           name: name || e.target.name,
-          value: e.target.value,
-          unit: effectiveUnit,
+          value: formattedValue,
+          numValue: newNumValue,
+          unitValue: unitValue,
         },
       });
     }
@@ -299,14 +325,19 @@ export function NumberWithUnitInput({
 
   // Handle unit select change
   const handleUnitChange = (e) => {
+    const newUnitValue = e.target.value;
+
     if (onChange) {
+      // Combine the current number value with the new unit
+      const formattedValue = numValue + newUnitValue;
       onChange({
         ...e,
         target: {
           ...e.target,
           name: name || e.target.name,
-          value: value,
-          unit: e.target.value,
+          value: formattedValue,
+          numValue: numValue,
+          unitValue: newUnitValue,
         },
       });
     }
@@ -325,9 +356,10 @@ export function NumberWithUnitInput({
         <input
           type="number"
           name={name}
-          value={value}
+          value={numValue}
           onChange={handleNumberChange}
           placeholder={placeholder}
+          step="0.01" // Allow two decimal places
           className={`
             flex-grow px-4 py-3 border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
             rounded-l-xl border-r-0
@@ -345,7 +377,7 @@ export function NumberWithUnitInput({
         <div className="relative">
           <select
             name={`${name}-unit`}
-            value={effectiveUnit}
+            value={unitValue}
             onChange={handleUnitChange}
             className={`
               px-2 py-3 border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
@@ -1299,3 +1331,123 @@ export function FileInput({
     </div>
   );
 }
+export const EditableTextField = ({
+  label,
+  value,
+  onChange,
+  name,
+  icon: Icon,
+  iconColor = "text-primary",
+  bigSize = true,
+  error,
+}) => {
+  return (
+    <FormField label={label} bigSize={bigSize}>
+      <div className=" rounded-lg p-2 flex items-center">
+        {Icon && <Icon className={`mr-2 ${iconColor}`} size={20} />}
+        <input
+          type="text"
+          name={name}
+          value={value}
+          onChange={onChange}
+          className={`
+            w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2  text-xs md:text-sm
+            ${
+              error
+                ? "border-error focus:border-error focus:ring-error/30"
+                : "border-gray-200 focus:border-primary focus:ring-primary/20"
+            }
+          `}
+        />
+      </div>
+    </FormField>
+  );
+};
+
+export const EditableTextAreaField = ({
+  label,
+  value,
+  onChange,
+  name,
+  icon: Icon,
+  iconColor = "text-primary",
+  bigSize = true,
+  error,
+}) => {
+  return (
+    <FormField label={label} bigSize={bigSize}>
+      <div className=" rounded-lg p-2 flex items-center">
+        {Icon && <Icon className={`mr-2 ${iconColor}`} size={20} />}
+        <textarea
+          type="text"
+          name={name}
+          value={value}
+          onChange={onChange}
+          className={`
+            w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2  text-xs md:text-sm
+            ${
+              error
+                ? "border-error focus:border-error focus:ring-error/30"
+                : "border-gray-200 focus:border-primary focus:ring-primary/20"
+            }
+          `}
+        />
+      </div>
+    </FormField>
+  );
+};
+
+export const EditableFileField = ({ label, value, onChange, name }) => {
+  const [fileName, setFileName] = useState(
+    value ? value.split("/").pop() : "No file selected"
+  );
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFileName(file.name);
+      onChange({ target: { name, value: file } });
+    }
+  };
+
+  return (
+    <FormField label={label}>
+      <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+        <FileText className="text-primary mr-2" size={20} />
+        <span className="text-secondary flex-grow">{fileName}</span>
+        <input
+          type="file"
+          onChange={handleFileChange}
+          className="hidden"
+          id={`file-upload-${name}`}
+        />
+        <label
+          htmlFor={`file-upload-${name}`}
+          className="bg-primary text-white text-xs px-2 py-1 rounded cursor-pointer"
+        >
+          Browse
+        </label>
+      </div>
+    </FormField>
+  );
+};
+
+// FormField component to maintain consistency
+export const FormField = ({ label, children, className = "", bigSize }) => {
+  return (
+    <div
+      className={`flex flex-col md:flex-row items-start md:items-center w-full  ${className}`}
+    >
+      <label
+        className={`text-gray-800 font-medium text-base ${
+          !bigSize ? "md:w-1/2" : "md:w-1/4"
+        } mb-1 md:mb-0`}
+      >
+        {label}
+      </label>
+      <div className={`${!bigSize ? "md:w-1/2" : "md:w-3/4"} w-full`}>
+        {children}
+      </div>
+    </div>
+  );
+};
