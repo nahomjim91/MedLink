@@ -1,17 +1,130 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
-import { GET_PRODUCT_BY_ID } from "../../../api/graphql/productQueries";
+import {
+  GET_PRODUCT_BY_ID,
+  SEARCH_PRODUCTS,
+} from "../../../api/graphql/productQueries";
 import { useMSAuth } from "../../../hooks/useMSAuth";
 import { ProductImageGallery } from "../../../components/ui/ProductImageGallery";
-import {
-  LongTextField,
-  Rating,
-  TextField,
-} from "../../../components/ui/FormField";
+import { Rating } from "../../../components/ui/FormField";
 import { NumberInput } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
+import { StarIcon } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { Syringe, Pill } from "lucide-react";
+
+const RelatedProducts = ({ currentProductId, productType, category , role }) => {
+  const [relatedProducts, setRelatedProducts] = useState([]);
+
+  const { data, loading, error } = useQuery(SEARCH_PRODUCTS, {
+    variables: {
+      searchInput: {
+        productType: productType,
+        category: category,
+        limit: 5, // Get 5 related products
+        offset: 0,
+        sortBy: "name",
+        sortOrder: "asc",
+      },
+    },
+    skip: !productType, // skip if no product type
+    fetchPolicy: "network-only",
+  });
+
+  useEffect(() => {
+    if (data?.searchProducts) {
+      // Filter out the current product and limit to 4 products
+      const filtered = data.searchProducts
+        .filter((product) => product.productId !== currentProductId)
+        .slice(0, 4);
+      setRelatedProducts(filtered);
+    }
+  }, [data, currentProductId]);
+
+  if (loading) return <div className="py-4">Loading related products...</div>;
+  if (error)
+    return (
+      <div className="py-4 text-red-500">
+        Error loading related products: {error.message}
+      </div>
+    );
+  if (!relatedProducts || relatedProducts.length === 0) return null;
+  console.log("Related products:", relatedProducts);
+
+  const isEquipment = productType === "EQUIPMENT";
+  const ProductIcon = isEquipment ? Syringe : Pill;
+
+  return (
+    <div className="mt-10 pb-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-secondary/70">Related Products</h2>
+        <Link
+          href={`/products?type=${productType}`}
+          className="text-sm text-secondary/60 hover:text-secondary/80 pr-5"
+        >
+          View All
+        </Link>
+      </div>
+
+      <div className="relative w-full overflow-x-auto pb-4">
+    <div className="flex space-x-4 w-max">
+      {relatedProducts.map((product) => (
+        <Link
+          href={`/medical-supplies/${role}/markertplace/product?id=${product.productId}`}
+          key={product.productId}
+        >
+          <div className="border border-gray-200 rounded-md overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col w-48 md:w-56 lg:w-64">
+            <div className="h-32 md:h-40 relative bg-gray-100 flex justify-center items-center" >
+              {product.imageList && product.imageList.length > 0 ? (
+                <Image
+                  src={product.imageList[0]}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <ProductIcon size={64} className="text-primary" />
+              )}
+            </div>
+
+            <div className="p-3 flex-grow flex flex-col">
+              <div className="text-xs text-secondary/50 mb-1">
+                {product.originalListerName || "John Lewis"}
+              </div>
+              <h3 className="font-medium text-sm mb-1 line-clamp-2">
+                {product.name}
+              </h3>
+              <div className="mt-auto">
+                <div className="font-bold text-secondary/90 mt-1">
+                  $
+                  {(product.batches &&
+                    product.batches[0]?.sellingPrice?.toFixed(2)) ||
+                    "32"}
+                </div>
+                <div className="flex items-center mt-1">
+                  <div className="flex items-center">
+                    <StarIcon className="h-3 w-3 text-green-500 fill-green-500" />
+                    <span className="text-xs ml-1 text-secondary/70">
+                      {(Math.random() * (5 - 4) + 4).toFixed(1)}
+                    </span>
+                  </div>
+                  <span className="text-xs text-secondary/50 ml-2">
+                    {Math.floor(Math.random() * 1000) + 200} Sold
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
+  </div>
+    </div>
+  );
+};
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
@@ -314,24 +427,27 @@ export default function ProductDetails() {
                           </div>
                         </div>
                       ))}
-                      
                     </div>
                   )}
               </div>
 
               {/* Add to cart button */}
               <div className="flex space-x-4 pb-5">
-                <Button
-                  onClick={handleAddToCart}
-                >
-                  Add To Cart
-                </Button>
+                <Button onClick={handleAddToCart}>Add To Cart</Button>
                 <Button variant="outline" className="px-8">
                   Contact
                 </Button>
               </div>
             </div>
           </div>
+        </div>
+        {/* {relatedProducts */}
+        <div>
+          <RelatedProducts
+            productType={isDrugProduct ? "DRUG" : "EQUIPMENT"}
+            currentProductId={product.productId}
+            role={user.role}
+          />
         </div>
       </div>
     </div>

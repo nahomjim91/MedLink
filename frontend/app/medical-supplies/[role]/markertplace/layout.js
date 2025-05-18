@@ -16,7 +16,7 @@ export default function MarketplaceLayout({ children }) {
     if (loading) return;
 
     // Verify that the user's role matches the URL role parameter
-    if (user.role === "importers") {
+    if (user.role === "importer") {
       console.log(
         `User with role ${user.role} attempted to access ${role} route - redirecting`
       );
