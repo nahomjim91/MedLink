@@ -4,7 +4,7 @@ import { useQuery } from "@apollo/client";
 import {
   GET_MY_PRODUCTS,
   GET_MY_PRODUCTS_WITH_BATCHES,
-} from "../../api/graphql/productQueries";
+} from "../../api/graphql/product/productQueries";
 import { StatCard } from "../../components/ui/Cards";
 import { TableCard } from "../../components/ui/Cards";
 import AddProductMultiSteps from "../../components/ui/product/AddProductMultiSteps";

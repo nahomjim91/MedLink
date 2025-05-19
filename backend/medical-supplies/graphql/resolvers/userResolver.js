@@ -1,4 +1,4 @@
-// /graphql/ms-resolvers.js
+// /graphql/userRresolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
 const MSUserModel = require("../../models/msUser");
@@ -13,26 +13,61 @@ const dateScalar = new GraphQLScalarType({
   name: "Date",
   description: "Date custom scalar type",
   serialize(value) {
+    // Debug logging to help identify the issue
+    console.log("Date scalar serializing:", value);
+
+    // Handle case when value is null or undefined
+    if (value == null) {
+      console.log("Date value is null/undefined, returning null");
+      return null;
+    }
+
     // Handle Firestore timestamp objects
     if (
       value &&
       value._seconds !== undefined &&
       value._nanoseconds !== undefined
     ) {
+      console.log("Converting Firestore timestamp to milliseconds");
       // Convert Firestore timestamp to milliseconds
       return value._seconds * 1000 + Math.floor(value._nanoseconds / 1000000);
     }
 
+    // Handle ServerTimestampTransform objects and empty objects
+    if (
+      value &&
+      ((value.constructor &&
+        value.constructor.name === "ServerTimestampTransform") ||
+        (typeof value === "object" && Object.keys(value).length === 0))
+    ) {
+      console.log(
+        "Handling ServerTimestampTransform or empty object, returning current timestamp"
+      );
+      // Always return current timestamp for server timestamp transforms
+      return Date.now();
+    }
+
     if (value instanceof Date) {
+      console.log("Converting Date object to timestamp");
       return value.getTime(); // Convert outgoing Date to integer for JSON
     }
 
-    if (typeof value === "string" || typeof value === "number") {
+    if (typeof value === "string") {
+      console.log("Converting string date to timestamp");
       return new Date(value).getTime();
     }
 
-    console.log("Failed to serialize date value:", value);
-    return null;
+    if (typeof value === "number") {
+      console.log("Value is already a number timestamp");
+      return value;
+    }
+
+    // If we get here, we have an unhandled type
+    console.log("Unhandled value type for serialization:", value);
+
+    // Return current timestamp as fallback
+    console.log("Using current timestamp as fallback");
+    return Date.now();
   },
   parseValue(value) {
     return new Date(value); // Convert incoming integer to Date

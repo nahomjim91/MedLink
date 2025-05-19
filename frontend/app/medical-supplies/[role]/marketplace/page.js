@@ -12,7 +12,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { useQuery, gql } from "@apollo/client";
-import { SEARCH_PRODUCTS } from "../../api/graphql/productQueries";
+import { SEARCH_PRODUCTS } from "../../api/graphql/product/productQueries";
 import Image from "next/image";
 import { Button } from "../../components/ui/Button";
 import { SelectInput } from "../../components/ui/Input";
@@ -148,7 +148,7 @@ const Marketplace = () => {
  
   const handleProductClick = (product) => {
     // Handle product click here
-    router.push(`markertplace/product?id=${product.productId}`);
+    router.push(`marketplace/product?id=${product.productId}`);
   }
   // Clear all filters
   const clearFilters = () => {

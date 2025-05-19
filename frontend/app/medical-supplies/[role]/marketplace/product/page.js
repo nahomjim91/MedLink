@@ -5,7 +5,7 @@ import { useQuery } from "@apollo/client";
 import {
   GET_PRODUCT_BY_ID,
   SEARCH_PRODUCTS,
-} from "../../../api/graphql/productQueries";
+} from "../../../api/graphql/product/productQueries";
 import { useMSAuth } from "../../../hooks/useMSAuth";
 import { ProductImageGallery } from "../../../components/ui/ProductImageGallery";
 import { Rating } from "../../../components/ui/FormField";
@@ -16,7 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Syringe, Pill } from "lucide-react";
 
-const RelatedProducts = ({ currentProductId, productType, category , role }) => {
+const RelatedProducts = ({ currentProductId, productType, category, role }) => {
   const [relatedProducts, setRelatedProducts] = useState([]);
 
   const { data, loading, error } = useQuery(SEARCH_PRODUCTS, {
@@ -60,7 +60,9 @@ const RelatedProducts = ({ currentProductId, productType, category , role }) => 
   return (
     <div className="mt-10 pb-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-secondary/70">Related Products</h2>
+        <h2 className="text-xl font-bold text-secondary/70">
+          Related Products
+        </h2>
         <Link
           href={`/products?type=${productType}`}
           className="text-sm text-secondary/60 hover:text-secondary/80 pr-5"
@@ -70,62 +72,61 @@ const RelatedProducts = ({ currentProductId, productType, category , role }) => 
       </div>
 
       <div className="relative w-full overflow-x-auto pb-4">
-    <div className="flex space-x-4 w-max">
-      {relatedProducts.map((product) => (
-        <Link
-          href={`/medical-supplies/${role}/markertplace/product?id=${product.productId}`}
-          key={product.productId}
-        >
-          <div className="border border-gray-200 rounded-md overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col w-48 md:w-56 lg:w-64">
-            <div className="h-32 md:h-40 relative bg-gray-100 flex justify-center items-center" >
-              {product.imageList && product.imageList.length > 0 ? (
-                <Image
-                  src={product.imageList[0]}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <ProductIcon size={64} className="text-primary" />
-              )}
-            </div>
+        <div className="flex space-x-4 w-max">
+          {relatedProducts.map((product) => (
+            <Link
+              href={`/medical-supplies/${role}/marketplace/product?id=${product.productId}`}
+              key={product.productId}
+            >
+              <div className="border border-gray-200 rounded-md overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col w-48 md:w-56 lg:w-64">
+                <div className="h-32 md:h-40 relative bg-gray-100 flex justify-center items-center">
+                  {product.imageList && product.imageList.length > 0 ? (
+                    <Image
+                      src={product.imageList[0]}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <ProductIcon size={64} className="text-primary" />
+                  )}
+                </div>
 
-            <div className="p-3 flex-grow flex flex-col">
-              <div className="text-xs text-secondary/50 mb-1">
-                {product.originalListerName || "John Lewis"}
-              </div>
-              <h3 className="font-medium text-sm mb-1 line-clamp-2">
-                {product.name}
-              </h3>
-              <div className="mt-auto">
-                <div className="font-bold text-secondary/90 mt-1">
-                  $
-                  {(product.batches &&
-                    product.batches[0]?.sellingPrice?.toFixed(2)) ||
-                    "32"}
-                </div>
-                <div className="flex items-center mt-1">
-                  <div className="flex items-center">
-                    <StarIcon className="h-3 w-3 text-green-500 fill-green-500" />
-                    <span className="text-xs ml-1 text-secondary/70">
-                      {(Math.random() * (5 - 4) + 4).toFixed(1)}
-                    </span>
+                <div className="p-3 flex-grow flex flex-col">
+                  <div className="text-xs text-secondary/50 mb-1">
+                    {product.originalListerName || "John Lewis"}
                   </div>
-                  <span className="text-xs text-secondary/50 ml-2">
-                    {Math.floor(Math.random() * 1000) + 200} Sold
-                  </span>
+                  <h3 className="font-medium text-sm mb-1 line-clamp-2">
+                    {product.name}
+                  </h3>
+                  <div className="mt-auto">
+                    <div className="font-bold text-secondary/90 mt-1">
+                      $
+                      {(product.batches &&
+                        product.batches[0]?.sellingPrice?.toFixed(2)) ||
+                        "32"}
+                    </div>
+                    <div className="flex items-center mt-1">
+                      <div className="flex items-center">
+                        <StarIcon className="h-3 w-3 text-green-500 fill-green-500" />
+                        <span className="text-xs ml-1 text-secondary/70">
+                          {(Math.random() * (5 - 4) + 4).toFixed(1)}
+                        </span>
+                      </div>
+                      <span className="text-xs text-secondary/50 ml-2">
+                        {Math.floor(Math.random() * 1000) + 200} Sold
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </Link>
-      ))}
-    </div>
-  </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
-
 export default function ProductDetails() {
   const searchParams = useSearchParams();
   const productId = searchParams.get("id");
@@ -133,10 +134,12 @@ export default function ProductDetails() {
     variables: { productId },
     skip: !productId, // skip if no ID
   });
-  const { user } = useMSAuth();
+  const { user, addToCart, addSpecificBatchToCart, refreshCart } = useMSAuth();
   const [activeTab, setActiveTab] = useState("automatically");
   const [quantity, setQuantity] = useState(1);
   const [selectedBatches, setSelectedBatches] = useState({});
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [cartMessage, setCartMessage] = useState({ type: "", message: "" });
 
   if (loading)
     return (
@@ -176,31 +179,125 @@ export default function ProductDetails() {
     }
   };
 
+  const handleBatchQuantityChange = (batchId, value) => {
+    const newQuantity = parseInt(value, 10);
+    if (!isNaN(newQuantity) && newQuantity >= 0) {
+      setSelectedBatches((prev) => ({
+        ...prev,
+        [batchId]: newQuantity,
+      }));
+    }
+  };
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSelectedBatches({});
   };
 
-  const handleBatchSelection = (batchId, quantity) => {
-    setSelectedBatches((prev) => ({
-      ...prev,
-      [batchId]: quantity,
-    }));
-  };
+  const handleAddToCart = async () => {
+    setIsAddingToCart(true);
+    setCartMessage({ type: "", message: "" });
 
-  const handleAddToCart = () => {
-    // Implement add to cart logic
-    console.log("Adding to cart:", {
-      productId: product.productId,
-      quantity,
-      selectedBatches: activeTab === "automatically" ? {} : selectedBatches,
-    });
-    // Call your add to cart mutation here
+    try {
+      if (activeTab === "automatically") {
+        // Automatic mode: Distribute quantity across batches starting with the earliest expiry
+        let remainingQuantity = quantity;
+        let success = false;
+
+        // For drugs with expiry dates, use sorted batches (earliest expiry first)
+        // For equipment or when no expiry, use batches as is
+        const batchesToUse = isDrugProduct ? sortedBatches : batches;
+
+        // Try to fulfill the order with multiple batch additions if needed
+        for (const batch of batchesToUse) {
+          if (remainingQuantity <= 0) break;
+
+          // Determine how much we can take from this batch
+          const quantityFromBatch = Math.min(remainingQuantity, batch.quantity);
+
+          if (quantityFromBatch > 0) {
+            // Add this specific batch to cart
+            await addSpecificBatchToCart(
+              product.productId,
+              batch.batchId,
+              quantityFromBatch
+            );
+
+            remainingQuantity -= quantityFromBatch;
+            success = true;
+          }
+        }
+
+        if (success) {
+          setCartMessage({
+            type: "success",
+            message: `Added ${quantity - remainingQuantity} items to cart`,
+          });
+
+          // If we couldn't fulfill the entire quantity, inform the user
+          if (remainingQuantity > 0) {
+            setCartMessage({
+              type: "warning",
+              message: `Added ${
+                quantity - remainingQuantity
+              } items to cart. Could not add remaining ${remainingQuantity} due to insufficient stock.`,
+            });
+          }
+        } else {
+          setCartMessage({
+            type: "error",
+            message: "Could not add to cart. Insufficient stock available.",
+          });
+        }
+      } else {
+        // Manual mode: Add selected batches as specified by user
+        const batchSelections = Object.entries(selectedBatches);
+        let totalAdded = 0;
+
+        if (batchSelections.length === 0) {
+          setCartMessage({
+            type: "error",
+            message: "Please select quantities for at least one batch",
+          });
+        } else {
+          for (const [batchId, batchQuantity] of batchSelections) {
+            if (batchQuantity > 0) {
+              await addSpecificBatchToCart(
+                product.productId,
+                batchId,
+                batchQuantity
+              );
+              totalAdded += batchQuantity;
+            }
+          }
+
+          setCartMessage({
+            type: "success",
+            message: `Added ${totalAdded} items to cart from selected batches`,
+          });
+        }
+      }
+
+      // Refresh cart data after all operations
+      await refreshCart();
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      setCartMessage({
+        type: "error",
+        message: `Error adding to cart: ${error.message}`,
+      });
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  };
+
+  const getTotalAvailableQuantity = () => {
+    return batches.reduce((total, batch) => total + (batch.quantity || 0), 0);
   };
 
   const InfoRow = ({ label, value }) => (
@@ -213,6 +310,7 @@ export default function ProductDetails() {
       </div>
     </div>
   );
+
   return (
     <div className="overflow-hidden mx-auto p-4 bg-white rounded-xl">
       <div className="h-[85vh] overflow-y-scroll w-full">
@@ -242,7 +340,7 @@ export default function ProductDetails() {
             </div>
 
             {/* Main product info */}
-            <div className="max-w-4xl mx-auto px-6  rounded-lg">
+            <div className="max-w-4xl mx-auto px-6 rounded-lg">
               <div className="space-y-2">
                 {/* Category - common for both types */}
                 <InfoRow
@@ -269,23 +367,23 @@ export default function ProductDetails() {
                     />
                   </>
                 ) : (
-                  <>
-                    <InfoRow
-                      label="Brand Name"
-                      value={product.brandName || "MediPlus"}
-                    />
-                    <InfoRow
-                      label="Model Number"
-                      value={product.modelNumber || "MP-2023"}
-                    />
-                    <InfoRow
-                      label="Manufactured"
-                      value={product.manufacturedDate || "20/20/2023"}
-                    />
-                  </>
+                  <></>
                 )}
 
                 {/* Description - common for both types */}
+                {/* Equipment-specific fields */}
+                {isEquipmentProduct && (
+                  <>
+                    <InfoRow
+                      label="Warranty information"
+                      value={product.warrantyInfo || "Three and half year"}
+                    />
+                    <InfoRow
+                      label="Spare Parts"
+                      value={product.sparePartInfo.join(", ")}
+                    />
+                  </>
+                )}
                 <div className="flex flex-col">
                   <div>
                     <h2 className="text-lg font-bold text-secondary/80">
@@ -296,22 +394,6 @@ export default function ProductDetails() {
                     <p className="text-secondary/60">{product.description}</p>
                   </div>
                 </div>
-
-                {/* Equipment-specific fields */}
-                {isEquipmentProduct && (
-                  <>
-                    <InfoRow
-                      label="Warranty information"
-                      value={product.warrantyInfo || "Three and half year"}
-                    />
-                    <InfoRow
-                      label="Spare Parts"
-                      value={(product.sparePartInfo || ["Handle", "Base"]).join(
-                        ", "
-                      )}
-                    />
-                  </>
-                )}
               </div>
             </div>
 
@@ -342,24 +424,37 @@ export default function ProductDetails() {
                   </button>
                 </div>
               )}
-              {/* Quantity selector */}
-              {activeTab !== "manually" && (
-                <div className="w-1/3">
+
+              {/* Cart message feedback */}
+              {cartMessage.message && (
+                <div
+                  className={`mb-4 p-3 rounded-lg ${
+                    cartMessage.type === "success"
+                      ? "bg-green-100 text-green-800"
+                      : cartMessage.type === "warning"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {cartMessage.message}
+                </div>
+              )}
+
+              {/* Quantity selector for automatic mode */}
+              {activeTab === "automatically" && (
+                <div className="w-1/3 mb-4">
                   <NumberInput
                     value={quantity}
                     label={"Quantity"}
                     onChange={handleQuantityChange}
                     min={1}
-                    max={product.batches
-                      .map((batch) => batch.quantity)
-                      .reduce((a, b) => a + b, 0)}
+                    max={getTotalAvailableQuantity()}
                   />
                 </div>
               )}
 
               {/* Batch selection (manual mode for drugs or equipment) */}
               <div className="w-full px-4">
-                {/* <h2 className="text-xl font-bold">Available Batches</h2> */}
                 {(activeTab === "manually" || isEquipmentProduct) &&
                   batches.length > 0 && (
                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
@@ -406,21 +501,28 @@ export default function ProductDetails() {
                               </span>
                             </div>
                             <div className="text-xs text-gray-500 mb-2">
-                              <div>Total pricing</div>
-                              <div>
-                                $
-                                {(
-                                  (batch.sellingPrice || 120) *
-                                  (selectedBatches[batch.batchId] || 0)
-                                ).toFixed(2)}
+                              <div className="flex justify-between">
+                                <span>Total pricing</span>
+                                <span>
+                                  $
+                                  {(
+                                    (batch.sellingPrice || 120) *
+                                    (selectedBatches[batch.batchId] || 0)
+                                  ).toFixed(2)}
+                                </span>
                               </div>
                             </div>
                             <div className="mt-2">
                               <NumberInput
-                                value={quantity}
+                                value={selectedBatches[batch.batchId] || 0}
                                 label={"Quantity"}
-                                onChange={handleQuantityChange}
-                                min={1}
+                                onChange={(e) =>
+                                  handleBatchQuantityChange(
+                                    batch.batchId,
+                                    e.target.value
+                                  )
+                                }
+                                min={0}
                                 max={batch.quantity}
                               />
                             </div>
@@ -432,8 +534,16 @@ export default function ProductDetails() {
               </div>
 
               {/* Add to cart button */}
-              <div className="flex space-x-4 pb-5">
-                <Button onClick={handleAddToCart}>Add To Cart</Button>
+              <div className="flex space-x-4 pb-5 mt-4">
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={isAddingToCart}
+                  className={
+                    isAddingToCart ? "opacity-70 cursor-not-allowed" : ""
+                  }
+                >
+                  {isAddingToCart ? "Adding..." : "Add To Cart"}
+                </Button>
                 <Button variant="outline" className="px-8">
                   Contact
                 </Button>
@@ -441,7 +551,7 @@ export default function ProductDetails() {
             </div>
           </div>
         </div>
-        {/* {relatedProducts */}
+        {/* Related Products */}
         <div>
           <RelatedProducts
             productType={isDrugProduct ? "DRUG" : "EQUIPMENT"}

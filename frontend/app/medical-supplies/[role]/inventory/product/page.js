@@ -1,11 +1,11 @@
 "use client";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@apollo/client";
-import { GET_PRODUCT_BY_ID } from "../../../api/graphql/productQueries";
+import { GET_PRODUCT_BY_ID } from "../../../api/graphql/product/productQueries";
 import {
   UPDATE_DRUG_PRODUCT,
   UPDATE_EQUIPMENT_PRODUCT,
-} from "../../../api/graphql/productMutations";
+} from "../../../api/graphql/product/productMutations";
 import { useMSAuth } from "../../../hooks/useMSAuth";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/Button";

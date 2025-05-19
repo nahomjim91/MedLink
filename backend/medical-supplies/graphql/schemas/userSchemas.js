@@ -1,4 +1,4 @@
-// /graphql/ms-schemas.js
+// /graphql/msSchemas.js
 const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
@@ -36,7 +36,6 @@ const typeDefs = gql`
     efdaLicenseUrl: String
     businessLicenseUrl: String
     profileComplete: Boolean
-    cart: Cart
   }
 
 
@@ -58,6 +57,7 @@ const typeDefs = gql`
     productName: String!
     productType: String!
     productImage: String
+    productCategory: String
     batchItems: [CartBatchItem!]!
     totalQuantity: Float!
     totalPrice: Float!
@@ -66,10 +66,10 @@ const typeDefs = gql`
   #"Represents the user's shopping cart"
   type Cart {
     userId: ID!
-    items: [CartItem!]!
-    totalItems: Int!
-    totalPrice: Float!
-    lastUpdated: Date!
+    items: [CartItem]
+    totalItems: Int
+    totalPrice: Float
+    lastUpdated: Date
   }
 
   
@@ -159,3 +159,4 @@ const typeDefs = gql`
 `;
 
 module.exports = typeDefs;
+

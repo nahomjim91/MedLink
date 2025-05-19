@@ -2,10 +2,33 @@
 const { db, FieldValue } = require("../config/firebase");
 
 const formatDoc = (doc) => {
-  if (!doc || !doc.exists) return null;
-  return { id: doc.id, ...doc.data() };
+  if (!doc.exists) return null;
+  
+  const data = doc.data();
+  const id = doc.id;
+  
+  // Convert all potential timestamp fields to Date objects
+  const formatted = { ...data, id };
+  
+  // Handle timestamp fields that might cause serialization issues
+  ['createdAt', 'updatedAt', 'lastUpdated', 'addedAt', 'approvedAt', 'expiryDate'].forEach(field => {
+    if (formatted[field]) {
+      if (typeof formatted[field] === 'object' && 
+          (formatted[field]._seconds !== undefined || 
+           formatted[field].constructor?.name === 'ServerTimestampTransform')) {
+        // Convert Firestore timestamp to JavaScript Date
+        if (formatted[field]._seconds !== undefined) {
+          formatted[field] = new Date(formatted[field]._seconds * 1000);
+        } else {
+          // Handle ServerTimestampTransform
+          formatted[field] = new Date();
+        }
+      }
+    }
+  });
+  
+  return formatted;
 };
-
 const formatDocs = (docs) => {
   return docs.map((doc) => formatDoc(doc));
 };

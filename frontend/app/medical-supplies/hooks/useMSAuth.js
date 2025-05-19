@@ -11,21 +11,26 @@ import {
 import { auth } from "../api/firebase/config";
 import { usePathname, useRouter } from "next/navigation";
 import { GET_MS_ME } from "../api/graphql/queries";
+import { GET_MY_CART } from "../api/graphql/cart/cartQuery";
 import { INITIALIZE_MS_USER_PROFILE } from "../api/graphql/mutations";
 import client from "../api/graphql/client";
 import { useMutation } from "@apollo/client";
 import {
   ADD_TO_CART,
-  UPDATE_CART_ITEM,
-  REMOVE_FROM_CART,
+  ADD_SPECIFIC_BATCH_TO_CART,
+  UPDATE_CART_BATCH_ITEM,
+  REMOVE_PRODUCT_FROM_CART,
+  REMOVE_BATCH_FROM_CART,
   CLEAR_CART,
-} from "../api/graphql/mutations";
+} from "../api/graphql/cart/cartMutation";
+
 
 const MSAuthContext = createContext();
 
 export const MSAuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [cartData, setCartData] = useState({ items: [], totalItems: 0, totalPrice: 0 });
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,6 +39,36 @@ export const MSAuthProvider = ({ children }) => {
     INITIALIZE_MS_USER_PROFILE,
     { client }
   );
+  
+  // Initialize cart mutation hooks
+  const [addToCartMutation] = useMutation(ADD_TO_CART, { client });
+  const [addSpecificBatchMutation] = useMutation(ADD_SPECIFIC_BATCH_TO_CART, { client });
+  const [updateCartBatchItemMutation] = useMutation(UPDATE_CART_BATCH_ITEM, { client });
+  const [removeProductMutation] = useMutation(REMOVE_PRODUCT_FROM_CART, { client });
+  const [removeBatchMutation] = useMutation(REMOVE_BATCH_FROM_CART, { client });
+  const [clearCartMutation] = useMutation(CLEAR_CART, { client });
+
+   // Fetch cart data when user is authenticated
+   useEffect(() => {
+    const fetchCartData = async () => {
+      if (user && user.userId) {
+        try {
+          const { data } = await client.query({
+            query: GET_MY_CART,
+            fetchPolicy: "network-only",
+          });
+          
+          if (data && data.myCart) {
+            setCartData(data.myCart);
+          }
+        } catch (error) {
+          console.error("Error fetching cart data:", error);
+        }
+      }
+    };
+
+    fetchCartData();
+  }, [user]);
 
   useEffect(() => {
     const registrationPath = "/medical-supplies/auth/registering";
@@ -182,7 +217,18 @@ export const MSAuthProvider = ({ children }) => {
         address: profileData.address, //
         efdaLicenseUrl: profileData.efdaLicenseUrl, //
         businessLicenseUrl: profileData.businessLicenseUrl, //
-        cart: profileData.cart, //
+      });
+
+       // Fetch cart data after setting user
+       client.query({
+        query: GET_MY_CART,
+        fetchPolicy: "network-only",
+      }).then(({ data }) => {
+        if (data && data.myCart) {
+          setCartData(data.myCart);
+        }
+      }).catch(error => {
+        console.error("Error fetching cart data:", error);
       });
 
       const currentWaitingPath = userRole
@@ -397,109 +443,135 @@ export const MSAuthProvider = ({ children }) => {
   };
 
   // Cart operations remain the same
-  const addToCart = async (
-    //
-    productId, //
-    quantity, //
-    price, //
-    productName, //
-    productImage //
-  ) => {
+  // New Cart operations - Based on the useCart hook
+  const addToCart = async (productId, quantity) => {
     try {
-      const { data } = await client.mutate({
-        //
-        mutation: ADD_TO_CART, //
-        variables: { productId, quantity, price, productName, productImage }, //
+      const { data } = await addToCartMutation({
+        variables: {
+          input: { productId, quantity },
+        },
+        refetchQueries: [{ query: GET_MY_CART }],
       });
-
+      
       if (data && data.addToCart) {
-        //
-        // Update user state with new cart data
-        setUser((prevUser) => ({
-          //
-          ...prevUser, //
-          cart: data.addToCart.cart, //
-        }));
-        return data.addToCart; //
+        setCartData(data.addToCart);
+        return data.addToCart;
       }
-      return null; //
+      return null;
     } catch (error) {
-      console.error("Add to cart error:", error); //
-      throw error; //
+      console.error("Error adding to cart:", error);
+      throw error;
     }
   };
 
-  const updateCartItem = async (productId, quantity) => {
-    //
+  const addSpecificBatchToCart = async (productId, batchId, quantity) => {
     try {
-      const { data } = await client.mutate({
-        //
-        mutation: UPDATE_CART_ITEM, //
-        variables: { productId, quantity }, //
+      const { data } = await addSpecificBatchMutation({
+        variables: {
+          input: { productId, batchId, quantity },
+        },
+        refetchQueries: [{ query: GET_MY_CART }],
       });
-
-      if (data && data.updateCartItem) {
-        //
-        setUser((prevUser) => ({
-          //
-          ...prevUser, //
-          cart: data.updateCartItem.cart, //
-        }));
-        return data.updateCartItem; //
+      
+      if (data && data.addSpecificBatchToCart) {
+        setCartData(data.addSpecificBatchToCart);
+        return data.addSpecificBatchToCart;
       }
-      return null; //
+      return null;
     } catch (error) {
-      console.error("Update cart item error:", error); //
-      throw error; //
+      console.error("Error adding specific batch to cart:", error);
+      throw error;
     }
   };
 
-  const removeFromCart = async (productId) => {
-    //
+  const updateCartBatchItem = async (productId, batchId, quantity) => {
     try {
-      const { data } = await client.mutate({
-        //
-        mutation: REMOVE_FROM_CART, //
-        variables: { productId }, //
+      const { data } = await updateCartBatchItemMutation({
+        variables: {
+          input: { productId, batchId, quantity },
+        },
+        refetchQueries: [{ query: GET_MY_CART }],
       });
-
-      if (data && data.removeFromCart) {
-        //
-        setUser((prevUser) => ({
-          //
-          ...prevUser, //
-          cart: data.removeFromCart.cart, //
-        }));
-        return data.removeFromCart; //
+      
+      if (data && data.updateCartBatchItem) {
+        setCartData(data.updateCartBatchItem);
+        return data.updateCartBatchItem;
       }
-      return null; //
+      return null;
     } catch (error) {
-      console.error("Remove from cart error:", error); //
-      throw error; //
+      console.error("Error updating cart batch item:", error);
+      throw error;
+    }
+  };
+
+  const removeProductFromCart = async (productId) => {
+    try {
+      const { data } = await removeProductMutation({
+        variables: { productId },
+        refetchQueries: [{ query: GET_MY_CART }],
+      });
+      
+      if (data && data.removeProductFromCart) {
+        setCartData(data.removeProductFromCart);
+        return data.removeProductFromCart;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error removing product from cart:", error);
+      throw error;
+    }
+  };
+
+  const removeBatchFromCart = async (productId, batchId) => {
+    try {
+      const { data } = await removeBatchMutation({
+        variables: { productId, batchId },
+        refetchQueries: [{ query: GET_MY_CART }],
+      });
+      
+      if (data && data.removeBatchFromCart) {
+        setCartData(data.removeBatchFromCart);
+        return data.removeBatchFromCart;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error removing batch from cart:", error);
+      throw error;
     }
   };
 
   const clearCart = async () => {
-    //
     try {
-      const { data } = await client.mutate({
-        //
-        mutation: CLEAR_CART, //
+      const { data } = await clearCartMutation({
+        refetchQueries: [{ query: GET_MY_CART }],
       });
-
+      
       if (data && data.clearCart) {
-        //
-        setUser((prevUser) => ({
-          //
-          ...prevUser, //
-          cart: data.clearCart.cart, //
-        }));
-        return data.clearCart; //
+        setCartData(data.clearCart);
+        return data.clearCart;
       }
-      return null; //
+      return null;
     } catch (error) {
-      console.error("Clear cart error:", error); //
-      throw error; //
+      console.error("Error clearing cart:", error);
+      throw error;
+    }
+  };
+
+  const refreshCart = async () => {
+    try {
+      const { data } = await client.query({
+        query: GET_MY_CART,
+        fetchPolicy: "network-only",
+      });
+      
+      if (data && data.myCart) {
+        setCartData(data.myCart);
+        return data.myCart;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error refreshing cart:", error);
+      throw error;
     }
   };
 
@@ -517,30 +589,34 @@ export const MSAuthProvider = ({ children }) => {
   }
 
   return (
-    //
+    
     <MSAuthContext.Provider
       value={{
-        //
-        user, //
-        loading, //
-        signup, //
-        login, //
-        logout, //
-        signInWithGoogle, //
-        addToCart, //
-        updateCartItem, //
-        removeFromCart, //
+        
+        user, 
+        loading, 
+        cart: cartData, 
+        signup, 
+        login, 
+        logout, 
+        signInWithGoogle, 
+        addToCart, 
+        addSpecificBatchToCart, // New method for batch-specific operations
+        updateCartBatchItem, // Updated method for batch items
+        removeProductFromCart, // Renamed from removeFromCart
+        removeBatchFromCart, // New method for removing specific batches
         clearCart, //
+        refreshCart, // New method to manually refresh cart data
         canAccessRoute, // New utility function for role-based route checks
         // Helper function to get base path for the current user's role
         getRolePath: () =>
-          //
-          user?.role //
+          
+          user?.role 
             ? `/medical-supplies${
-                //
-                user.role === "admin" ? "/admin" : `/${user.role}` //
+                
+                user.role === "admin" ? "/admin" : `/${user.role}` 
               }`
-            : null, //
+            : null, 
       }}
     >
       {children} {/* */}
@@ -548,4 +624,4 @@ export const MSAuthProvider = ({ children }) => {
   );
 };
 
-export const useMSAuth = () => useContext(MSAuthContext); //
+export const useMSAuth = () => useContext(MSAuthContext); 

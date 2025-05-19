@@ -388,7 +388,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               <div className="flex items-center gap-2 md:gap-4 ">
                 {/* Chat Icon */}
                 <Link
-                  href={`${userType}/chats`}
+                  href={`/medical-supplies/${userType}/chats`}
                   className="hidden md:block relative"
                 >
                   <IconButton
@@ -400,7 +400,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
                 {/* Chat Icon */}
                 <Link
-                  href={`${userType}/carts`}
+                  href={`/medical-supplies/${userType}/carts`}
                   className="hidden md:block relative"
                 >
                   <IconButton
@@ -411,7 +411,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                 </Link>
 
                 {/* Notification Icon */}
-                <Link href={`${userType}/notifications`} className="relative">
+                <Link href={`/medical-supplies/${userType}/notifications`} className="relative">
                   <IconButton
                     icon={<Bell />}
                     isActive={false}

@@ -32,17 +32,7 @@ export const GET_MS_ME = gql`
       approvedAt
       efdaLicenseUrl
       businessLicenseUrl
-      cart {
-        items {
-          productId
-          quantity
-          price
-          productName
-          productImage
-        }
-        total
-        lastUpdated
-      }
+     
     }
   }
 `;

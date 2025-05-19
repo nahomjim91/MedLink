@@ -8,7 +8,7 @@ import { useMSAuth } from "../../../../hooks/useMSAuth";
 import { 
   CREATE_DRUG_BATCH,
   CREATE_EQUIPMENT_BATCH
-} from "../../../../api/graphql/productMutations";
+} from "../../../../api/graphql/product/productMutations";
 
 // Step Components
 import ProductDrugInventory from "./ProductDrugInventory";
