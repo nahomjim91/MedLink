@@ -19,20 +19,6 @@ const typeDefs = gql`
     geoLocationText: String
   }
 
-  type Cart {
-    items: [CartItem]
-    total: Float
-    lastUpdated: Date
-  }
-
-  type CartItem {
-    productId: ID!
-    quantity: Int!
-    price: Float!
-    productName: String
-    productImage: String
-  }
-
   type MSUser {
     userId: ID!
     email: String!
@@ -53,6 +39,61 @@ const typeDefs = gql`
     cart: Cart
   }
 
+
+  #"Represents a single batch item in a cart"
+  type CartBatchItem {
+    batchId: ID!
+    productId: ID!
+    quantity: Float!
+    unitPrice: Float!
+    addedAt: Date!
+    expiryDate: Date
+    batchSellerName: String!
+    batchSellerId: ID!
+  }
+
+  #"Represents a product in the cart, potentially with multiple batches"
+  type CartItem {
+    productId: ID!
+    productName: String!
+    productType: String!
+    productImage: String
+    batchItems: [CartBatchItem!]!
+    totalQuantity: Float!
+    totalPrice: Float!
+  }
+
+  #"Represents the user's shopping cart"
+  type Cart {
+    userId: ID!
+    items: [CartItem!]!
+    totalItems: Int!
+    totalPrice: Float!
+    lastUpdated: Date!
+  }
+
+  
+  #"Input for adding a specific batch to cart"
+  input AddSpecificBatchToCartInput {
+    productId: ID!
+    batchId: ID!
+    quantity: Float!
+  }
+
+  #"Input for adding product to cart with auto-batch selection"
+  input AddToCartInput {
+    productId: ID!
+    quantity: Float!
+  }
+
+  #"Input for updating a specific batch quantity in cart"
+  input UpdateCartBatchItemInput {
+    productId: ID!
+    batchId: ID!
+    quantity: Float!
+  }
+
+
   input AddressInput {
     street: String
     city: String
@@ -66,14 +107,6 @@ const typeDefs = gql`
   input GeoPointInput {
     latitude: Float!
     longitude: Float!
-  }
-
-  input CartItemInput {
-    productId: ID!
-    quantity: Int!
-    price: Float!
-    productName: String
-    productImage: String
   }
 
   input MSUserInput {
@@ -99,6 +132,10 @@ const typeDefs = gql`
 
     # Search queries
     searchMSUsers(query: String!, limit: Int, offset: Int): [MSUser]
+
+    # Cart queries
+    myCart: Cart
+    cartItemsByProduct(productId: ID!): CartItem
   }
 
   type Mutation {
@@ -112,16 +149,12 @@ const typeDefs = gql`
     rejectMSUser(userId: ID!, reason: String!): Boolean
 
     # Cart mutations
-    addToCart(
-      productId: ID!
-      quantity: Int!
-      price: Float!
-      productName: String
-      productImage: String
-    ): MSUser
-    updateCartItem(productId: ID!, quantity: Int!): MSUser
-    removeFromCart(productId: ID!): MSUser
-    clearCart: MSUser
+    addToCart(input: AddToCartInput!): Cart!
+    addSpecificBatchToCart(input: AddSpecificBatchToCartInput!): Cart!
+    updateCartBatchItem(input: UpdateCartBatchItemInput!): Cart!
+    removeProductFromCart(productId: ID!): Cart!
+    removeBatchFromCart(productId: ID!, batchId: ID!): Cart!
+    clearCart: Cart!
   }
 `;
 

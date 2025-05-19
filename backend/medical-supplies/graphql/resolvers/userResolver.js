@@ -2,6 +2,7 @@
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
 const MSUserModel = require("../../models/msUser");
+const CartModel = require("../../models/cartModel");
 const {
   AuthenticationError,
   ForbiddenError,
@@ -146,6 +147,26 @@ const resolvers = {
       await isAdmin(context);
       return await MSUserModel.search(query, limit, offset);
     },
+
+    myCart: async (_, __, context) => {
+      try {
+        const user = isAuthenticated(context);
+        return await CartModel.getByUserId(user.uid);
+      } catch (error) {
+        console.error("Error in myCart resolver:", error);
+        throw error;
+      }
+    },
+
+    cartItemsByProduct: async (_, { productId }, context) => {
+      try {
+        const user = isAuthenticated(context);
+        return await CartModel.getCartItemByProductId(user.uid, productId);
+      } catch (error) {
+        console.error("Error in cartItemsByProduct resolver:", error);
+        throw error;
+      }
+    },
   },
 
   Mutation: {
@@ -195,41 +216,71 @@ const resolvers = {
     },
 
     // Add to cart
-    addToCart: async (
-      _,
-      { productId, quantity, price, productName, productImage },
-      context
-    ) => {
-      const user = await hasRole(context, ["facility", "supplier"]);
-      return await MSUserModel.addToCart(user.uid, {
-        productId,
-        quantity,
-        price,
-        productName,
-        productImage,
-      });
+    addToCart: async (_, { input }, context) => {
+      try {
+        // Only facility and supplier roles can add to cart
+        const user = await hasRole(context, ["facility", "supplier"]);
+        return await CartModel.addToCart(user.uid, input);
+      } catch (error) {
+        console.error("Error in addToCart resolver:", error);
+        throw error;
+      }
     },
 
-    // Update cart item
-    updateCartItem: async (_, { productId, quantity }, context) => {
-      const user = await hasRole(context, ["facility", "supplier"]);
-      return await MSUserModel.updateCartItem(user.uid, productId, quantity);
+    addSpecificBatchToCart: async (_, { input }, context) => {
+      try {
+        const user = await hasRole(context, ["facility", "supplier"]);
+        return await CartModel.addSpecificBatchToCart(user.uid, input);
+      } catch (error) {
+        console.error("Error in addSpecificBatchToCart resolver:", error);
+        throw error;
+      }
     },
 
-    // Remove from cart
-    removeFromCart: async (_, { productId }, context) => {
-      const user = await hasRole(context, ["facility", "supplier"]);
-      return await MSUserModel.removeFromCart(user.uid, productId);
+    updateCartBatchItem: async (_, { input }, context) => {
+      try {
+        const user = await hasRole(context, ["facility", "supplier"]);
+        return await CartModel.updateCartBatchItem(user.uid, input);
+      } catch (error) {
+        console.error("Error in updateCartBatchItem resolver:", error);
+        throw error;
+      }
     },
 
-    // Clear cart
+    removeProductFromCart: async (_, { productId }, context) => {
+      try {
+        const user = await hasRole(context, ["facility", "supplier"]);
+        return await CartModel.removeProductFromCart(user.uid, productId);
+      } catch (error) {
+        console.error("Error in removeProductFromCart resolver:", error);
+        throw error;
+      }
+    },
+
+    removeBatchFromCart: async (_, { productId, batchId }, context) => {
+      try {
+        const user = await hasRole(context, ["facility", "supplier"]);
+        return await CartModel.removeBatchFromCart(
+          user.uid,
+          productId,
+          batchId
+        );
+      } catch (error) {
+        console.error("Error in removeBatchFromCart resolver:", error);
+        throw error;
+      }
+    },
+
     clearCart: async (_, __, context) => {
-      const user = await hasRole(context, ["facility", "supplier"]);
-      return await MSUserModel.clearCart(user.uid);
+      try {
+        const user = await hasRole(context, ["facility", "supplier"]);
+        return await CartModel.clearCart(user.uid);
+      } catch (error) {
+        console.error("Error in clearCart resolver:", error);
+        throw error;
+      }
     },
   },
 };
 
 module.exports = resolvers;
-
-
