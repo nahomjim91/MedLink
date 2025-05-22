@@ -1,9 +1,7 @@
 import { gql } from "@apollo/client";
 import {
   DRUG_BATCH_FIELDS,
-  DRUG_PRODUCT_FIELDS,
   EQUIPMENT_BATCH_FIELDS,
-  EQUIPMENT_PRODUCT_FIELDS,
 } from "./productFragments";
 
 // Query to get a product by ID

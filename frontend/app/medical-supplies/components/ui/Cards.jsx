@@ -317,13 +317,13 @@ export function TableCard({
   onDownload,
   tabs = [], // Array of tab objects: [{id: 'all', label: 'All Products'}, {id: 'active', label: 'Active'}, etc.]
   onTabChange, // Callback when tab changes
-  activeTab = 'all', // Default active tab
+  activeTab = "all", // Default active tab
   tabData = {}, // Data for each tab: {all: [...], active: [...], etc.}
   isLoading = false,
   isClickable = false,
   onClickRow = () => {},
   isAddButton = true,
-  isOrderButton = true
+  isOrderButton = true,
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [currentTab, setCurrentTab] = useState(activeTab);
@@ -402,7 +402,11 @@ export function TableCard({
       <div className="px-4 pt-2 flex justify-between items-center">
         <h2 className="text-xl font-medium">{title}</h2>
         <div className="flex gap-x-2">
-          <Button color="primary" className={`${!isAddButton ? "hidden" : ""}`} onClick={onAddItem}>
+          <Button
+            color="primary"
+            className={`${!isAddButton ? "hidden" : ""}`}
+            onClick={onAddItem}
+          >
             Add Product
           </Button>
 
@@ -419,7 +423,9 @@ export function TableCard({
             variant="outline"
             color="primary"
             onClick={onDownload}
-            className={`${!isOrderButton ? "hidden" : "flex"}  gap-3 items-center px-5`}
+            className={`${
+              !isOrderButton ? "hidden" : "flex"
+            }  gap-3 items-center px-5`}
           >
             Order History
           </Button>
@@ -436,17 +442,19 @@ export function TableCard({
                 onClick={() => handleTabChange(tab.id)}
                 className={`py-3 px-4 text-sm font-medium relative ${
                   currentTab === tab.id
-                    ? 'text-primary border-b-2 border-primary'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 {tab.label}
                 {tab.count !== undefined && (
-                  <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                    currentTab === tab.id
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <span
+                    className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                      currentTab === tab.id
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
                     {tab.count}
                   </span>
                 )}
@@ -476,10 +484,15 @@ export function TableCard({
             <tbody>
               {displayData.map((item, index) => (
                 <React.Fragment key={item.id || item.orderNo || `row-${index}`}>
-                  <tr className={index % 2 === 0 ? "bg-white" : "bg-gray-50"} onClick={ isClickable ? () => onClickRow(item) : null}>
+                  <tr
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    onClick={isClickable ? () => onClickRow(item) : null}
+                  >
                     {columns.map((column) => (
                       <td
-                        key={`${item.id || item.orderNo || index}-${column.key}`}
+                        key={`${item.id || item.orderNo || index}-${
+                          column.key
+                        }`}
                         className="px-4 py-2 border-b border-gray-200 text-secondary"
                       >
                         {renderCell(item, column)}
@@ -509,8 +522,15 @@ export function TableCard({
             </tbody>
           </table>
         ) : (
-          <div className="text-center py-10 text-gray-500">
-            No data available for this tab
+          <div className="flex flex-col items-center justify-center space-y-4 py-3 ">
+            <Image
+              src={`/Image/Empty-amico.svg`} // Assuming you have a 'No data-cuate.svg' for rejected
+              alt={`Empty data`}
+              width={350}
+              height={200}
+              className="mx-auto"
+            />
+            <p className="text-xl text-secondary">No data found</p>
           </div>
         )}
       </div>

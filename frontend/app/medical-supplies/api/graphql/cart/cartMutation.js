@@ -39,7 +39,7 @@ export const REMOVE_PRODUCT_FROM_CART = gql`
   ${CART_FRAGMENT}
 `;
 
-export const REMOVE_BATCH_FROM_CART = gql`
+export const  REMOVE_BATCH_FROM_CART = gql`
   mutation RemoveBatchFromCart($productId: ID!, $batchId: ID!) {
     removeBatchFromCart(productId: $productId, batchId: $batchId) {
       ...CartFields

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import {
@@ -16,6 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Syringe, Pill } from "lucide-react";
 
+// Move RelatedProducts component outside to prevent unnecessary re-renders
 const RelatedProducts = ({ currentProductId, productType, category, role }) => {
   const [relatedProducts, setRelatedProducts] = useState([]);
 
@@ -31,7 +32,7 @@ const RelatedProducts = ({ currentProductId, productType, category, role }) => {
       },
     },
     skip: !productType, // skip if no product type
-    fetchPolicy: "network-only",
+    fetchPolicy: "cache-first", // Use cache-first instead of network-only for better performance
   });
 
   useEffect(() => {
@@ -52,7 +53,6 @@ const RelatedProducts = ({ currentProductId, productType, category, role }) => {
       </div>
     );
   if (!relatedProducts || relatedProducts.length === 0) return null;
-  console.log("Related products:", relatedProducts);
 
   const isEquipment = productType === "EQUIPMENT";
   const ProductIcon = isEquipment ? Syringe : Pill;
@@ -127,159 +127,196 @@ const RelatedProducts = ({ currentProductId, productType, category, role }) => {
     </div>
   );
 };
+
 export default function ProductDetails() {
   const searchParams = useSearchParams();
   const productId = searchParams.get("id");
-  const { data, loading, error, refetch } = useQuery(GET_PRODUCT_BY_ID, {
+
+  // GraphQL query
+  const {
+    data: rawData,
+    loading,
+    error,
+    refetch,
+  } = useQuery(GET_PRODUCT_BY_ID, {
     variables: { productId },
-    skip: !productId, // skip if no ID
+    skip: !productId,
+    fetchPolicy: "cache-and-network", // Better caching strategy
+    errorPolicy: "all",
   });
-  const { user, addToCart, addSpecificBatchToCart, refreshCart } = useMSAuth();
+
+  // Auth and cart data
+  const {
+    user,
+    addToCart,
+    addSpecificBatchToCart,
+    updateCartBatchItem,
+    refreshCart,
+    cart: cartData,
+  } = useMSAuth();
+
+  // Local state
   const [activeTab, setActiveTab] = useState("automatically");
   const [quantity, setQuantity] = useState(1);
   const [selectedBatches, setSelectedBatches] = useState({});
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [cartMessage, setCartMessage] = useState({ type: "", message: "" });
 
-  if (loading)
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
-      </div>
-    );
-  if (error)
-    return (
-      <div className="flex justify-center items-center h-screen text-red-500">
-        Error: {error.message}
-      </div>
-    );
-  if (!data || !data.productById)
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Product not found
-      </div>
-    );
+  // Memoized cart product to avoid unnecessary recalculations
+  const cartProduct = useMemo(() => {
+    return cartData?.items?.find((item) => item.productId === productId);
+  }, [cartData?.items, productId]);
 
-  const product = data.productById;
-  const batches = product.batches || [];
-  const isDrugProduct = product.__typename === "DrugProduct";
-  const isEquipmentProduct = product.__typename === "EquipmentProduct";
+  // Memoized function to get available quantity for a batch
+  const getAvailableQuantity = useCallback(
+    (batch) => {
+      if (!cartProduct?.batchItems || !batch) return batch?.quantity || 0;
 
-  // Sort batches by expiry date for automatic selection (drugs only)
-  const sortedBatches = isDrugProduct
-    ? [...batches].sort(
-        (a, b) => new Date(a.expiryDate) - new Date(b.expiryDate)
-      )
-    : batches;
+      const batchInCart = cartProduct.batchItems.find(
+        (cartBatch) => cartBatch.batchId === batch.batchId
+      );
 
-  const handleQuantityChange = (e) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0) {
-      setQuantity(value);
+      return batchInCart
+        ? Math.max(0, (batch.quantity || 0) - batchInCart.quantity)
+        : batch.quantity || 0;
+    },
+    [cartProduct?.batchItems]
+  );
+
+  // Process and filter product data based on cart quantities
+  const processedData = useMemo(() => {
+    if (!rawData?.productById) return null;
+
+    const product = rawData.productById;
+    const originalBatches = product.batches || [];
+
+    // Filter out batches with no available quantity
+    const processedBatches = originalBatches
+      .map((batch) => ({
+        ...batch,
+        availableQuantity: getAvailableQuantity(batch),
+        originalQuantity: batch.quantity,
+      }))
+      .filter((batch) => batch.availableQuantity > 0);
+
+    return {
+      ...product,
+      batches: processedBatches,
+    };
+  }, [rawData, getAvailableQuantity]);
+
+  // Memoized total available quantity
+  const totalAvailableQuantity = useMemo(() => {
+    if (!processedData?.batches) return 0;
+    return processedData.batches.reduce(
+      (total, batch) => total + batch.availableQuantity,
+      0
+    );
+  }, [processedData?.batches]);
+
+  // Memoized sorted batches for drug products
+  const sortedBatches = useMemo(() => {
+    if (!processedData?.batches) return [];
+
+    const isDrugProduct = processedData.__typename === "DrugProduct";
+
+    return isDrugProduct
+      ? [...processedData.batches].sort(
+          (a, b) => new Date(a.expiryDate) - new Date(b.expiryDate)
+        )
+      : processedData.batches;
+  }, [processedData]);
+
+  // Reset quantity when total available quantity changes
+  useEffect(() => {
+    if (quantity > totalAvailableQuantity && totalAvailableQuantity > 0) {
+      setQuantity(Math.min(quantity, totalAvailableQuantity));
     }
-  };
+  }, [totalAvailableQuantity, quantity]);
 
-  const handleBatchQuantityChange = (batchId, value) => {
-    const newQuantity = parseInt(value, 10);
-    if (!isNaN(newQuantity) && newQuantity >= 0) {
+  // Reset selected batches when switching to manual mode or when cart updates
+  useEffect(() => {
+    if (activeTab === "manually" && processedData?.batches) {
+      setSelectedBatches((prevBatches) => {
+        const updatedBatches = {};
+
+        // Only keep batches that still exist and have available quantity
+        Object.entries(prevBatches).forEach(([batchId, selectedQty]) => {
+          const batch = processedData.batches.find(
+            (b) => b.batchId === batchId
+          );
+          if (batch && batch.availableQuantity > 0) {
+            updatedBatches[batchId] = Math.min(
+              selectedQty,
+              batch.availableQuantity
+            );
+          }
+        });
+
+        return updatedBatches;
+      });
+    }
+  }, [activeTab, processedData?.batches]);
+
+  // Clear cart message after 5 seconds
+  useEffect(() => {
+    if (cartMessage.message) {
+      const timer = setTimeout(() => {
+        setCartMessage({ type: "", message: "" });
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [cartMessage.message]);
+
+  // Event handlers
+  const handleQuantityChange = useCallback(
+    (e) => {
+      const value = parseInt(e.target.value, 10);
+      if (!isNaN(value) && value > 0) {
+        setQuantity(Math.min(value, totalAvailableQuantity));
+      }
+    },
+    [totalAvailableQuantity]
+  );
+
+  const handleBatchQuantityChange = useCallback(
+    (batchId, value) => {
+      const newQuantity = parseInt(value, 10);
+      if (isNaN(newQuantity) || newQuantity < 0) return;
+
+      const batch = processedData?.batches?.find((b) => b.batchId === batchId);
+      if (!batch) return;
+
       setSelectedBatches((prev) => ({
         ...prev,
-        [batchId]: newQuantity,
+        [batchId]: Math.min(newQuantity, batch.availableQuantity),
       }));
-    }
-  };
+    },
+    [processedData?.batches]
+  );
 
-  const handleTabChange = (tab) => {
+  const handleTabChange = useCallback((tab) => {
     setActiveTab(tab);
     setSelectedBatches({});
-  };
+    setCartMessage({ type: "", message: "" });
+  }, []);
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
+    if (isAddingToCart) return;
+
     setIsAddingToCart(true);
     setCartMessage({ type: "", message: "" });
 
     try {
       if (activeTab === "automatically") {
-        // Automatic mode: Distribute quantity across batches starting with the earliest expiry
-        let remainingQuantity = quantity;
-        let success = false;
-
-        // For drugs with expiry dates, use sorted batches (earliest expiry first)
-        // For equipment or when no expiry, use batches as is
-        const batchesToUse = isDrugProduct ? sortedBatches : batches;
-
-        // Try to fulfill the order with multiple batch additions if needed
-        for (const batch of batchesToUse) {
-          if (remainingQuantity <= 0) break;
-
-          // Determine how much we can take from this batch
-          const quantityFromBatch = Math.min(remainingQuantity, batch.quantity);
-
-          if (quantityFromBatch > 0) {
-            // Add this specific batch to cart
-            await addSpecificBatchToCart(
-              product.productId,
-              batch.batchId,
-              quantityFromBatch
-            );
-
-            remainingQuantity -= quantityFromBatch;
-            success = true;
-          }
-        }
-
-        if (success) {
-          setCartMessage({
-            type: "success",
-            message: `Added ${quantity - remainingQuantity} items to cart`,
-          });
-
-          // If we couldn't fulfill the entire quantity, inform the user
-          if (remainingQuantity > 0) {
-            setCartMessage({
-              type: "warning",
-              message: `Added ${
-                quantity - remainingQuantity
-              } items to cart. Could not add remaining ${remainingQuantity} due to insufficient stock.`,
-            });
-          }
-        } else {
-          setCartMessage({
-            type: "error",
-            message: "Could not add to cart. Insufficient stock available.",
-          });
-        }
+        await handleAutomaticAddToCart();
       } else {
-        // Manual mode: Add selected batches as specified by user
-        const batchSelections = Object.entries(selectedBatches);
-        let totalAdded = 0;
-
-        if (batchSelections.length === 0) {
-          setCartMessage({
-            type: "error",
-            message: "Please select quantities for at least one batch",
-          });
-        } else {
-          for (const [batchId, batchQuantity] of batchSelections) {
-            if (batchQuantity > 0) {
-              await addSpecificBatchToCart(
-                product.productId,
-                batchId,
-                batchQuantity
-              );
-              totalAdded += batchQuantity;
-            }
-          }
-
-          setCartMessage({
-            type: "success",
-            message: `Added ${totalAdded} items to cart from selected batches`,
-          });
-        }
+        await handleManualAddToCart();
       }
 
-      // Refresh cart data after all operations
-      await refreshCart();
+      // Refresh cart and product data
+      await Promise.all([refreshCart(), refetch()]);
     } catch (error) {
       console.error("Error adding to cart:", error);
       setCartMessage({
@@ -289,15 +326,116 @@ export default function ProductDetails() {
     } finally {
       setIsAddingToCart(false);
     }
+  }, [
+    isAddingToCart,
+    activeTab,
+    quantity,
+    selectedBatches,
+    processedData,
+    cartProduct,
+  ]);
+
+  const handleAutomaticAddToCart = async () => {
+    let remainingQuantity = quantity;
+    let totalAdded = 0;
+
+    for (const batch of sortedBatches) {
+      if (remainingQuantity <= 0) break;
+
+      const quantityFromBatch = Math.min(
+        remainingQuantity,
+        batch.availableQuantity
+      );
+      if (quantityFromBatch <= 0) continue;
+
+      const batchInCart = cartProduct?.batchItems?.find(
+        (b) => b.batchId === batch.batchId
+      );
+
+      if (batchInCart) {
+        await updateCartBatchItem(
+          processedData.productId,
+          batch.batchId,
+          batchInCart.quantity + quantityFromBatch
+        );
+      } else {
+        await addSpecificBatchToCart(
+          processedData.productId,
+          batch.batchId,
+          quantityFromBatch
+        );
+      }
+
+      remainingQuantity -= quantityFromBatch;
+      totalAdded += quantityFromBatch;
+    }
+
+    if (totalAdded > 0) {
+      setCartMessage({
+        type: remainingQuantity > 0 ? "warning" : "success",
+        message:
+          remainingQuantity > 0
+            ? `Added ${totalAdded} items to cart. Could not add remaining ${remainingQuantity} due to insufficient stock.`
+            : `Added ${totalAdded} items to cart`,
+      });
+      setQuantity(1);
+    } else {
+      setCartMessage({
+        type: "error",
+        message: "Could not add to cart. Insufficient stock available.",
+      });
+    }
   };
 
+  const handleManualAddToCart = async () => {
+    const batchSelections = Object.entries(selectedBatches).filter(
+      ([_, qty]) => qty > 0
+    );
+
+    if (batchSelections.length === 0) {
+      setCartMessage({
+        type: "error",
+        message: "Please select quantities for at least one batch",
+      });
+      return;
+    }
+
+    let totalAdded = 0;
+
+    for (const [batchId, batchQuantity] of batchSelections) {
+      const batchInCart = cartProduct?.batchItems?.find(
+        (b) => b.batchId === batchId
+      );
+
+      if (batchInCart) {
+        await updateCartBatchItem(
+          processedData.productId,
+          batchId,
+          batchInCart.quantity + batchQuantity
+        );
+      } else {
+        await addSpecificBatchToCart(
+          processedData.productId,
+          batchId,
+          batchQuantity
+        );
+      }
+
+      totalAdded += batchQuantity;
+    }
+
+    setCartMessage({
+      type: "success",
+      message: `Added ${totalAdded} items to cart from selected batches`,
+    });
+    setSelectedBatches({});
+  };
+
+  // Utility functions
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-  };
-
-  const getTotalAvailableQuantity = () => {
-    return batches.reduce((total, batch) => total + (batch.quantity || 0), 0);
   };
 
   const InfoRow = ({ label, value }) => (
@@ -306,31 +444,89 @@ export default function ProductDetails() {
         <h2 className="text-lg font-semibold text-secondary/80">{label}</h2>
       </div>
       <div className="w-full md:w-2/3">
-        <p className="text-secondary/60">{value}</p>
+        <p className="text-secondary/60">{value || "N/A"}</p>
       </div>
     </div>
   );
 
+  // Memoize the props for RelatedProducts to prevent unnecessary re-renders
+  const relatedProductsProps = useMemo(
+    () => ({
+      productType:
+        processedData?.__typename === "DrugProduct" ? "DRUG" : "EQUIPMENT",
+      currentProductId: processedData?.productId,
+      category: processedData?.category,
+      role: user?.role,
+    }),
+    [
+      processedData?.__typename,
+      processedData?.productId,
+      processedData?.category,
+      user?.role,
+    ]
+  );
+
+  // Loading and error states
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen text-red-500">
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">Error Loading Product</h2>
+          <p>{error.message}</p>
+          <Button onClick={() => refetch()} className="mt-4">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!processedData) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h2 className="text-xl font-bold">Product Not Found</h2>
+          <p className="text-gray-600 mt-2">
+            The requested product could not be found.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const isDrugProduct = processedData.__typename === "DrugProduct";
+  const isEquipmentProduct = processedData.__typename === "EquipmentProduct";
+
   return (
     <div className="overflow-hidden mx-auto p-4 bg-white rounded-xl">
-      <div className="h-[85vh] overflow-y-scroll w-full">
+      <div className="h-[85vh] overflow-y-auto w-full">
         {/* Product content */}
         <div className="flex flex-col md:flex-row gap-6 w-full">
           {/* Image Gallery */}
           <div className="w-full md:w-1/3 pl-4">
             <ProductImageGallery
-              images={product.imageList || []}
+              images={processedData.imageList || []}
               type={isDrugProduct ? "DRUG" : "EQUIPMENT"}
               imageSize="h-64"
             />
           </div>
+
           {/* Product details */}
           <div className="w-full md:w-2/3 px-5">
             {/* Header */}
             <div className="mb-4 border-b border-secondary/20 border-dashed pb-4">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-secondary">
-                  {product.name} {isDrugProduct && product.concentration}
+                  {processedData.name}{" "}
+                  {isDrugProduct && processedData.concentration}
                 </h1>
                 <div className="flex items-center">
                   <span className="text-secondary/50 mr-2">1238 Sold</span>
@@ -342,48 +538,36 @@ export default function ProductDetails() {
             {/* Main product info */}
             <div className="max-w-4xl mx-auto px-6 rounded-lg">
               <div className="space-y-2">
-                {/* Category - common for both types */}
-                <InfoRow
-                  label="Category"
-                  value={product.category || "Antibiotics"}
-                />
+                <InfoRow label="Category" value={processedData.category} />
 
-                {/* Conditional rendering based on product type */}
                 {isDrugProduct ? (
                   <>
                     <InfoRow
                       label="Package Type"
-                      value={product.packageType || "Tablets"}
+                      value={processedData.packageType}
                     />
                     <InfoRow
                       label="Manufacturer"
-                      value={product.batches?.[0]?.manufacturer || "XYZ"}
+                      value={processedData.batches?.[0]?.manufacturer}
                     />
                     <InfoRow
                       label="Country"
-                      value={
-                        product.batches?.[0]?.manufacturerCountry || "China"
-                      }
+                      value={processedData.batches?.[0]?.manufacturerCountry}
                     />
                   </>
-                ) : (
-                  <></>
-                )}
-
-                {/* Description - common for both types */}
-                {/* Equipment-specific fields */}
-                {isEquipmentProduct && (
+                ) : isEquipmentProduct ? (
                   <>
                     <InfoRow
                       label="Warranty information"
-                      value={product.warrantyInfo || "Three and half year"}
+                      value={processedData.warrantyInfo}
                     />
                     <InfoRow
                       label="Spare Parts"
-                      value={product.sparePartInfo.join(", ")}
+                      value={processedData.sparePartInfo?.join(", ")}
                     />
                   </>
-                )}
+                ) : null}
+
                 <div className="flex flex-col">
                   <div>
                     <h2 className="text-lg font-bold text-secondary/80">
@@ -391,7 +575,9 @@ export default function ProductDetails() {
                     </h2>
                   </div>
                   <div className="mt-2">
-                    <p className="text-secondary/60">{product.description}</p>
+                    <p className="text-secondary/60">
+                      {processedData.description}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -400,40 +586,40 @@ export default function ProductDetails() {
             {/* Purchase section */}
             <div className="mt-3">
               {/* Selection mode tabs for drugs */}
-              {isDrugProduct && (
+               
                 <div className="flex border-b border-secondary/20 mb-4">
                   <button
-                    className={`py-2 px-4 font-semibold ${
+                    className={`py-2 px-4 font-semibold transition-colors ${
                       activeTab === "automatically"
                         ? "border-b-2 border-primary text-primary"
-                        : "text-secondary/80"
+                        : "text-secondary/80 hover:text-secondary"
                     }`}
                     onClick={() => handleTabChange("automatically")}
                   >
                     Automatically
                   </button>
                   <button
-                    className={`py-2 px-4 font-semibold ${
+                    className={`py-2 px-4 font-semibold transition-colors ${
                       activeTab === "manually"
                         ? "border-b-2 border-primary text-primary"
-                        : "text-secondary/80"
+                        : "text-secondary/80 hover:text-secondary"
                     }`}
                     onClick={() => handleTabChange("manually")}
                   >
                     Manually
                   </button>
                 </div>
-              )}
+              
 
               {/* Cart message feedback */}
               {cartMessage.message && (
                 <div
-                  className={`mb-4 p-3 rounded-lg ${
+                  className={`mb-4 p-3 rounded-lg border ${
                     cartMessage.type === "success"
-                      ? "bg-green-100 text-green-800"
+                      ? "bg-green-50 text-green-800 border-green-200"
                       : cartMessage.type === "warning"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
+                      ? "bg-yellow-50 text-yellow-800 border-yellow-200"
+                      : "bg-red-50 text-red-800 border-red-200"
                   }`}
                 >
                   {cartMessage.message}
@@ -445,23 +631,26 @@ export default function ProductDetails() {
                 <div className="w-1/3 mb-4">
                   <NumberInput
                     value={quantity}
-                    label={"Quantity"}
+                    label="Quantity"
                     onChange={handleQuantityChange}
                     min={1}
-                    max={getTotalAvailableQuantity()}
+                    max={totalAvailableQuantity}
                   />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Available: {totalAvailableQuantity} units
+                  </p>
                 </div>
               )}
 
-              {/* Batch selection (manual mode for drugs or equipment) */}
-              <div className="w-full px-4">
-                {(activeTab === "manually" || isEquipmentProduct) &&
-                  batches.length > 0 && (
+              {/* Batch selection */}
+              {(activeTab === "manually") &&
+                processedData.batches?.length > 0 && (
+                  <div className="w-full px-4">
                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-                      {batches.map((batch) => (
+                      {processedData.batches.map((batch) => (
                         <div
                           key={batch.batchId}
-                          className="flex-shrink-0 bg-background/20 rounded-lg p-3 pb-0 relative shadow-lg hover:shadow-xl w-64 snap-start border border-gray-200"
+                          className="flex-shrink-0 bg-background/20 rounded-lg p-3 pb-0 relative shadow-lg hover:shadow-xl w-64 snap-start border border-gray-200 transition-shadow"
                         >
                           <div className="text-sm">
                             <div className="flex justify-between mb-1">
@@ -481,18 +670,18 @@ export default function ProductDetails() {
                               </span>
                             </div>
                             <div className="flex justify-between mb-1">
-                              <span className="font-medium">Item left</span>
-                              <span>{batch.quantity || 5} units</span>
+                              <span className="font-medium">Available</span>
+                              <span className="text-green-600 font-semibold">
+                                {batch.availableQuantity} units
+                              </span>
                             </div>
                             <div className="flex justify-between mb-1">
                               <span className="font-medium">Manufacturer</span>
-                              <span>{batch.manufacturer || "XYZ MD"}</span>
+                              <span>{batch.manufacturer || "N/A"}</span>
                             </div>
                             <div className="flex justify-between mb-1">
                               <span className="font-medium">Country</span>
-                              <span>
-                                {batch.manufacturerCountry || "China"}
-                              </span>
+                              <span>{batch.manufacturerCountry || "N/A"}</span>
                             </div>
                             <div className="flex justify-between mb-2">
                               <span className="font-medium">Unit Price</span>
@@ -503,7 +692,7 @@ export default function ProductDetails() {
                             <div className="text-xs text-gray-500 mb-2">
                               <div className="flex justify-between">
                                 <span>Total pricing</span>
-                                <span>
+                                <span className="font-semibold">
                                   $
                                   {(
                                     (batch.sellingPrice || 120) *
@@ -515,7 +704,7 @@ export default function ProductDetails() {
                             <div className="mt-2">
                               <NumberInput
                                 value={selectedBatches[batch.batchId] || 0}
-                                label={"Quantity"}
+                                label="Quantity"
                                 onChange={(e) =>
                                   handleBatchQuantityChange(
                                     batch.batchId,
@@ -523,26 +712,32 @@ export default function ProductDetails() {
                                   )
                                 }
                                 min={0}
-                                max={batch.quantity}
+                                max={batch.availableQuantity}
                               />
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-              </div>
+                  </div>
+                )}
 
               {/* Add to cart button */}
               <div className="flex space-x-4 pb-5 mt-4">
                 <Button
                   onClick={handleAddToCart}
-                  disabled={isAddingToCart}
+                  disabled={isAddingToCart || totalAvailableQuantity === 0}
                   className={
-                    isAddingToCart ? "opacity-70 cursor-not-allowed" : ""
+                    isAddingToCart || totalAvailableQuantity === 0
+                      ? "opacity-70 cursor-not-allowed"
+                      : ""
                   }
                 >
-                  {isAddingToCart ? "Adding..." : "Add To Cart"}
+                  {isAddingToCart
+                    ? "Adding..."
+                    : totalAvailableQuantity === 0
+                    ? "Out of Stock"
+                    : "Add To Cart"}
                 </Button>
                 <Button variant="outline" className="px-8">
                   Contact
@@ -551,13 +746,10 @@ export default function ProductDetails() {
             </div>
           </div>
         </div>
+
         {/* Related Products */}
         <div>
-          <RelatedProducts
-            productType={isDrugProduct ? "DRUG" : "EQUIPMENT"}
-            currentProductId={product.productId}
-            role={user.role}
-          />
+          <RelatedProducts {...relatedProductsProps} />
         </div>
       </div>
     </div>

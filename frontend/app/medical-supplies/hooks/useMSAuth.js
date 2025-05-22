@@ -444,6 +444,8 @@ export const MSAuthProvider = ({ children }) => {
 
   // Cart operations remain the same
   // New Cart operations - Based on the useCart hook
+
+  // useMSauth
   const addToCart = async (productId, quantity) => {
     try {
       const { data } = await addToCartMutation({
@@ -524,6 +526,7 @@ export const MSAuthProvider = ({ children }) => {
 
   const removeBatchFromCart = async (productId, batchId) => {
     try {
+      console.log("Removing batch from cart:", productId, "with batch ID:",batchId);
       const { data } = await removeBatchMutation({
         variables: { productId, batchId },
         refetchQueries: [{ query: GET_MY_CART }],
@@ -601,12 +604,12 @@ export const MSAuthProvider = ({ children }) => {
         logout, 
         signInWithGoogle, 
         addToCart, 
-        addSpecificBatchToCart, // New method for batch-specific operations
+        addSpecificBatchToCart, // batch-specific operations
         updateCartBatchItem, // Updated method for batch items
         removeProductFromCart, // Renamed from removeFromCart
-        removeBatchFromCart, // New method for removing specific batches
+        removeBatchFromCart, // removing specific batches
         clearCart, //
-        refreshCart, // New method to manually refresh cart data
+        refreshCart,// manually refresh cart data
         canAccessRoute, // New utility function for role-based route checks
         // Helper function to get base path for the current user's role
         getRolePath: () =>

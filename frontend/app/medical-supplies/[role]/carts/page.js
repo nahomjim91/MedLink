@@ -11,8 +11,7 @@ export default function Carts() {
     user,
     cart,
     loading,
-    updateCartBatchItem,
-    removeBatchFromCart,
+    removeProductFromCart,
     clearCart,
   } = useMSAuth();
   const router = useRouter();
@@ -35,7 +34,7 @@ export default function Carts() {
   // Handle item removal
   const handleRemoveItem = async (productId, batchId) => {
     try {
-      await removeBatchFromCart(productId, batchId);
+      await removeProductFromCart(productId);
     } catch (error) {
       console.error("Failed to remove item:", error);
     }
@@ -165,12 +164,12 @@ export default function Carts() {
             </div>
           </div>
         </div>
-        <button
+        <div
           className=" text-red-500 hover:text-red-700 bg-white rounded-full p-2"
           onClick={() => handleRemoveItem(item.productId)}
         >
           <Trash2Icon className="w-6 h-6" />
-        </button>
+        </div>
       </div>
     );
   };

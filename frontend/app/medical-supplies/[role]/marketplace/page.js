@@ -11,7 +11,7 @@ import {
   Calendar,
   ShoppingBag,
 } from "lucide-react";
-import { useQuery, gql } from "@apollo/client";
+import { useQuery } from "@apollo/client";
 import { SEARCH_PRODUCTS } from "../../api/graphql/product/productQueries";
 import Image from "next/image";
 import { Button } from "../../components/ui/Button";

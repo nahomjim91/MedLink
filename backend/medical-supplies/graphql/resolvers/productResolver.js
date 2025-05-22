@@ -4,7 +4,6 @@ const { Kind } = require("graphql/language");
 const { UserInputError, ApolloError } = require("apollo-server-express");
 const ProductModel = require("../../models/productModel");
 const BatchModel = require("../../models/batchModel");
-const { admin } = require("../../../config/firebase");
 const {
   isAuthenticated,
   hasRole,
@@ -17,11 +16,11 @@ const dateScalar = new GraphQLScalarType({
   description: "Date custom scalar type",
   serialize(value) {
     // Debug logging to help identify the issue
-    console.log("Date scalar serializing:", value);
+    // console.log("Date scalar serializing:", value);
     
     // Handle case when value is null or undefined
     if (value == null) {
-      console.log("Date value is null/undefined, returning null");
+      // console.log("Date value is null/undefined, returning null");
       return null;
     }
 
@@ -31,7 +30,7 @@ const dateScalar = new GraphQLScalarType({
       value._seconds !== undefined &&
       value._nanoseconds !== undefined
     ) {
-      console.log("Converting Firestore timestamp to milliseconds");
+      // console.log("Converting Firestore timestamp to milliseconds");
       // Convert Firestore timestamp to milliseconds
       return value._seconds * 1000 + Math.floor(value._nanoseconds / 1000000);
     }
@@ -42,31 +41,31 @@ const dateScalar = new GraphQLScalarType({
       ((value.constructor && value.constructor.name === 'ServerTimestampTransform') ||
        (typeof value === 'object' && Object.keys(value).length === 0))
     ) {
-      console.log("Handling ServerTimestampTransform or empty object, returning current timestamp");
+      // console.log("Handling ServerTimestampTransform or empty object, returning current timestamp");
       // Always return current timestamp for server timestamp transforms
       return Date.now();
     }
 
     if (value instanceof Date) {
-      console.log("Converting Date object to timestamp");
+      // console.log("Converting Date object to timestamp");
       return value.getTime(); // Convert outgoing Date to integer for JSON
     }
 
     if (typeof value === 'string') {
-      console.log("Converting string date to timestamp");
+      // console.log("Converting string date to timestamp");
       return new Date(value).getTime();
     }
     
     if (typeof value === 'number') {
-      console.log("Value is already a number timestamp");
+      // console.log("Value is already a number timestamp");
       return value;
     }
 
     // If we get here, we have an unhandled type
-    console.log("Unhandled value type for serialization:", value);
+    // console.log("Unhandled value type for serialization:", value);
     
     // Return current timestamp as fallback
-    console.log("Using current timestamp as fallback");
+    // console.log("Using current timestamp as fallback");
     return Date.now();
   },
   parseValue(value) {
@@ -161,9 +160,9 @@ const productResolvers = {
       }
     },
     searchProducts: async (_, { searchInput }, context) => {
-      await isAuthenticated(context);
+      const user = await isAuthenticated(context);
       try {
-        return ProductModel.searchProducts(searchInput);
+        return ProductModel.searchProducts(searchInput , user.uid);
       } catch (error) {
         console.error("Error in searchProducts resolver:", error);
         throw new ApolloError(
