@@ -6,6 +6,7 @@ const path = require('path');
 // Import each schema file
 const userSchema = require('./userSchemas');
 const productSchema = require('./productSchema');
+const orderSchema = require('./orderSchema');
 
 // Base schema with common types and queries
 const baseSchema = gql`
@@ -19,4 +20,4 @@ const baseSchema = gql`
 `;
 
 // Combine and export all schemas
-module.exports = [baseSchema, userSchema, productSchema];
+module.exports = [baseSchema, userSchema, productSchema, orderSchema];

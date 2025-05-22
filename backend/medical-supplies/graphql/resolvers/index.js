@@ -1,16 +1,19 @@
 // File: /graphql/resolvers/index.js
 const userResolvers = require('./userResolver');
 const productResolvers = require('./productResolver'); 
+const orderResolvers = require('./orderResolver'); // Import order resolvers
 
 // Merge resolvers
 const resolvers = {
   Query: {
     ...userResolvers.Query,
     ...productResolvers.Query,
+    ...orderResolvers.Query
   },
   Mutation: {
     ...userResolvers.Mutation,
     ...productResolvers.Mutation,
+    ...orderResolvers.Mutation
   },
   // Custom scalars
   Date: productResolvers.Date, // Ensure Date scalar is included only once

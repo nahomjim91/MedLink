@@ -9,6 +9,7 @@ import {
   Search,
   Send,
   Plus,
+  FileText,
 } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { IconButton } from "./Button";
@@ -492,7 +493,7 @@ export function DateInput({
   return (
     <div className={`mb-4 ${fullWidth ? "w-full" : ""} ${className}`}>
       {label && (
-        <label className="block text-secondary mb-1 text-xs md:text-sm">
+        <label className="block text-secondary mb-1 text-xs md:text-sm w-full">
           {label} {required && <span className="text-error">*</span>}
         </label>
       )}
