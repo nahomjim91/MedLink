@@ -294,7 +294,7 @@ const categorizeCartBySeller = (cart, user) => {
   });
 
   return Object.values(sellerGroups).map((sellerGroup, index) => ({
-    orderId: `Pending_${Date.now()}_${index}`,
+    orderId: `order_${Date.now()}_${index}`,
     orderNumber: index + 1,
     buyerId: user.userId,
     buyerName: user.contactName,
@@ -1207,7 +1207,7 @@ export default function CheckoutPage() {
 
         {currentStep === 2 && (
           <PaymentStep
-            orders={[...ordersBySeller, ...Object.values(createdOrders)]}
+            orders={ordersBySeller}
             pickupDates={pickupDates}
             onPrevious={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}
@@ -1219,7 +1219,7 @@ export default function CheckoutPage() {
           />
         )}
 
-        {currentStep === 3 && <FinishedStep onNext= {() => router.push(`/medical-supplies/${role}/orders`)} />}
+        {currentStep === 3 && <FinishedStep onNext= {() => router.push(`/medical-supplies/${user.role}/orders`)} />}
 
         {showPopup && currentPayment && (
           <ChapaPopup

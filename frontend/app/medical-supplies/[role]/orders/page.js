@@ -17,7 +17,7 @@ const ordersColumns = [
   { key: "orderBy", label: "Order By" },
   { key: "orderValue", label: "Order Value" },
   { key: "items", label: "Items" },
-  { key: "orderNo", label: "Order No." },
+  { key: "orderId", label: "Order ID." },
   { key: "expectedDelivery", label: "Expected Delivery" },
   { key: "status", label: "Status" },
 ];
@@ -65,7 +65,7 @@ export default function OrdersPage() {
           : order.buyerCompanyName || order.buyerName,
       orderValue: `$${order.totalCost?.toFixed(2) || "0.00"}`,
       items: `${order.totalItems} ${order.totalItems === 1 ? "Item" : "Items"}`,
-      orderNo: `#${order.orderNumber}`,
+      orderId: `#${order.orderId}`,
       expectedDelivery: order.pickupScheduledDate
         ? new Date(order.pickupScheduledDate).toLocaleDateString()
         : "TBD",
