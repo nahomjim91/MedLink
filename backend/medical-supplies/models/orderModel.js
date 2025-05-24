@@ -2,8 +2,6 @@
 const { db, FieldValue } = require("../../config/firebase");
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers");
 const CartModel = require("./cartModel");
-const BatchModel = require("./batchModel");
-const ProductModel = require("./productModel");
 const MSUserModel = require("./msUser");
 
 // Collection references
@@ -15,160 +13,111 @@ const orderBatchItemsRef = db.collection("orderBatchItems");
  * Order Model
  */
 const OrderModel = {
-  /**
-   * Create order from cart
-   * @param {String} buyerId - Buyer user ID
-   * @param {Object} input - Order input data
+ /**
+   * Create order directly (for frontend data)
+   * @param {Object} orderData - Complete order data from frontend
    * @returns {Object} Created order
    */
-  async createOrderFromCart(buyerId, input) {
+  async createOrder(orderData) {
     const batch = db.batch();
     
     try {
-      const { sellerId, notes = "", pickupScheduledDate } = input;
+      const { 
+        orderId, 
+        orderNumber,
+        buyerId, 
+        buyerName, 
+        buyerCompanyName,
+        buyerContactInfo,
+        sellerId, 
+        sellerName,
+        sellerCompanyName,
+        sellerContactInfo,
+        items, 
+        totalItems, 
+        totalCost,
+        orderDate,
+        status,
+        paymentStatus,
+        pickupScheduledDate,
+        pickupConfirmedDate,
+        transactionId,
+        notes 
+      } = orderData;
 
-      // Get buyer and seller information
-      const [buyer, seller] = await Promise.all([
-        MSUserModel.getById(buyerId),
-        MSUserModel.getById(sellerId)
-      ]);
-
-      if (!buyer || !seller) {
-        throw new Error("Buyer or seller not found");
-      }
-
-      // Get cart items for this specific seller
-      const cart = await CartModel.getByUserId(buyerId);
-      const sellerCartItems = cart.items.filter(item => 
-        item.batchItems.some(batchItem => batchItem.batchSellerId === sellerId)
-      );
-
-      if (sellerCartItems.length === 0) {
-        throw new Error("No items found for this seller in cart");
-      }
-
-      // Generate order ID
-      const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      let totalItems = 0;
-      let totalCost = 0;
-      const orderItems = [];
-
-      // Process each cart item for this seller
-      for (const cartItem of sellerCartItems) {
-        // Filter batch items for this seller only
-        const sellerBatchItems = cartItem.batchItems.filter(
-          batchItem => batchItem.batchSellerId === sellerId
-        );
-
-        if (sellerBatchItems.length === 0) continue;
-
-        const orderItemId = `${orderId}_${cartItem.productId}`;
-        
-        // Calculate totals for this product
-        const productTotalQuantity = sellerBatchItems.reduce(
-          (sum, batch) => sum + batch.quantity, 0
-        );
-        const productTotalPrice = sellerBatchItems.reduce(
-          (sum, batch) => sum + (batch.quantity * batch.unitPrice), 0
-        );
-
-        // Create order item
-        const orderItem = {
-          orderItemId,
-          orderId,
-          productId: cartItem.productId,
-          productName: cartItem.productName,
-          productType: cartItem.productType,
-          productCategory: cartItem.productCategory,
-          productImage: cartItem.productImage,
-          totalQuantity: productTotalQuantity,
-          totalPrice: productTotalPrice,
-          createdAt: timestamp()
-        };
-
-        batch.set(orderItemsRef.doc(orderItemId), orderItem);
-        orderItems.push(orderItem);
-
-        // Create order batch items
-        for (const batchItem of sellerBatchItems) {
-          const orderBatchItemId = `${orderId}_${cartItem.productId}_${batchItem.batchId}`;
-          
-          const orderBatchItem = {
-            orderBatchItemId,
-            orderItemId,
-            orderId,
-            batchId: batchItem.batchId,
-            productId: cartItem.productId,
-            quantity: batchItem.quantity,
-            unitPrice: batchItem.unitPrice,
-            subtotal: batchItem.quantity * batchItem.unitPrice,
-            expiryDate: batchItem.expiryDate,
-            manufacturingDate: null, // Will be populated from batch data
-            lotNumber: null, // Will be populated from batch data
-            batchSellerId: batchItem.batchSellerId,
-            batchSellerName: batchItem.batchSellerName,
-            createdAt: timestamp()
-          };
-
-          batch.set(orderBatchItemsRef.doc(orderBatchItemId), orderBatchItem);
-        }
-
-        totalItems += productTotalQuantity;
-        totalCost += productTotalPrice;
+      // Validate required fields
+      if (!orderId || !buyerId || !sellerId || !items || items.length === 0) {
+        throw new Error("Missing required order fields");
       }
 
       // Create main order
       const order = {
         orderId,
+        orderNumber: orderNumber || await this.getNextOrderNumber(),
         buyerId,
-        buyerName: buyer.contactName || buyer.companyName,
-        buyerCompanyName: buyer.companyName,
-        buyerContactInfo: {
-          phone: buyer.phoneNumber,
-          email: buyer.email,
-          address: buyer.address
-        },
+        buyerName,
+        buyerCompanyName,
+        buyerContactInfo,
         sellerId,
-        sellerName: seller.contactName || seller.companyName,
-        sellerCompanyName: seller.companyName,
-        sellerContactInfo: {
-          phone: seller.phoneNumber,
-          email: seller.email,
-          address: seller.address
-        },
+        sellerName,
+        sellerCompanyName,
+        sellerContactInfo,
         totalItems,
         totalCost,
-        orderDate: timestamp(),
-        status: "pending_confirmation",
-        paymentStatus: "pending",
+        orderDate: orderDate ? new Date(orderDate) : timestamp(),
+        status: this.convertStatusFromFrontend(status) || "pending_confirmation",
+        paymentStatus: this.convertPaymentStatusFromFrontend(paymentStatus) || "pending",
         pickupScheduledDate: pickupScheduledDate ? new Date(pickupScheduledDate) : null,
-        pickupConfirmedDate: null,
-        transactionId: null,
-        notes,
+        pickupConfirmedDate: pickupConfirmedDate ? new Date(pickupConfirmedDate) : null,
+        transactionId,
+        notes: notes || "",
         createdAt: timestamp(),
         updatedAt: timestamp()
       };
 
       batch.set(ordersRef.doc(orderId), order);
 
-      // Reserve batch quantities (reduce available quantity)
-      for (const cartItem of sellerCartItems) {
-        const sellerBatchItems = cartItem.batchItems.filter(
-          batchItem => batchItem.batchSellerId === sellerId
-        );
+      // Process items
+      for (const item of items) {
+        const orderItem = {
+          orderItemId: item.orderItemId,
+          orderId,
+          productId: item.productId,
+          productName: item.productName,
+          productType: item.productType,
+          productCategory: item.productCategory,
+          productImage: item.productImage,
+          totalQuantity: item.totalQuantity,
+          totalPrice: item.totalPrice,
+          createdAt: item.createdAt ? new Date(item.createdAt) : timestamp()
+        };
 
-        for (const batchItem of sellerBatchItems) {
-          const batchRef = db.collection("batches").doc(batchItem.batchId);
-          batch.update(batchRef, {
-            quantity: FieldValue.increment(-batchItem.quantity),
-            updatedAt: timestamp()
-          });
+        batch.set(orderItemsRef.doc(item.orderItemId), orderItem);
+
+        // Process batch items
+        if (item.batchItems && item.batchItems.length > 0) {
+          for (const batchItem of item.batchItems) {
+            const orderBatchItem = {
+              orderBatchItemId: batchItem.orderBatchItemId,
+              orderItemId: item.orderItemId,
+              orderId,
+              batchId: batchItem.batchId,
+              productId: item.productId,
+              quantity: batchItem.quantity,
+              unitPrice: batchItem.unitPrice,
+              subtotal: batchItem.subtotal || (batchItem.quantity * batchItem.unitPrice),
+              expiryDate: batchItem.expiryDate ? new Date(batchItem.expiryDate) : null,
+              manufacturingDate: batchItem.manufacturingDate ? new Date(batchItem.manufacturingDate) : null,
+              lotNumber: batchItem.lotNumber,
+              batchSellerId: batchItem.batchSellerId,
+              batchSellerName: batchItem.batchSellerName,
+              createdAt: batchItem.createdAt ? new Date(batchItem.createdAt) : timestamp()
+            };
+
+            batch.set(orderBatchItemsRef.doc(batchItem.orderBatchItemId), orderBatchItem);
+          }
         }
       }
-
-      // Remove items from cart for this seller
-      await this.removeSellerItemsFromCart(buyerId, sellerId, batch);
 
       // Commit all changes
       await batch.commit();
@@ -176,9 +125,77 @@ const OrderModel = {
       // Return complete order with items
       return await this.getById(orderId);
     } catch (error) {
-      console.error("Error creating order from cart:", error);
+      console.error("Error creating order direct:", error);
       throw error;
     }
+  },
+
+  /**
+   * Get next order number
+   * @returns {Number} Next order number
+   */
+  async getNextOrderNumber() {
+    try {
+      const counterRef = db.collection("counters").doc("orders");
+      const counterDoc = await counterRef.get();
+      
+      if (!counterDoc.exists) {
+        // Initialize counter
+        await counterRef.set({ count: 1 });
+        return 1;
+      }
+      
+      const currentCount = counterDoc.data().count;
+      const nextCount = currentCount + 1;
+      
+      await counterRef.update({ count: nextCount });
+      return nextCount;
+    } catch (error) {
+      console.error("Error getting next order number:", error);
+      // Fallback to timestamp-based number
+      return Math.floor(Date.now() / 1000);
+    }
+  },
+
+  /**
+   * Convert frontend status to database status
+   * @param {String} status - Frontend status
+   * @returns {String} Database status
+   */
+  convertStatusFromFrontend(status) {
+    const statusMap = {
+      "PENDING": "pending_confirmation",
+      "PENDING_CONFIRMATION": "pending_confirmation",
+      "CONFIRMED": "confirmed",
+      "REJECTED_BY_SELLER": "rejected_by_seller",
+      "PREPARING": "preparing",
+      "READY_FOR_PICKUP": "ready_for_pickup",
+      "PICKUP_SCHEDULED": "pickup_scheduled",
+      "PICKUP_CONFIRMED": "pickup_confirmed",
+      "COMPLETED": "completed",
+      "CANCELLED": "cancelled",
+      "DISPUTED": "disputed"
+    };
+    
+    return statusMap[status] || status?.toLowerCase().replace(/_/g, '-');
+  },
+
+  /**
+   * Convert frontend payment status to database status
+   * @param {String} paymentStatus - Frontend payment status
+   * @returns {String} Database payment status
+   */
+  convertPaymentStatusFromFrontend(paymentStatus) {
+    const statusMap = {
+      "PENDING": "pending",
+      "PROCESSING": "processing",
+      "PAID_HELD_BY_SYSTEM": "paid_held_by_system",
+      "RELEASED_TO_SELLER": "released_to_seller",
+      "REFUNDED": "refunded",
+      "FAILED": "failed"
+    };
+    
+    return statusMap[paymentStatus] || paymentStatus?.toLowerCase().replace(/_/g, '-');
   },
 
   /**
@@ -340,6 +357,55 @@ const OrderModel = {
       );
     } catch (error) {
       console.error("Error getting orders by seller ID:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get order summaries
+   * @param {Object} filter - Filter options
+   * @param {Number} limit - Limit
+   * @param {Number} offset - Offset
+   * @returns {Array} Order summaries
+   */
+  async getOrderSummaries(filter = {}, limit = 20, offset = 0) {
+    try {
+      let query = ordersRef;
+      
+      // Apply filters
+      if (filter.status) {
+        query = query.where("status", "==", filter.status);
+      }
+      if (filter.paymentStatus) {
+        query = query.where("paymentStatus", "==", filter.paymentStatus);
+      }
+      if (filter.buyerId) {
+        query = query.where("buyerId", "==", filter.buyerId);
+      }
+      if (filter.sellerId) {
+        query = query.where("sellerId", "==", filter.sellerId);
+      }
+      
+      const ordersSnapshot = await query
+        .orderBy("createdAt", "desc")
+        .limit(limit)
+        .offset(offset)
+        .get();
+
+      return formatDocs(ordersSnapshot.docs).map(order => ({
+        orderId: order.orderId,
+        orderNumber: order.orderNumber,
+        buyerName: order.buyerName,
+        sellerName: order.sellerName,
+        totalItems: order.totalItems,
+        totalCost: order.totalCost,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        orderDate: order.orderDate,
+        pickupScheduledDate: order.pickupScheduledDate
+      }));
+    } catch (error) {
+      console.error("Error getting order summaries:", error);
       throw error;
     }
   },

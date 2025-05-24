@@ -4,12 +4,10 @@ import { useMemo, useState, useEffect } from "react";
 import { DateInput } from "../../../components/ui/Input";
 import { Button, StepButtons } from "../../../components/ui/Button";
 import Image from "next/image";
-import { ChapaPaymentPopup } from "../../../components/ui/ChapaPaymentPopup";
-import { usePayment } from "../../../hooks/usePayment";
-import { getAuthToken } from "../../../utils/auth";
 import { apiRequest } from "../../../utils/api";
+import { useMutation } from "@apollo/client";
+import { CREATE_ORDER_DIRECTLY } from "../../../api/graphql/order/orderMutation";
 
-// Enhanced Chapa Popup Component
 // Method 1: Popup Window Approach
 function ChapaPopup({
   checkoutUrl,
@@ -239,7 +237,6 @@ function ChapaPopup({
     </div>
   );
 }
-
 // Helper function to categorize cart items by seller
 const categorizeCartBySeller = (cart, user) => {
   if (!cart?.items || !user) return [];
@@ -861,7 +858,7 @@ function FinishedStep({ onNext }) {
 }
 
 export default function CheckoutPage() {
-  const { user, cart, loading } = useMSAuth();
+  const { user, cart, loading, removeProductFromCart } = useMSAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [currentOrderIndex, setCurrentOrderIndex] = useState(0);
   const [pickupDates, setPickupDates] = useState({});
@@ -870,6 +867,10 @@ export default function CheckoutPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [currentPayment, setCurrentPayment] = useState(null);
   const [paidOrders, setPaidOrders] = useState([]); // Track paid orders
+  const [createdOrders, setCreatedOrders] = useState([]); // Track created orders
+  const [createOrderMutation, { loading: orderCreationLoading }] = useMutation(
+    CREATE_ORDER_DIRECTLY
+  );
 
   // Categorize cart items by seller
   const ordersBySeller = useMemo(
@@ -879,6 +880,146 @@ export default function CheckoutPage() {
 
   const handleOrderSummaryNext = () => {
     setCurrentStep(2);
+  };
+
+  // Handle item removal from cart
+  const handleRemoveItemsFromCart = async (order) => {
+    try {
+      console.log("Removing items from cart for order:", order.orderId);
+
+      // Get unique product IDs from the order
+      const productIds = order.items.map((item) => item.productId);
+      const uniqueProductIds = [...new Set(productIds)];
+
+      // Remove each product from cart
+      for (const productId of uniqueProductIds) {
+        try {
+          await removeProductFromCart(productId);
+          console.log(`Removed product ${productId} from cart`);
+        } catch (error) {
+          console.error(
+            `Failed to remove product ${productId} from cart:`,
+            error
+          );
+        }
+      }
+
+      console.log("Successfully removed all items from cart");
+    } catch (error) {
+      console.error("Failed to remove items from cart:", error);
+      // Don't throw error here as payment was successful
+      // Just log the error for debugging
+    }
+  };
+
+  const formatOrderForGraphQL = (order, transactionId, pickupDate) => {
+    return {
+      orderId: order.orderId,
+      orderNumber: order.orderNumber,
+      buyerId: order.buyerId,
+      buyerName: order.buyerName,
+      buyerCompanyName: order.buyerCompanyName || "",
+      buyerContactInfo: {
+        email: order.buyerContactInfo.email,
+        phone: order.buyerContactInfo.phone || "",
+        address: order.buyerContactInfo.address
+          ? {
+              street: order.buyerContactInfo.address.street || "",
+              city: order.buyerContactInfo.address.city || "",
+              state: order.buyerContactInfo.address.state || "",
+              country: order.buyerContactInfo.address.country || "",
+            }
+          : null,
+      },
+      sellerId: order.sellerId,
+      sellerName: order.sellerName,
+      sellerCompanyName: order.sellerCompanyName || "",
+      sellerContactInfo: order.sellerContactInfo || null,
+      items: order.items.map((item) => ({
+        orderItemId: item.orderItemId,
+        productId: item.productId,
+        productName: item.productName,
+        productType: item.productType,
+        productCategory: item.productCategory || "",
+        productImage: item.productImage || "",
+        batchItems: item.batchItems.map((batchItem) => ({
+          orderBatchItemId: batchItem.orderBatchItemId,
+          batchId: batchItem.batchId,
+          quantity: batchItem.quantity,
+          unitPrice: batchItem.unitPrice,
+          subtotal: batchItem.subtotal,
+          expiryDate: batchItem.expiryDate || null,
+          manufacturingDate: batchItem.manufacturingDate || null,
+          lotNumber: batchItem.lotNumber || "",
+          batchSellerId: batchItem.batchSellerId || order.sellerId,
+          batchSellerName: batchItem.batchSellerName || order.sellerName,
+          createdAt: batchItem.createdAt,
+        })),
+        totalQuantity: item.totalQuantity,
+        totalPrice: item.totalPrice,
+        createdAt: item.createdAt,
+      })),
+      totalItems: order.totalItems,
+      totalCost: order.totalCost,
+      orderDate: order.orderDate,
+      // Use GraphQL enum values directly
+      status: "CONFIRMED",
+      paymentStatus: "PAID_HELD_BY_SYSTEM",
+      pickupScheduledDate: pickupDate,
+      pickupConfirmedDate: null,
+      transactionId: transactionId,
+      notes: order.notes || "",
+    };
+  };
+
+  // Create order in GraphQL after successful payment
+  const createOrderInDatabase = async (order, paymentData) => {
+    try {
+      console.log("Creating order in database:", order.orderId);
+
+      const pickupDate = pickupDates[order.orderId];
+      const formattedOrder = formatOrderForGraphQL(
+        order,
+        paymentData.transactionId || paymentData.tx_ref,
+        pickupDate
+      );
+
+      console.log("Formatted order for GraphQL:", formattedOrder);
+
+      const { data } = await createOrderMutation({
+        variables: {
+          input: formattedOrder,
+        },
+      });
+
+      console.log("Order created successfully:", data.createOrderDirect);
+
+      // Store the created order data
+      setCreatedOrders((prev) => ({
+        ...prev,
+        [order.orderId]: data.createOrderDirect,
+      }));
+
+      
+
+      return data.createOrderDirect;
+    } catch (error) {
+      console.error("Error creating order in database:", error);
+
+      // Log the specific GraphQL errors if available
+      if (error.graphQLErrors && error.graphQLErrors.length > 0) {
+        error.graphQLErrors.forEach((gqlError) => {
+          console.error("GraphQL Error:", gqlError.message);
+          console.error("GraphQL Error Details:", gqlError);
+        });
+      }
+
+      if (error.networkError) {
+        console.error("Network Error:", error.networkError);
+      }
+
+      throw new Error(`Failed to create order: ${error.message}`);
+    }
   };
 
   // Initialize payment with backend
@@ -943,17 +1084,17 @@ export default function CheckoutPage() {
       console.log("Payment verification response:", verificationResponse);
 
       if (verificationResponse.success) {
-        // Update order status on backend
-        await apiRequest("/api/orders/update-status", {
-          method: "POST",
-          body: JSON.stringify({
-            orderId: currentPayment.order.orderId,
-            status: "PAID",
-            paymentStatus: "COMPLETED",
-            transactionId: verificationResponse.data.transactionId,
-            paymentData: verificationResponse.data,
-          }),
+        // Create order in GraphQL database
+        const createdOrder = await createOrderInDatabase(currentPayment.order, {
+          ...verificationResponse.data,
+          transactionId:
+            verificationResponse.data.transactionId || currentPayment.txRef,
         });
+
+        console.log("Order created in database:", createdOrder);
+
+        // Remove items from cart after successful order creation
+        await handleRemoveItemsFromCart(currentPayment.order);
 
         // Mark order as paid locally
         setPaidOrders((prev) => [...prev, currentPayment.order.orderId]);
@@ -1044,6 +1185,7 @@ export default function CheckoutPage() {
             ...order,
             pickupScheduledDate: pickupDates[order.orderId],
           })),
+          createdOrders: createdOrders, // Include created orders data
         }),
       });
 
@@ -1068,16 +1210,6 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!ordersBySeller.length) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold mb-4">Checkout</h1>
-          <p className="text-secondary/60">No items in cart</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto bg-white rounded-lg shadow-sm">
@@ -1095,7 +1227,7 @@ export default function CheckoutPage() {
 
         {currentStep === 2 && (
           <PaymentStep
-            orders={ordersBySeller}
+            orders={[...ordersBySeller, ...Object.values(createdOrders)]}
             pickupDates={pickupDates}
             onPrevious={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}

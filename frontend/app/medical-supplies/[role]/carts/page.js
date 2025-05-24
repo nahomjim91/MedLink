@@ -32,7 +32,7 @@ export default function Carts() {
   }, [user, loading, router]);
 
   // Handle item removal
-  const handleRemoveItem = async (productId, batchId) => {
+  const handleRemoveItem = async (productId, ) => {
     try {
       await removeProductFromCart(productId);
     } catch (error) {
