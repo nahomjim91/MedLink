@@ -1,9 +1,244 @@
 "use client";
 import { useMSAuth } from "../../../hooks/useMSAuth";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { DateInput } from "../../../components/ui/Input";
 import { Button, StepButtons } from "../../../components/ui/Button";
 import Image from "next/image";
+import { ChapaPaymentPopup } from "../../../components/ui/ChapaPaymentPopup";
+import { usePayment } from "../../../hooks/usePayment";
+import { getAuthToken } from "../../../utils/auth";
+import { apiRequest } from "../../../utils/api";
+
+// Enhanced Chapa Popup Component
+// Method 1: Popup Window Approach
+function ChapaPopup({
+  checkoutUrl,
+  txRef,
+  onClose,
+  onSuccess,
+  onError,
+  orderInfo,
+}) {
+  const [popupWindow, setPopupWindow] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [timeoutId, setTimeoutId] = useState(null);
+
+  useEffect(() => {
+    // Open popup window immediately
+    openPaymentWindow();
+
+    return () => {
+      if (popupWindow && !popupWindow.closed) {
+        popupWindow.close();
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  const openPaymentWindow = () => {
+    // Calculate center position
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    const popup = window.open(
+      checkoutUrl,
+      "chapaPayment",
+      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes,status=yes,toolbar=no,menubar=no,location=yes`
+    );
+
+    if (!popup) {
+      onError({
+        message:
+          "Popup blocked. Please allow popups for this site and try again.",
+      });
+      return;
+    }
+
+    setPopupWindow(popup);
+
+    // Monitor popup window
+    const checkInterval = setInterval(() => {
+      try {
+        // Check if popup is closed
+        if (popup.closed) {
+          clearInterval(checkInterval);
+          setIsProcessing(true);
+
+          // Give some time for the payment to process
+          setTimeout(() => {
+            checkPaymentStatus();
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Error monitoring popup:", error);
+      }
+    }, 1000);
+
+    // Set timeout (15 minutes)
+    const timeout = setTimeout(() => {
+      if (!popup.closed) {
+        popup.close();
+      }
+      clearInterval(checkInterval);
+      onError({ message: "Payment timeout. Please try again." });
+    }, 15 * 60 * 1000);
+
+    setTimeoutId(timeout);
+  };
+
+  const checkPaymentStatus = async () => {
+    try {
+      // Poll backend to check payment status
+      const response = await apiRequest(`/api/payments/status/${txRef}`, {
+        method: "GET",
+      });
+
+      if (response.success && response.data.status === "success") {
+        onSuccess(response.data);
+      } else if (response.data.status === "failed") {
+        onError({ message: "Payment failed or was cancelled." });
+      } else {
+        // Payment might still be processing, check again after delay
+        setTimeout(() => {
+          checkPaymentStatus();
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Error checking payment status:", error);
+      onError({
+        message: "Unable to verify payment status. Please contact support.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        backgroundColor: "rgba(0,0,0,0.8)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 9999,
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "#fff",
+          padding: "40px",
+          borderRadius: "12px",
+          textAlign: "center",
+          maxWidth: "400px",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+        }}
+      >
+        {isProcessing ? (
+          <>
+            <div
+              style={{
+                width: "50px",
+                height: "50px",
+                border: "4px solid #f3f3f3",
+                borderTop: "4px solid #14b8a6",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 20px",
+              }}
+            ></div>
+            <h3 style={{ margin: "0 0 15px 0", color: "#1f2937" }}>
+              Processing Payment...
+            </h3>
+            <p style={{ color: "#6b7280", margin: "0 0 20px 0" }}>
+              Please wait while we verify your payment.
+            </p>
+          </>
+        ) : (
+          <>
+            <div
+              style={{
+                width: "60px",
+                height: "60px",
+                backgroundColor: "#14b8a6",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 20px",
+                color: "white",
+                fontSize: "24px",
+              }}
+            >
+              💳
+            </div>
+            <h3 style={{ margin: "0 0 15px 0", color: "#1f2937" }}>
+              Payment Window Opened
+            </h3>
+            <p style={{ color: "#6b7280", margin: "0 0 20px 0" }}>
+              Complete your payment in the popup window. This dialog will close
+              automatically when payment is complete.
+            </p>
+            <div
+              style={{
+                backgroundColor: "#f9fafb",
+                padding: "15px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                fontSize: "14px",
+              }}
+            >
+              <p style={{ margin: "0 0 5px 0" }}>
+                <strong>Order:</strong> #{orderInfo?.orderNumber}
+              </p>
+              <p style={{ margin: "0 0 5px 0" }}>
+                <strong>Seller:</strong> {orderInfo?.sellerName}
+              </p>
+              <p style={{ margin: "0" }}>
+                <strong>Amount:</strong> {orderInfo?.totalCost?.toFixed(2)} ETB
+              </p>
+            </div>
+          </>
+        )}
+
+        <button
+          onClick={onClose}
+          style={{
+            backgroundColor: "#6b7280",
+            color: "white",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "14px",
+          }}
+          disabled={isProcessing}
+        >
+          {isProcessing ? "Please Wait..." : "Cancel"}
+        </button>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 // Helper function to categorize cart items by seller
 const categorizeCartBySeller = (cart, user) => {
@@ -416,73 +651,162 @@ function OrderSummaryStep({
 }
 
 // Step 2: Payment Component
-function PaymentStep({ orders, pickupDates, onPrevious, onNext, onPayOrder }) {
+function PaymentStep({
+  orders,
+  pickupDates,
+  onPrevious,
+  onNext,
+  onPayOrder,
+  paymentLoading,
+  paymentError,
+  paidOrders = [], // Track which orders are paid
+  onDismissError,
+}) {
+  const allOrdersPaid = orders.every((order) =>
+    paidOrders.includes(order.orderId)
+  );
+
   return (
     <div className="flex gap-6 h-[85vh]">
       {/* Left Panel - Payment Details */}
       <div className="flex-1 bg-white rounded-lg p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-6">Payment</h2>
 
-        <div className="space-y-6 h-[65vh] overflow-y-auto">
-          {orders.map((order, index) => (
-            <div
-              key={order.orderId}
-              className="border-b border-secondary/30 pb-4 last:border-b-0"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-medium">
-                    Order #{order.orderNumber} Cost
-                  </h3>
-                  <p className="text-2xl font-bold text-teal-600">
-                    ${order.totalCost.toFixed(2)}
-                  </p>
-                </div>
-                <Button
-                  variant="fill"
-                  color="primary"
-                  onClick={() => onPayOrder(order.orderId)}
-                  className="bg-teal-500 hover:bg-teal-600"
+        {paymentError && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div className="flex justify-between items-start">
+              <p className="text-sm">{paymentError}</p>
+              <button
+                onClick={onDismissError}
+                className="text-red-700 hover:text-red-900 ml-2"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
                 >
-                  Pay Now
-                </Button>
-              </div>
-
-              <div className="space-y-2 text-sm text-secondary/60">
-                <div className="flex justify-between">
-                  <span>Status</span>
-                  <span className="text-orange-500">Pending</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Order No.</span>
-                  <span>#{order.orderId.slice(0, 7)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Transaction</span>
-                  <span>#{order.transactionId || "Pending"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Pickup Date</span>
-                  <span>
-                    {pickupDates[order.orderId]
-                      ? new Date(
-                          pickupDates[order.orderId]
-                        ).toLocaleDateString()
-                      : "Not set"}
-                  </span>
-                </div>
-              </div>
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
             </div>
-          ))}
+          </div>
+        )}
+
+        <div className="space-y-6 h-[65vh] overflow-y-auto">
+          {orders.map((order, index) => {
+            const isPaid = paidOrders.includes(order.orderId);
+            const isLoading = paymentLoading === order.orderId;
+
+            return (
+              <div
+                key={order.orderId}
+                className={`border-b border-secondary/30 pb-4 last:border-b-0 ${
+                  isPaid ? "bg-green-50" : ""
+                }`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-medium">
+                      Order #{order.orderNumber} Cost
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-1">
+                      Seller: {order.sellerName}
+                    </p>
+                    <p className="text-2xl font-bold text-teal-600">
+                      ${order.totalCost.toFixed(2)}
+                    </p>
+                  </div>
+
+                  {isPaid ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <svg
+                        className="w-5 h-5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span className="font-medium">Paid</span>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="fill"
+                      color="primary"
+                      onClick={() => onPayOrder(order)}
+                      disabled={isLoading || !pickupDates[order.orderId]}
+                      className={`bg-pr-500 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isLoading ? "animate-pulse" : ""
+                      }`}
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        "Pay Now"
+                      )}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="space-y-2 text-sm text-secondary/60">
+                  <div className="flex justify-between">
+                    <span>Status</span>
+                    <span
+                      className={isPaid ? "text-green-500" : "text-orange-500"}
+                    >
+                      {isPaid ? "Paid" : "Pending Payment"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Order No.</span>
+                    <span>#{order.orderId.slice(-8)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Transaction</span>
+                    <span>#{order.transactionId || "Pending"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Pickup Date</span>
+                    <span>
+                      {pickupDates[order.orderId]
+                        ? new Date(
+                            pickupDates[order.orderId]
+                          ).toLocaleDateString()
+                        : "Not set"}
+                    </span>
+                  </div>
+                </div>
+
+                {!pickupDates[order.orderId] && !isPaid && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-700">
+                      Please set a pickup date in the previous step before
+                      making payment.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <StepButtons
           onPrevious={onPrevious}
-          onNext={onNext}
+          onNext={allOrdersPaid ? onNext : undefined}
           previousLabel="Previous"
-          nextLabel="Next Step"
+          nextLabel="Continue to Confirmation"
           showPrevious={true}
-          showNext={true}
+          showNext={allOrdersPaid}
         />
       </div>
 
@@ -541,31 +865,196 @@ export default function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [currentOrderIndex, setCurrentOrderIndex] = useState(0);
   const [pickupDates, setPickupDates] = useState({});
+  const [paymentLoading, setPaymentLoading] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [currentPayment, setCurrentPayment] = useState(null);
+  const [paidOrders, setPaidOrders] = useState([]); // Track paid orders
 
   // Categorize cart items by seller
-  const ordersBySeller = useMemo(() => {
-    return categorizeCartBySeller(cart, user);
-  }, [cart, user]);
+  const ordersBySeller = useMemo(
+    () => categorizeCartBySeller(cart, user),
+    [cart, user]
+  );
 
   const handleOrderSummaryNext = () => {
-    if (
-      ordersBySeller.length > 1 &&
-      currentOrderIndex < ordersBySeller.length - 1
-    ) {
-      setCurrentOrderIndex(currentOrderIndex + 1);
-    } else {
-      setCurrentStep(2);
+    setCurrentStep(2);
+  };
+
+  // Initialize payment with backend
+  const initializePayment = async (order) => {
+    try {
+      console.log("Initializing payment for order:", order.orderId);
+
+      const response = await apiRequest("/api/payments/initialize", {
+        method: "POST",
+        body: JSON.stringify({
+          orderId: order.orderId,
+          amount: Number(order.totalCost).toFixed(2),
+          currency: "ETB",
+          customerInfo: {
+            email: order.buyerContactInfo.email,
+            firstName: order.buyerName.split(" ")[0] || order.buyerName,
+            lastName:
+              order.buyerName.split(" ").slice(1).join(" ") ||
+              order.buyerCompanyName,
+            phoneNumber: order.buyerContactInfo.phone || "",
+          },
+          orderDetails: {
+            orderNumber: order.orderNumber,
+            sellerId: order.sellerId,
+            sellerName: order.sellerName,
+            items: order.items,
+            pickupDate: pickupDates[order.orderId],
+          },
+        }),
+      });
+
+      console.log("Payment initialization response:", response);
+
+      if (response.success) {
+        return response.data;
+      } else {
+        throw new Error(response.message || "Payment initialization failed");
+      }
+    } catch (error) {
+      console.error("Payment initialization error:", error);
+      throw error;
     }
   };
 
-  const handlePayOrder = (orderId) => {
-    console.log("Processing payment for order:", orderId);
-    // Implement payment logic here
+  // Handle payment success
+  const handlePaymentSuccess = async (paymentData) => {
+    console.log("Payment success data received:", paymentData);
+
+    try {
+      setPaymentLoading(currentPayment.order.orderId);
+
+      // Verify payment with backend
+      const verificationResponse = await apiRequest("/api/payments/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          txRef: currentPayment.txRef,
+          orderId: currentPayment.order.orderId,
+          paymentData: paymentData,
+        }),
+      });
+
+      console.log("Payment verification response:", verificationResponse);
+
+      if (verificationResponse.success) {
+        // Update order status on backend
+        await apiRequest("/api/orders/update-status", {
+          method: "POST",
+          body: JSON.stringify({
+            orderId: currentPayment.order.orderId,
+            status: "PAID",
+            paymentStatus: "COMPLETED",
+            transactionId: verificationResponse.data.transactionId,
+            paymentData: verificationResponse.data,
+          }),
+        });
+
+        // Mark order as paid locally
+        setPaidOrders((prev) => [...prev, currentPayment.order.orderId]);
+
+        // Close popup
+        setShowPopup(false);
+        setCurrentPayment(null);
+
+        // Check if all orders are paid and auto-proceed
+        const allPaid = ordersBySeller.every(
+          (order) =>
+            paidOrders.includes(order.orderId) ||
+            order.orderId === currentPayment.order.orderId
+        );
+
+        if (allPaid) {
+          setTimeout(() => {
+            setCurrentStep(3);
+          }, 1500);
+        }
+      } else {
+        throw new Error(
+          verificationResponse.message || "Payment verification failed"
+        );
+      }
+    } catch (error) {
+      console.error("Payment success handling failed:", error);
+      setPaymentError(`Payment verification failed: ${error.message}`);
+    } finally {
+      setPaymentLoading(null);
+    }
   };
 
-  const handleFinishCheckout = () => {
-    console.log("Checkout completed");
-    // Redirect to orders page or dashboard
+  // Handle payment error
+  const handlePaymentError = (errorData) => {
+    console.error("Payment error:", errorData);
+    setPaymentError(
+      `Payment failed: ${errorData?.message || "Unknown error occurred"}`
+    );
+    setShowPopup(false);
+    setCurrentPayment(null);
+  };
+
+  // Handle pay order button click
+  const handlePayOrder = async (order) => {
+    setPaymentError(null);
+    setPaymentLoading(order.orderId);
+
+    try {
+      console.log("Starting payment process for order:", order.orderId);
+
+      const paymentData = await initializePayment(order);
+
+      setCurrentPayment({
+        ...paymentData,
+        order,
+      });
+      setShowPopup(true);
+    } catch (error) {
+      console.error("Payment initialization failed:", error);
+      setPaymentError(
+        error.message || "Payment initialization failed. Please try again."
+      );
+    } finally {
+      setPaymentLoading(null);
+    }
+  };
+
+  // Handle popup close
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    setCurrentPayment(null);
+    setPaymentLoading(null);
+  };
+
+  // Handle error dismissal
+  const handleDismissError = () => {
+    setPaymentError(null);
+  };
+
+  const handleFinishCheckout = async () => {
+    try {
+      // Send all orders to backend for final processing
+      await apiRequest("/api/orders/finalize", {
+        method: "POST",
+        body: JSON.stringify({
+          orders: ordersBySeller.map((order) => ({
+            ...order,
+            pickupScheduledDate: pickupDates[order.orderId],
+          })),
+        }),
+      });
+
+      // Clear cart and redirect
+      console.log("Checkout finished successfully");
+      // You might want to clear the cart here and redirect
+      // router.push('/dashboard/orders');
+    } catch (error) {
+      console.error("Order finalization failed:", error);
+      setPaymentError("Failed to finalize orders. Please contact support.");
+    }
   };
 
   if (loading) {
@@ -591,7 +1080,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container mx-auto  bg-white rounded-lg shadow-sm">
+    <div className="container mx-auto bg-white rounded-lg shadow-sm">
       <div className="">
         {currentStep === 1 && (
           <OrderSummaryStep
@@ -611,10 +1100,25 @@ export default function CheckoutPage() {
             onPrevious={() => setCurrentStep(1)}
             onNext={() => setCurrentStep(3)}
             onPayOrder={handlePayOrder}
+            paymentLoading={paymentLoading}
+            paymentError={paymentError}
+            paidOrders={paidOrders}
+            onDismissError={handleDismissError}
           />
         )}
 
         {currentStep === 3 && <FinishedStep onNext={handleFinishCheckout} />}
+
+        {showPopup && currentPayment && (
+          <ChapaPopup
+            checkoutUrl={currentPayment.checkoutUrl}
+            txRef={currentPayment.txRef}
+            orderInfo={currentPayment.order}
+            onClose={handleClosePopup}
+            onSuccess={handlePaymentSuccess}
+            onError={handlePaymentError}
+          />
+        )}
       </div>
     </div>
   );
