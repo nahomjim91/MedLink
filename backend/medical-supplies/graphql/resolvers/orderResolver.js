@@ -223,7 +223,7 @@ const orderResolvers = {
     // Get orders I need to fulfill (as seller)
     ordersToFulfill: async (_, { limit, offset, status }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["importer", "supplier"]);
         
         const options = { limit, offset };
         if (status) {

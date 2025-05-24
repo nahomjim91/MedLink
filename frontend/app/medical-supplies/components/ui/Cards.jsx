@@ -3,18 +3,18 @@ import {
   DollarSign,
   Hash,
   Home,
-  CircleUser,
   Pill,
   Syringe,
   ChevronDown,
   ChevronUp,
-  Download,
   Filter,
-  Plus,
 } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
 import { Button, TablePageButtons } from "./Button";
+import { OrderRowActions } from "./order/OrderRowActions";
+import { OrderSelectInput } from "./Input";
+import { getAvailableStatusTransitions, getStatusColor } from "../../utils/orderUtils";
 
 // Define types for our props
 export const MetricCard = ({
@@ -362,22 +362,32 @@ export function TableCard({
     return "";
   };
 
+  // Helper function to determine user perspective
+  const getUserPerspective = (order, userId) => {
+    return order.buyerId === userId ? "buyer" : "seller";
+  };
+
   const renderCell = (item, column) => {
     const value = item[column.key];
 
     if (column.key === "status" || column.key === "availability") {
       const statusClass = getStatusColor(value);
       const isExpandable =
-        column.key === "status" &&
-        (value?.toLowerCase()?.includes("ongoing") ||
-          value?.toLowerCase()?.includes("delivery"));
+        item.rawOrder &&
+        (item.rawOrder.status === "PICKUP_CONFIRMED" ||
+          item.rawOrder.status === "PREPARING" ||
+          item.rawOrder.status === "READY_FOR_PICKUP");
 
       return (
         <div className="flex items-center">
-          <span className={statusClass}>{value}</span>
+          <div
+            className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusClass}`}
+          >
+            {value}
+          </div>
           {isExpandable && (
             <button
-              className="ml-1 text-gray-500"
+              className="ml-2 text-gray-500 hover:text-gray-700"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleRowExpand(item.id || item.orderNo);
@@ -499,21 +509,27 @@ export function TableCard({
                       </td>
                     ))}
                   </tr>
-                  {expandedRows[item.id || item.orderNo] && (
-                    <tr className="bg-gray-100">
-                      <td colSpan={columns.length} className="">
-                        <div className="px-2">
-                          <p className="font-semibold">Order Details:</p>
-                          <p>Order ID: {item.orderNo}</p>
-                          <p>Customer: {item.orderBy}</p>
-                          <p>Items: {item.items}</p>
-                          <div className="mt-2 flex gap-2">
-                            <Button color="primary">Update Status</Button>
-                            <Button variant="outline" color="primary">
-                              View Details{" "}
-                            </Button>
-                          </div>
-                        </div>
+                  {expandedRows[item.id || item.orderNo] && item.rawOrder && (
+                    <tr className="bg-gray-50">
+                      <td colSpan={columns.length} className="p-0">
+                        <OrderRowActions
+                          order={item.rawOrder}
+                          userRole={user?.role}
+                          userPerspective={getUserPerspective(
+                            item.rawOrder,
+                            user?.id
+                          )}
+                          onStatusUpdate={handleStatusUpdate}
+                          onSchedulePickup={handleSchedulePickup}
+                          onCancelOrder={handleCancelOrder}
+                          onViewDetails={(order) => {
+                            // Navigate to order details page or open modal
+                            console.log(
+                              "View details for order:",
+                              order.orderId
+                            );
+                          }}
+                        />
                       </td>
                     </tr>
                   )}
@@ -546,6 +562,348 @@ export function TableCard({
     </div>
   );
 }
+
+
+
+export function OrderTableCard({
+  title,
+  data,
+  columns,
+  page = 1,
+  totalPages = 10,
+  onPageChange,
+  onAddItem,
+  onFilter,
+  onDownload,
+  tabs = [],
+  onTabChange,
+  activeTab = "all",
+  tabData = {},
+  isLoading = false,
+  isClickable = false,
+  onClickRow = () => {},
+  isAddButton = true,
+  isOrderButton = true,
+  // Order functionality props
+  userRole,
+  user,
+  getUserPerspective,
+  onStatusUpdate,
+  onSchedulePickup,
+  onCancelOrder,
+  onViewDetails,
+}) {
+  const [currentTab, setCurrentTab] = useState(activeTab);
+  const [statusUpdating, setStatusUpdating] = useState({});
+
+  const handleTabChange = (tabId) => {
+    setCurrentTab(tabId);
+    if (onTabChange) {
+      onTabChange(tabId);
+    }
+  };
+
+  const displayData = tabData[currentTab] || data;
+
+  const handleStatusChange = async (order, newStatus) => {
+    const orderId = order.orderId || order.id;
+    
+    if (!newStatus || newStatus === order.status) {
+      return;
+    }
+
+    setStatusUpdating(prev => ({ ...prev, [orderId]: true }));
+
+    try {
+      await onStatusUpdate(orderId, newStatus);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setStatusUpdating(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const getStatusOptions = (order) => {
+    if (!order || !order.rawOrder) return [];
+
+    const userPerspective = getUserPerspective 
+      ? getUserPerspective(order.rawOrder)
+      : order.rawOrder.buyerId === user?.id ? "buyer" : "seller";
+
+    const transitions = getAvailableStatusTransitions(
+      order.rawOrder.status,
+      userRole,
+      userPerspective
+    );
+
+    // Add current status as first option
+    const currentStatusOption = {
+      value: order.rawOrder.status,
+      label: order.status || order.rawOrder.status
+    };
+
+    // Add available transitions
+    const transitionOptions = transitions.map(transition => ({
+      value: transition.value,
+      label: transition.label
+    }));
+
+    return [currentStatusOption, ...transitionOptions];
+  };
+
+  const canUpdateStatus = (order) => {
+    if (!order || !order.rawOrder) return false;
+    
+    const userPerspective = getUserPerspective 
+      ? getUserPerspective(order.rawOrder)
+      : order.rawOrder.buyerId === user?.id ? "buyer" : "seller";
+
+    const transitions = getAvailableStatusTransitions(
+      order.rawOrder.status,
+      userRole,
+      userPerspective
+    );
+
+    return transitions.length > 0;
+  };
+
+  const renderCell = (item, column) => {
+    const value = item[column.key];
+
+    // Handle status column with dropdown
+    if (column.key === "status" && item.rawOrder && canUpdateStatus(item)) {
+      const orderId = item.rawOrder.orderId || item.id;
+      const statusOptions = getStatusOptions(item);
+      const isUpdating = statusUpdating[orderId];
+
+      return (
+        <div className="flex items-center gap-2">
+          <OrderSelectInput
+            name={`status-${orderId}`}
+            value={item.rawOrder.status}
+            options={statusOptions}
+            onChange={(e) => handleStatusChange(item.rawOrder, e.target.value)}
+            placeholder="Update Status"
+            compact={true}
+            inline={true}
+            disabled={isUpdating}
+            className="min-w-[120px]"
+          />
+          {isUpdating && (
+            <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+          )}
+        </div>
+      );
+    }
+
+    // Handle regular status display
+    if (column.key === "status" || column.key === "availability") {
+      const statusColorClass = getStatusColor(value);
+      return (
+        <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColorClass}`}>
+          {value}
+        </div>
+      );
+    }
+
+    return value;
+  };
+
+  const renderRowActions = (item) => {
+    if (!item.rawOrder) return null;
+
+    const userPerspective = getUserPerspective 
+      ? getUserPerspective(item.rawOrder)
+      : item.rawOrder.buyerId === user?.id ? "buyer" : "seller";
+
+    return (
+      <div className="flex items-center gap-1">
+        {/* Schedule Pickup Button */}
+        {(item.rawOrder.status === 'READY_FOR_PICKUP' && userPerspective === 'seller') && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const dateInput = prompt('Enter pickup date (YYYY-MM-DD):');
+              if (dateInput) {
+                const pickupDate = new Date(dateInput);
+                if (!isNaN(pickupDate.getTime())) {
+                  onSchedulePickup(item.rawOrder.orderId, pickupDate);
+                }
+              }
+            }}
+            className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+          >
+            Schedule
+          </button>
+        )}
+
+        {/* Cancel Order Button */}
+        {(['PENDING_CONFIRMATION', 'CONFIRMED'].includes(item.rawOrder.status)) && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const reason = prompt('Please provide a reason for cancellation:');
+              if (reason) {
+                onCancelOrder(item.rawOrder.orderId, reason);
+              }
+            }}
+            className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+          >
+            Cancel
+          </button>
+        )}
+
+        {/* View Details Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onViewDetails(item.rawOrder);
+          }}
+          className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+        >
+          Details
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="px-4 pt-2 flex justify-between items-center">
+        <h2 className="text-xl font-medium">{title}</h2>
+        <div className="flex gap-x-2">
+          <Button
+            color="primary"
+            className={`${!isAddButton ? "hidden" : ""}`}
+            onClick={onAddItem}
+          >
+            Add Product
+          </Button>
+
+          <Button
+            variant="outline"
+            color="primary"
+            onClick={onFilter}
+            className="flex gap-3 items-center px-5"
+          >
+            <Filter size={16} />
+            Filter
+          </Button>
+          <Button
+            variant="outline"
+            color="primary"
+            onClick={onDownload}
+            className={`${
+              !isOrderButton ? "hidden" : "flex"
+            }  gap-3 items-center px-5`}
+          >
+            Order History
+          </Button>
+        </div>
+      </div>
+
+      {/* Tab navigation */}
+      {tabs && tabs.length > 0 && (
+        <div className="border-b border-gray-200">
+          <nav className="flex px-4 -mb-px">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`py-3 px-4 text-sm font-medium relative ${
+                  currentTab === tab.id
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span
+                    className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                      currentTab === tab.id
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        {isLoading ? (
+          <div className="text-center py-10">Loading...</div>
+        ) : displayData && displayData.length > 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr className="bg-primary/30">
+                {columns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="text-left px-4 py-2 font-medium text-secondary/70 border-b border-gray-200"
+                  >
+                    {column.label}
+                  </th>
+                ))}
+                <th className="text-left px-4 py-2 font-medium text-secondary/70 border-b border-gray-200">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayData.map((item, index) => (
+                <tr
+                  key={item.id || item.orderNo || `row-${index}`}
+                  className={`${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                  } ${isClickable ? "cursor-pointer hover:bg-gray-100" : ""}`}
+                  onClick={isClickable ? () => onClickRow(item) : undefined}
+                >
+                  {columns.map((column) => (
+                    <td
+                      key={`${item.id || item.orderNo || index}-${column.key}`}
+                      className="px-4 py-2 border-b border-gray-200 text-secondary"
+                    >
+                      {renderCell(item, column)}
+                    </td>
+                  ))}
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    {renderRowActions(item)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-4 py-3">
+            <img
+              src="/Image/Empty-amico.svg"
+              alt="Empty data"
+              width={350}
+              height={200}
+              className="mx-auto"
+            />
+            <p className="text-xl text-secondary">No data found</p>
+          </div>
+        )}
+      </div>
+
+      {displayData && displayData.length > 0 && (
+        <TablePageButtons
+          page={page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          className="px-4 py-2"
+        />
+      )}
+    </div>
+  );
+}
+
 export function MinTableCard({ title, data, columns, onSeeAll }) {
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden ">

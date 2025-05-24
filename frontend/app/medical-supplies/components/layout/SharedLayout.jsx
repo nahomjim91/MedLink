@@ -29,7 +29,7 @@ import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaQuestion } from "react-icons/fa";
 
 export default function SharedLayout({ children, allowedRoles = [] }) {
-  const { user, logout } = useMSAuth();
+  const { user, logout , cart} = useMSAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userType, setUserType] = useState("healthFacility"); // Default to patient
@@ -406,7 +406,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                   <IconButton
                     icon={<ShoppingCart />}
                     isActive={false}
-                    badge={unseenChats}
+                    badge={cart.items.length}
                   />
                 </Link>
 

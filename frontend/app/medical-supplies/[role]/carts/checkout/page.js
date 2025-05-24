@@ -7,6 +7,7 @@ import Image from "next/image";
 import { apiRequest } from "../../../utils/api";
 import { useMutation } from "@apollo/client";
 import { CREATE_ORDER_DIRECTLY } from "../../../api/graphql/order/orderMutation";
+import { useRouter } from "next/navigation";
 
 // Method 1: Popup Window Approach
 function ChapaPopup({
@@ -859,6 +860,7 @@ function FinishedStep({ onNext }) {
 
 export default function CheckoutPage() {
   const { user, cart, loading, removeProductFromCart } = useMSAuth();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [currentOrderIndex, setCurrentOrderIndex] = useState(0);
   const [pickupDates, setPickupDates] = useState({});
@@ -963,7 +965,7 @@ export default function CheckoutPage() {
       totalCost: order.totalCost,
       orderDate: order.orderDate,
       // Use GraphQL enum values directly
-      status: "CONFIRMED",
+      status: "PENDING_CONFIRMATION",
       paymentStatus: "PAID_HELD_BY_SYSTEM",
       pickupScheduledDate: pickupDate,
       pickupConfirmedDate: null,
@@ -1000,7 +1002,7 @@ export default function CheckoutPage() {
         [order.orderId]: data.createOrderDirect,
       }));
 
-      
+
 
       return data.createOrderDirect;
     } catch (error) {
@@ -1175,29 +1177,7 @@ export default function CheckoutPage() {
     setPaymentError(null);
   };
 
-  const handleFinishCheckout = async () => {
-    try {
-      // Send all orders to backend for final processing
-      await apiRequest("/api/orders/finalize", {
-        method: "POST",
-        body: JSON.stringify({
-          orders: ordersBySeller.map((order) => ({
-            ...order,
-            pickupScheduledDate: pickupDates[order.orderId],
-          })),
-          createdOrders: createdOrders, // Include created orders data
-        }),
-      });
 
-      // Clear cart and redirect
-      console.log("Checkout finished successfully");
-      // You might want to clear the cart here and redirect
-      // router.push('/dashboard/orders');
-    } catch (error) {
-      console.error("Order finalization failed:", error);
-      setPaymentError("Failed to finalize orders. Please contact support.");
-    }
-  };
 
   if (loading) {
     return (
@@ -1239,7 +1219,7 @@ export default function CheckoutPage() {
           />
         )}
 
-        {currentStep === 3 && <FinishedStep onNext={handleFinishCheckout} />}
+        {currentStep === 3 && <FinishedStep onNext= {() => router.push(`/medical-supplies/${role}/orders`)} />}
 
         {showPopup && currentPayment && (
           <ChapaPopup

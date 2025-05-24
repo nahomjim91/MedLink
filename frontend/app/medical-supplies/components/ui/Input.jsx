@@ -264,6 +264,147 @@ export function SelectInput({
   );
 }
 
+export function OrderSelectInput({
+  label,
+  name,
+  value,
+  onChange,
+  options = [],
+  error = false,
+  errorMessage = "",
+  placeholder = "Select an option",
+  fullWidth = false,
+  required = false,
+  className = "",
+  defaultToFirstOption = true,
+  // New props for table usage
+  compact = false,
+  inline = false,
+  disabled = false,
+  ...props
+}) {
+  const effectiveValue =
+    !value && defaultToFirstOption && options.length > 0
+      ? options[0].value
+      : value;
+
+  const handleChange = (e) => {
+    const selectedValue = e.target.value;
+    onChange({
+      ...e,
+      target: {
+        ...e.target,
+        name: name || e.target.name,
+        value: selectedValue,
+      },
+    });
+  };
+
+  // Compact styles for table usage
+  const selectClasses = compact
+    ? `
+        px-2 py-1 text-xs rounded-md border focus:outline-none focus:ring-1
+        appearance-none bg-white pr-6 min-w-[100px]
+        ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
+        ${
+          error
+            ? "border-red-300 focus:border-red-500 focus:ring-red-200"
+            : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+        }
+        ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}
+      `
+    : `
+        w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
+        appearance-none bg-white pr-10
+        ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
+        ${
+          error
+            ? "border-error focus:border-error focus:ring-error/30"
+            : "border-gray-200 focus:border-primary focus:ring-primary/20"
+        }
+        ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}
+      `;
+
+  if (inline) {
+    return (
+      <div className={`relative ${className}`}>
+        <select
+          name={name}
+          value={effectiveValue || ""}
+          onChange={handleChange}
+          disabled={disabled}
+          className={selectClasses}
+          required={required}
+          {...props}
+        >
+          {placeholder && (
+            <option value="" disabled className="text-gray-500">
+              {placeholder}
+            </option>
+          )}
+          {options.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              className="text-gray-900"
+            >
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center text-gray-500 ${compact ? 'px-1' : 'px-3'}`}>
+          <ChevronDown size={compact ? 14 : 18} />
+        </div>
+        {error && errorMessage && (
+          <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`mb-4 ${fullWidth ? "w-full" : ""} ${className}`}>
+      {label && (
+        <label className="block text-secondary mb-1 text-xs md:text-sm">
+          {label} {required && <span className="text-error">*</span>}
+        </label>
+      )}
+      <div className="relative">
+        <select
+          name={name}
+          value={effectiveValue || ""}
+          onChange={handleChange}
+          disabled={disabled}
+          className={selectClasses}
+          required={required}
+          {...props}
+        >
+          {placeholder && (
+            <option value="" disabled className="text-gray-500">
+              {placeholder}
+            </option>
+          )}
+          {options.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              className="text-gray-900"
+            >
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center text-gray-500 ${compact ? 'px-1' : 'px-3'}`}>
+          <ChevronDown size={compact ? 14 : 18} />
+        </div>
+      </div>
+      {error && errorMessage && (
+        <p className="text-error text-xs mt-1">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
 export function NumberWithUnitInput({
   label,
   name,

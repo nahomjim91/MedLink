@@ -599,18 +599,18 @@ const OrderModel = {
    */
   isValidStatusTransition(currentStatus, newStatus) {
     const validTransitions = {
-      "pending_confirmation": ["confirmed", "rejected_by_seller", "cancelled"],
+      "pending-confirmation": ["confirmed", "rejected-by-seller", "cancelled"],
       "confirmed": ["preparing", "cancelled"],
-      "preparing": ["ready_for_pickup", "cancelled"],
-      "ready_for_pickup": ["pickup_scheduled", "cancelled"],
-      "pickup_scheduled": ["pickup_confirmed", "cancelled"],
-      "pickup_confirmed": ["completed"],
+      "preparing": ["ready-for-pickup", "cancelled"], // Fixed: hyphen format
+      "ready-for-pickup": ["pickup-scheduled", "cancelled"], // Fixed: hyphen format  
+      "pickup-scheduled": ["pickup-confirmed", "cancelled"], // Fixed: hyphen format
+      "pickup-confirmed": ["completed"], // Fixed: hyphen format
       "completed": [],
       "cancelled": [],
-      "rejected_by_seller": [],
+      "rejected-by-seller": ["disputed"], // Fixed: hyphen format
       "disputed": ["completed", "cancelled"]
     };
-
+  
     return validTransitions[currentStatus]?.includes(newStatus) || false;
   }
 };
