@@ -309,7 +309,7 @@ export function OrderSelectInput({
         ${
           error
             ? "border-red-300 focus:border-red-500 focus:ring-red-200"
-            : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+            : "border-gray-300 focus:border-primary focus:ring-primary"
         }
         ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}
       `

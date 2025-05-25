@@ -324,6 +324,7 @@ export function TableCard({
   onClickRow = () => {},
   isAddButton = true,
   isOrderButton = true,
+  isFilterButton = true,
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [currentTab, setCurrentTab] = useState(activeTab);
@@ -424,7 +425,7 @@ export function TableCard({
             variant="outline"
             color="primary"
             onClick={onFilter}
-            className="flex gap-3 items-center px-5"
+            className={` ${!isFilterButton ? "hidden" : "flex"} gap-3 items-center px-5`}
           >
             <Filter size={16} />
             Filter
@@ -567,18 +568,21 @@ export function TableCard({
 
 export function OrderTableCard({
   title,
-  data,
+  data, // This should be the paginated data from parent
   columns,
   page = 1,
   totalPages = 10,
+  itemsPerPage = 9,
+  totalItems = 0,
   onPageChange,
+  onItemsPerPageChange,
   onAddItem,
   onFilter,
   onDownload,
   tabs = [],
   onTabChange,
   activeTab = "all",
-  tabData = {},
+  tabData = {}, // This contains all data for tab counts
   isLoading = false,
   isClickable = false,
   onClickRow = () => {},
@@ -593,17 +597,16 @@ export function OrderTableCard({
   onCancelOrder,
   onViewDetails,
 }) {
-  const [currentTab, setCurrentTab] = useState(activeTab);
   const [statusUpdating, setStatusUpdating] = useState({});
 
   const handleTabChange = (tabId) => {
-    setCurrentTab(tabId);
     if (onTabChange) {
       onTabChange(tabId);
     }
   };
 
-  const displayData = tabData[currentTab] || data;
+  // Use the paginated data passed from parent, not tabData
+  const displayData = data;
 
   const handleStatusChange = async (order, newStatus) => {
     const orderId = order.orderId || order.id;
@@ -690,7 +693,7 @@ export function OrderTableCard({
             className="min-w-[120px]"
           />
           {isUpdating && (
-            <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
           )}
         </div>
       );
@@ -805,13 +808,13 @@ export function OrderTableCard({
       {/* Tab navigation */}
       {tabs && tabs.length > 0 && (
         <div className="border-b border-gray-200">
-          <nav className="flex px-4 -mb-px">
+          <nav className="flex px-4 ">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`py-3 px-4 text-sm font-medium relative ${
-                  currentTab === tab.id
+                className={`py-1 px-4 text-sm font-medium relative ${
+                  activeTab === tab.id
                     ? "text-primary border-b-2 border-primary"
                     : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
@@ -820,7 +823,7 @@ export function OrderTableCard({
                 {tab.count !== undefined && (
                   <span
                     className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                      currentTab === tab.id
+                      activeTab === tab.id
                         ? "bg-primary text-white"
                         : "bg-gray-100 text-gray-600"
                     }`}
@@ -844,12 +847,12 @@ export function OrderTableCard({
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className="text-left px-4 py-2 font-medium text-secondary/70 border-b border-gray-200"
+                    className="text-left px-4 py-1 font-medium text-secondary/70 border-b border-gray-200"
                   >
                     {column.label}
                   </th>
                 ))}
-                <th className="text-left px-4 py-2 font-medium text-secondary/70 border-b border-gray-200">
+                <th className="text-left px-4 py-1 font-medium text-secondary/70 border-b border-gray-200">
                   Actions
                 </th>
               </tr>
@@ -897,6 +900,9 @@ export function OrderTableCard({
           page={page}
           totalPages={totalPages}
           onPageChange={onPageChange}
+          onItemsPerPageChange={onItemsPerPageChange}
+          itemsPerPage={itemsPerPage}
+          totalItems={totalItems}
           className="px-4 py-2"
         />
       )}

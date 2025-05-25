@@ -387,7 +387,7 @@ const OrderModel = {
       );
       return false; // Conservative approach - assume not all transferred if error
     }
-  }, 
+  },
 
   /**
    * Find existing product owned by buyer that matches the original product
@@ -746,7 +746,7 @@ const OrderModel = {
    */
   async getByBuyerId(buyerId, options = {}) {
     try {
-      const { limit = 20, offset = 0, status } = options;
+      const { status } = options;
 
       let query = ordersRef.where("buyerId", "==", buyerId);
 
@@ -756,8 +756,6 @@ const OrderModel = {
 
       const ordersSnapshot = await query
         .orderBy("createdAt", "desc")
-        .limit(limit)
-        .offset(offset)
         .get();
 
       return await Promise.all(
@@ -779,7 +777,7 @@ const OrderModel = {
    */
   async getBySellerId(sellerId, options = {}) {
     try {
-      const { limit = 20, offset = 0, status } = options;
+      const {status } = options;
 
       let query = ordersRef.where("sellerId", "==", sellerId);
 
@@ -789,8 +787,6 @@ const OrderModel = {
 
       const ordersSnapshot = await query
         .orderBy("createdAt", "desc")
-        .limit(limit)
-        .offset(offset)
         .get();
 
       return await Promise.all(
@@ -854,13 +850,14 @@ const OrderModel = {
   },
 
   /**
-   * Update order status
+   * Update order status with integrated payment status management
    * @param {String} orderId - Order ID
    * @param {String} status - New status
    * @param {String} userId - User making the change
+   * @param {String} transactionId - Transaction ID (optional, for payment-related updates)
    * @returns {Object} Updated order
    */
-  async updateStatus(orderId, status, userId) {
+  async updateStatus(orderId, status, userId, transactionId = null) {
     try {
       const orderRef = ordersRef.doc(orderId);
       const orderDoc = await orderRef.get();
@@ -889,258 +886,378 @@ const OrderModel = {
         status,
         updatedAt: timestamp(),
       };
-// Handle product transfer for pickup_confirmed and delivered statuses
-if (status === "pickup-confirmed" || status === "delivered") {
-  const transferType = status === "delivered" ? "delivery" : "pickup";
-  
-  // Add specific timestamp fields
-  if (status === "pickup-confirmed") {
-    updateData.pickupConfirmedDate = timestamp();
-  } else if (status === "delivered") {
-    updateData.deliveredDate = timestamp();
-  }
 
-  // Transfer products to buyer
-  try {
-    const transferResult = await this.transferProductsToBuyer(
-      orderId, 
-      order.buyerId, 
-      transferType
-    );
-    
-    updateData.productTransferResult = transferResult;
-    updateData.productsTransferredAt = timestamp();
-    
-    console.log(`Products successfully transferred for order ${orderId} via ${transferType}`);
-  } catch (transferError) {
-    console.error(`Error transferring products for order ${orderId}:`, transferError);
-    // Don't fail the status update if transfer fails, but log it
-    updateData.productTransferError = transferError.message;
-    updateData.productTransferFailedAt = timestamp();
-  }
-}
+      // Automatically determine and update payment status based on order status
+      const newPaymentStatus = this.determinePaymentStatus(
+        order.status,
+        status,
+        order.paymentStatus
+      );
+      if (newPaymentStatus && newPaymentStatus !== order.paymentStatus) {
+        updateData.paymentStatus = newPaymentStatus;
 
-// Handle ready for pickup status
-if (status === "ready-for-pickup") {
-  updateData.readyForPickupDate = timestamp();
-}
+        // Add payment-specific timestamps
+        if (newPaymentStatus === "paid-held-by-system") {
+          updateData.paidAt = timestamp();
+        } else if (newPaymentStatus === "released-to-seller") {
+          updateData.releasedToSellerAt = timestamp();
+        } else if (newPaymentStatus === "refunded") {
+          updateData.refundedAt = timestamp();
+        }
 
-// Handle preparation status
-if (status === "preparing") {
-  updateData.preparingStartedDate = timestamp();
-}
+        // Add transaction ID if provided
+        if (transactionId) {
+          updateData.transactionId = transactionId;
+        }
+      }
 
-// Update the order
-await orderRef.update(updateData);
+      // Handle product transfer for pickup_confirmed and delivered statuses
+      if (status === "pickup-confirmed" || status === "delivered") {
+        const transferType = status === "delivered" ? "delivery" : "pickup";
 
-// Return updated order with full details
-return await this.getById(orderId);
-} catch (error) {
-console.error("Error updating order status:", error);
-throw error;
-}
-},
+        // Add specific timestamp fields
+        if (status === "pickup-confirmed") {
+          updateData.pickupConfirmedDate = timestamp();
+        } else if (status === "delivered") {
+          updateData.deliveredDate = timestamp();
+        }
 
-/**
-* Update payment status
-* @param {String} orderId - Order ID
-* @param {String} paymentStatus - New payment status
-* @param {String} transactionId - Transaction ID (optional)
-* @returns {Object} Updated order
-*/
-async updatePaymentStatus(orderId, paymentStatus, transactionId = null) {
-try {
-const orderRef = ordersRef.doc(orderId);
-const orderDoc = await orderRef.get();
+        // Transfer products to buyer
+        try {
+          const transferResult = await this.transferProductsToBuyer(
+            orderId,
+            order.buyerId,
+            transferType
+          );
 
-if (!orderDoc.exists) {
-  throw new Error("Order not found");
-}
+          updateData.productTransferResult = transferResult;
+          updateData.productsTransferredAt = timestamp();
 
-const updateData = {
-  paymentStatus,
-  updatedAt: timestamp()
-};
+          console.log(
+            `Products successfully transferred for order ${orderId} via ${transferType}`
+          );
+        } catch (transferError) {
+          console.error(
+            `Error transferring products for order ${orderId}:`,
+            transferError
+          );
+          // Don't fail the status update if transfer fails, but log it
+          updateData.productTransferError = transferError.message;
+          updateData.productTransferFailedAt = timestamp();
+        }
+      }
 
-if (transactionId) {
-  updateData.transactionId = transactionId;
-}
+      // Handle ready for pickup status
+      if (status === "ready-for-pickup") {
+        updateData.readyForPickupDate = timestamp();
+      }
 
-// Add specific timestamp fields based on payment status
-if (paymentStatus === "paid-held-by-system") {
-  updateData.paidAt = timestamp();
-} else if (paymentStatus === "released-to-seller") {
-  updateData.releasedToSellerAt = timestamp();
-} else if (paymentStatus === "refunded") {
-  updateData.refundedAt = timestamp();
-}
+      // Handle preparation status
+      if (status === "preparing") {
+        updateData.preparingStartedDate = timestamp();
+      }
 
-await orderRef.update(updateData);
+      // Update the order
+      await orderRef.update(updateData);
 
-return await this.getById(orderId);
-} catch (error) {
-console.error("Error updating payment status:", error);
-throw error;
-}
-},
+      // Return updated order with full details
+      return await this.getById(orderId);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      throw error;
+    }
+  },
 
-/**
-* Schedule pickup date
-* @param {String} orderId - Order ID
-* @param {Date} pickupDate - Scheduled pickup date
-* @param {String} userId - User scheduling the pickup
-* @returns {Object} Updated order
-*/
-async schedulePickup(orderId, pickupDate, userId) {
-try {
-const orderRef = ordersRef.doc(orderId);
-const orderDoc = await orderRef.get();
+  /**
+   * Determine appropriate payment status based on order status transition
+   * @param {String} currentOrderStatus - Current order status
+   * @param {String} newOrderStatus - New order status
+   * @param {String} currentPaymentStatus - Current payment status
+   * @returns {String|null} New payment status or null if no change needed
+   */
+  determinePaymentStatus(
+    currentOrderStatus,
+    newOrderStatus,
+    currentPaymentStatus
+  ) {
+    // Payment status logic based on order status transitions
+    const paymentRules = {
+      // When order is confirmed, payment should be held by system
+      confirmed: (currentPaymentStatus) => {
+        if (
+          currentPaymentStatus === "pending" ||
+          currentPaymentStatus === "processing"
+        ) {
+          return "paid-held-by-system";
+        }
+        return null;
+      },
 
-if (!orderDoc.exists) {
-  throw new Error("Order not found");
-}
+      // When order is pickup-confirmed, release payment to seller
+      "pickup-confirmed": (currentPaymentStatus) => {
+        if (currentPaymentStatus === "paid-held-by-system") {
+          return "released-to-seller";
+        }
+        return null;
+      },
 
-const order = orderDoc.data();
+      // When order is delivered, also release payment to seller (backup rule)
+      delivered: (currentPaymentStatus) => {
+        if (currentPaymentStatus === "paid-held-by-system") {
+          return "released-to-seller";
+        }
+        return null;
+      },
 
-// Validate permissions (buyer or seller can schedule)
-if (userId !== order.buyerId && userId !== order.sellerId) {
-  throw new Error("Only buyer or seller can schedule pickup");
-}
+      // When order is cancelled, refund if payment was held
+      cancelled: (currentPaymentStatus) => {
+        if (currentPaymentStatus === "paid-held-by-system") {
+          return "refunded";
+        }
+        return null;
+      },
 
-const updateData = {
-  pickupScheduledDate: new Date(pickupDate),
-  status: "pickup-scheduled",
-  updatedAt: timestamp(),
-  pickupScheduledBy: userId
-};
+      // When order is rejected by seller, refund if payment was held
+      "rejected-by-seller": (currentPaymentStatus) => {
+        if (currentPaymentStatus === "paid-held-by-system") {
+          return "refunded";
+        }
+        return null;
+      },
 
-await orderRef.update(updateData);
+      // When order is disputed, keep payment held for resolution
+      disputed: (currentPaymentStatus) => {
+        // Payment status remains unchanged during dispute
+        return null;
+      },
+    };
 
-return await this.getById(orderId);
-} catch (error) {
-console.error("Error scheduling pickup:", error);
-throw error;
-}
-},
+    const rule = paymentRules[newOrderStatus];
+    return rule ? rule(currentPaymentStatus) : null;
+  },
 
-/**
-* Cancel order
-* @param {String} orderId - Order ID
-* @param {String} userId - User cancelling the order
-* @param {String} reason - Cancellation reason
-* @returns {Object} Updated order
-*/
-async cancelOrder(orderId, userId, reason = "") {
-try {
-const orderRef = ordersRef.doc(orderId);
-const orderDoc = await orderRef.get();
+  /**
+   * Schedule pickup date with integrated payment handling
+   * @param {String} orderId - Order ID
+   * @param {Date} pickupDate - Scheduled pickup date
+   * @param {String} userId - User scheduling the pickup
+   * @returns {Object} Updated order
+   */
+  async schedulePickup(orderId, pickupDate, userId) {
+    try {
+      const orderRef = ordersRef.doc(orderId);
+      const orderDoc = await orderRef.get();
 
-if (!orderDoc.exists) {
-  throw new Error("Order not found");
-}
+      if (!orderDoc.exists) {
+        throw new Error("Order not found");
+      }
 
-const order = orderDoc.data();
+      const order = orderDoc.data();
 
-// Validate permissions and status
-if (userId !== order.buyerId && userId !== order.sellerId) {
-  throw new Error("Only buyer or seller can cancel orders");
-}
+      // Validate permissions (buyer or seller can schedule)
+      if (userId !== order.buyerId && userId !== order.sellerId) {
+        throw new Error("Only buyer or seller can schedule pickup");
+      }
 
-// Check if order can be cancelled
-const nonCancellableStatuses = [
-  "pickup-confirmed", 
-  "delivered", 
-  "completed", 
-  "cancelled"
-];
+      const updateData = {
+        pickupScheduledDate: new Date(pickupDate),
+        status: "pickup-scheduled",
+        updatedAt: timestamp(),
+        pickupScheduledBy: userId,
+      };
 
-if (nonCancellableStatuses.includes(order.status)) {
-  throw new Error(`Cannot cancel order with status: ${order.status}`);
-}
+      // Check if payment status needs to be updated
+      const newPaymentStatus = this.determinePaymentStatus(
+        order.status,
+        "pickup-scheduled",
+        order.paymentStatus
+      );
+      if (newPaymentStatus && newPaymentStatus !== order.paymentStatus) {
+        updateData.paymentStatus = newPaymentStatus;
 
-const updateData = {
-  status: "cancelled",
-  paymentStatus: order.paymentStatus === "paid-held-by-system" ? "refunded" : order.paymentStatus,
-  cancelledAt: timestamp(),
-  cancelledBy: userId,
-  cancellationReason: reason,
-  updatedAt: timestamp()
-};
+        if (newPaymentStatus === "paid-held-by-system") {
+          updateData.paidAt = timestamp();
+        }
+      }
 
-// Add refund timestamp if payment was held
-if (order.paymentStatus === "paid-held-by-system") {
-  updateData.refundedAt = timestamp();
-}
+      await orderRef.update(updateData);
 
-await orderRef.update(updateData);
+      return await this.getById(orderId);
+    } catch (error) {
+      console.error("Error scheduling pickup:", error);
+      throw error;
+    }
+  },
 
-return await this.getById(orderId);
-} catch (error) {
-console.error("Error cancelling order:", error);
-throw error;
-}
-},
+  /**
+   * Cancel order with integrated payment handling
+   * @param {String} orderId - Order ID
+   * @param {String} userId - User cancelling the order
+   * @param {String} reason - Cancellation reason
+   * @returns {Object} Updated order
+   */
+  async cancelOrder(orderId, userId, reason = "") {
+    try {
+      const orderRef = ordersRef.doc(orderId);
+      const orderDoc = await orderRef.get();
 
-/**
-* Validate status transition
-* @param {String} currentStatus - Current order status
-* @param {String} newStatus - New status to transition to
-* @returns {Boolean} True if transition is valid
-*/
-isValidStatusTransition(currentStatus, newStatus) {
-const validTransitions = {
-"pending-confirmation": ["confirmed", "rejected-by-seller", "cancelled"],
-"confirmed": ["preparing", "cancelled"],
-"preparing": ["ready-for-pickup", "cancelled"],
-"ready-for-pickup": ["pickup-scheduled", "pickup-confirmed", "cancelled"],
-"pickup-scheduled": ["pickup-confirmed", "cancelled"],
-"pickup-confirmed": ["completed"],
-"delivered": ["completed"],
-"completed": [], // No further transitions
-"cancelled": [], // No further transitions
-"disputed": ["resolved", "cancelled"]
-};
+      if (!orderDoc.exists) {
+        throw new Error("Order not found");
+      }
 
-return validTransitions[currentStatus]?.includes(newStatus) || false;
-},
+      const order = orderDoc.data();
 
-/**
-* Delete order (admin only)
-* @param {String} orderId - Order ID
-* @returns {Boolean} Success status
-*/
-async deleteOrder(orderId) {
-const batch = db.batch();
+      // Validate permissions and status
+      if (userId !== order.buyerId && userId !== order.sellerId) {
+        throw new Error("Only buyer or seller can cancel orders");
+      }
 
-try {
-// Delete order items
-const orderItemsSnapshot = await orderItemsRef
-  .where("orderId", "==", orderId)
-  .get();
+      // Check if order can be cancelled
+      const nonCancellableStatuses = [
+        "pickup-confirmed",
+        "delivered",
+        "completed",
+        "cancelled",
+      ];
 
-orderItemsSnapshot.docs.forEach(doc => {
-  batch.delete(doc.ref);
-});
+      if (nonCancellableStatuses.includes(order.status)) {
+        throw new Error(`Cannot cancel order with status: ${order.status}`);
+      }
 
-// Delete order batch items
-const orderBatchItemsSnapshot = await orderBatchItemsRef
-  .where("orderId", "==", orderId)
-  .get();
+      const updateData = {
+        status: "cancelled",
+        cancelledAt: timestamp(),
+        cancelledBy: userId,
+        cancellationReason: reason,
+        updatedAt: timestamp(),
+      };
 
-orderBatchItemsSnapshot.docs.forEach(doc => {
-  batch.delete(doc.ref);
-});
+      // Automatically handle payment refund
+      const newPaymentStatus = this.determinePaymentStatus(
+        order.status,
+        "cancelled",
+        order.paymentStatus
+      );
+      if (newPaymentStatus) {
+        updateData.paymentStatus = newPaymentStatus;
 
-// Delete main order
-batch.delete(ordersRef.doc(orderId));
+        if (newPaymentStatus === "refunded") {
+          updateData.refundedAt = timestamp();
+        }
+      }
 
-await batch.commit();
-return true;
-} catch (error) {
-console.error("Error deleting order:", error);
-throw error;
-}
-}
+      await orderRef.update(updateData);
+
+      return await this.getById(orderId);
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Manual payment status update (for admin/system use only)
+   * @param {String} orderId - Order ID
+   * @param {String} paymentStatus - New payment status
+   * @param {String} transactionId - Transaction ID (optional)
+   * @returns {Object} Updated order
+   */
+  async updatePaymentStatus(orderId, paymentStatus, transactionId = null) {
+    try {
+      const orderRef = ordersRef.doc(orderId);
+      const orderDoc = await orderRef.get();
+
+      if (!orderDoc.exists) {
+        throw new Error("Order not found");
+      }
+
+      const updateData = {
+        paymentStatus,
+        updatedAt: timestamp(),
+      };
+
+      if (transactionId) {
+        updateData.transactionId = transactionId;
+      }
+
+      // Add specific timestamp fields based on payment status
+      if (paymentStatus === "paid-held-by-system") {
+        updateData.paidAt = timestamp();
+      } else if (paymentStatus === "released-to-seller") {
+        updateData.releasedToSellerAt = timestamp();
+      } else if (paymentStatus === "refunded") {
+        updateData.refundedAt = timestamp();
+      }
+
+      await orderRef.update(updateData);
+
+      return await this.getById(orderId);
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Validate status transition
+   * @param {String} currentStatus - Current order status
+   * @param {String} newStatus - New status to transition to
+   * @returns {Boolean} True if transition is valid
+   */
+  isValidStatusTransition(currentStatus, newStatus) {
+    const validTransitions = {
+      "pending-confirmation": ["confirmed", "rejected-by-seller", "cancelled"],
+      confirmed: ["preparing", "cancelled"],
+      preparing: ["ready-for-pickup", "cancelled"],
+      "ready-for-pickup": ["pickup-scheduled", "pickup-confirmed", "cancelled"],
+      "pickup-scheduled": ["pickup-confirmed", "cancelled"],
+      "pickup-confirmed": ["completed"],
+      delivered: ["completed"],
+      completed: [], // No further transitions
+      cancelled: [], // No further transitions
+      disputed: ["resolved", "cancelled"],
+    };
+
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
+  },
+
+  /**
+   * Delete order (admin only)
+   * @param {String} orderId - Order ID
+   * @returns {Boolean} Success status
+   */
+  async deleteOrder(orderId) {
+    const batch = db.batch();
+
+    try {
+      // Delete order items
+      const orderItemsSnapshot = await orderItemsRef
+        .where("orderId", "==", orderId)
+        .get();
+
+      orderItemsSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // Delete order batch items
+      const orderBatchItemsSnapshot = await orderBatchItemsRef
+        .where("orderId", "==", orderId)
+        .get();
+
+      orderBatchItemsSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // Delete main order
+      batch.delete(ordersRef.doc(orderId));
+
+      await batch.commit();
+      return true;
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = OrderModel;

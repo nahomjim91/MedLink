@@ -240,53 +240,67 @@ export function TablePageButtons({
   showPrevious = true,
   showNext = true,
   className = "",
-  page=1,
-  totalPages=3,
+  page = 1,
+  totalPages = 3,
   onPageChange
 }) {
   const handlePrevious = () => {
     if (page > 1) {
       onPageChange(page - 1);
-      onPrevious();
+      // Call onPrevious only if it exists
+      if (onPrevious) {
+        onPrevious();
+      }
     }
   };
+
   const handleNext = () => {
     if (page < totalPages) {
       onPageChange(page + 1);
-      onNext();
+      // Call onNext only if it exists
+      if (onNext) {
+        onNext();
+      }
     }
   };
+
   const isPreviousDisabled = page === 1;
   const isNextDisabled = page === totalPages;
+  
   const previousButtonClass = isPreviousDisabled
     ? "opacity-50 cursor-not-allowed"
     : "";
   const nextButtonClass = isNextDisabled
     ? "opacity-50 cursor-not-allowed"
     : "";
+
   return (
-    <div className={`flex justify-between mt-2   ${className}`}>
-      <div >
-        {showPrevious  && (
+    <div className={`flex justify-between mt-2 ${className}`}>
+      <div>
+        {showPrevious && (
           <Button
             variant="outline"
             color="primary"
-            onClick={onPrevious}
-            className={`  flex-1 sm:flex-initial text-sm md:text-base ${previousButtonClass}`}
+            onClick={handlePrevious} // Changed from onPrevious to handlePrevious
+            className={`flex-1 sm:flex-initial text-sm md:text-base ${previousButtonClass}`}
             disabled={isPreviousDisabled}
           >
             {previousLabel}
           </Button>
         )}
       </div>
-<div className="flex items-center text-secondary/80">{page} of {totalPages} pages</div>
+      
+      <div className="flex items-center text-secondary/80">
+        {page} of {totalPages} pages
+      </div>
+      
       <div>
         {showNext && (
           <Button
             variant="fill"
             color="primary"
-            onClick={onNext}
-              className={`flex-1 sm:flex-initial text-sm md:text-base ${nextButtonClass}`}
+            onClick={handleNext} // Changed from onNext to handleNext
+            className={`flex-1 sm:flex-initial text-sm md:text-base ${nextButtonClass}`}
             disabled={isNextDisabled}
           >
             {nextLabel}

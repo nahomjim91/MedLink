@@ -70,3 +70,88 @@ export const GET_ORDER_SUMMARIES = gql`
     }
   }
 `;
+
+export const GET_ORDER_BY_ID = gql`
+  query GetOrderAccess($orderId: ID!) {
+    order(orderId: $orderId) {
+      orderId
+      buyerId
+      sellerId
+      orderNumber
+    }
+  }
+`;
+
+
+export const GET_ORDER_DETAILS_BY_ID = gql`
+  query GetOrderDetails($orderId: ID!) {
+    order(orderId: $orderId) {
+      orderId
+      orderNumber
+      buyerId
+      buyerName
+      buyerCompanyName
+      buyerContactInfo {
+        phone
+        email
+        address {
+          street
+          city
+          state
+          country
+          postalCode
+        }
+      }
+      sellerId
+      sellerName
+      sellerCompanyName
+      sellerContactInfo {
+        phone
+        email
+        address {
+          street
+          city
+          state
+          country
+          postalCode
+        }
+      }
+      items {
+        orderItemId
+        productId
+        productName
+        productType
+        productCategory
+        productImage
+        totalQuantity
+        totalPrice
+        batchItems {
+          orderBatchItemId
+          batchId
+          quantity
+          unitPrice
+          subtotal
+          expiryDate
+          manufacturingDate
+          lotNumber
+          batchSellerId
+          batchSellerName
+        }
+      }
+      totalItems
+      totalCost
+      orderDate
+      status
+      paymentStatus
+      pickupScheduledDate
+      pickupConfirmedDate
+      transactionId
+      notes
+      cancellationReason
+      cancelledBy
+      cancelledAt
+      createdAt
+      updatedAt
+    }
+  }
+`;

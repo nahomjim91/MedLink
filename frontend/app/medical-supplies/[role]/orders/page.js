@@ -1,17 +1,18 @@
 "use client";
 import { useState, useMemo } from "react";
-import { TableCard, StatCard, OrderStatCard, OrderTableCard } from "../../components/ui/Cards";
+import { OrderStatCard, OrderTableCard } from "../../components/ui/Cards";
 import { useOrders } from "../../hooks/useOrders";
-import { OrderRowActions } from "../../components/ui/order/OrderRowActions";
 import {
   mapOrderStatus,
   getOrderStats,
   getRoleBasedTabs,
   canUpdateStatus,
-  getStatusColor,
 } from "../../utils/orderUtils";
 import { useMSAuth } from "../../hooks/useMSAuth";
-import { toast } from "react-hot-toast"; // Assuming you have toast notifications
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { OrderFilterModal } from "../../components/modal/OrderFilterModal";
+import { OrderHistoryModal } from "../../components/modal/OrderHistoryModal";
 
 const ordersColumns = [
   { key: "orderBy", label: "Order By" },
@@ -38,11 +39,14 @@ const getUserPerspective = (order, user) => {
 export default function OrdersPage() {
   const [ordersPage, setOrdersPage] = useState(1);
   const [activeTab, setActiveTab] = useState("all");
-  const [statusFilter, setStatusFilter] = useState(null);
-  const { user } = useMSAuth();
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({});
+  const [itemsPerPage, setItemsPerPage] = useState(9);
 
-  const itemsPerPage = 10;
-  const offset = (ordersPage - 1) * itemsPerPage;
+  const [statusFilter, setStatusFilter] = useState(null);
+  const router = useRouter();
+  const { user } = useMSAuth();
 
   const {
     orders,
@@ -53,9 +57,9 @@ export default function OrdersPage() {
     updateOrderStatus,
     schedulePickup,
     cancelOrder,
-  } = useOrders(user?.role, itemsPerPage, offset, statusFilter);
+  } = useOrders(user?.role, statusFilter); // Pass null for limit and offset
 
-  // Transform order data for table display - MOVED BEFORE useMemo
+  // Transform order data for table display
   const transformOrder = (order, perspective) => {
     return {
       id: order.orderId,
@@ -150,20 +154,100 @@ export default function OrdersPage() {
     }
 
     return tabDataMap;
-  }, [orders, ordersToFulfill, user?.role, transformOrder]);
+  }, [orders, ordersToFulfill, user?.role]);
 
-  // Calculate statistics based on active tab
-  const stats = useMemo(() => {
+  // Apply frontend filters
+  const applyFrontendFilters = (data, filters) => {
+    if (!filters || Object.keys(filters).length === 0) return data;
+
+    return data.filter((item) => {
+      const order = item.rawOrder;
+
+      // Status filter
+      if (filters.status && order.status !== filters.status) {
+        return false;
+      }
+
+      // Date range filter
+      if (filters.dateFrom) {
+        const orderDate = new Date(order.createdAt || order.orderDate);
+        const fromDate = new Date(filters.dateFrom);
+        if (orderDate < fromDate) return false;
+      }
+
+      if (filters.dateTo) {
+        const orderDate = new Date(order.createdAt || order.orderDate);
+        const toDate = new Date(filters.dateTo);
+        if (orderDate > toDate) return false;
+      }
+
+      // Value range filter
+      if (
+        filters.minValue &&
+        (order.totalCost || 0) < parseFloat(filters.minValue)
+      ) {
+        return false;
+      }
+
+      if (
+        filters.maxValue &&
+        (order.totalCost || 0) > parseFloat(filters.maxValue)
+      ) {
+        return false;
+      }
+
+      // Company name filter
+      if (filters.orderBy) {
+        const perspective = getUserPerspective(order, user);
+        const companyName =
+          perspective === "buyer"
+            ? order.sellerCompanyName || order.sellerName || ""
+            : order.buyerCompanyName || order.buyerName || "";
+
+        if (
+          !companyName.toLowerCase().includes(filters.orderBy.toLowerCase())
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  // Get filtered data for current tab
+  const filteredTabData = useMemo(() => {
     const currentData = tabData[activeTab] || [];
-    const rawOrders = currentData.map((item) => item.rawOrder);
+    return applyFrontendFilters(currentData, activeFilters);
+  }, [tabData, activeTab, activeFilters]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredTabData.length / itemsPerPage);
+  const startIndex = (ordersPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredTabData.slice(startIndex, endIndex);
+
+  // Calculate statistics based on filtered data
+  const stats = useMemo(() => {
+    const rawOrders = filteredTabData.map((item) => item.rawOrder);
     return getOrderStats(rawOrders);
-  }, [tabData, activeTab]);
+  }, [filteredTabData]);
 
   // Handle tab change
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
     setOrdersPage(1); // Reset to first page when changing tabs
-    refetch({ status: statusFilter, limit: itemsPerPage, offset: 0 });
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setOrdersPage(page);
+  };
+
+  // Handle items per page change
+  const handleItemsPerPageChange = (newItemsPerPage) => {
+    setItemsPerPage(newItemsPerPage);
+    setOrdersPage(1); // Reset to first page when changing items per page
   };
 
   // Handle status update
@@ -210,27 +294,31 @@ export default function OrdersPage() {
 
   // Handle row click for expandable rows
   const handleRowClick = (item) => {
-    // Handle expanding row details or navigation
     console.log("Row clicked:", item);
   };
 
+  // Handle actions
   const handleAction = (action) => {
     switch (action) {
       case "Add Order":
-        // Navigate to add order page
         console.log("Add Order clicked");
         break;
       case "Filter Orders":
-        // Open filter modal
-        console.log("Filter Orders clicked");
+        setShowFilterModal(true);
         break;
       case "Order History":
-        // Export order history
-        console.log("Order History clicked");
+        setShowHistoryModal(true);
         break;
       default:
         console.log(`Unknown action: ${action}`);
     }
+  };
+
+  // Apply filters
+  const applyFilters = (filters) => {
+    setActiveFilters(filters);
+    setStatusFilter(filters.status || null);
+    setOrdersPage(1);
   };
 
   if (loading && !orders.length && !ordersToFulfill.length) {
@@ -264,13 +352,6 @@ export default function OrdersPage() {
       </div>
     );
   }
-
-  const currentTabData = tabData[activeTab] || [];
-  const totalPages = Math.ceil(currentTabData.length / itemsPerPage);
-  const paginatedData = currentTabData.slice(
-    (ordersPage - 1) * itemsPerPage,
-    ordersPage * itemsPerPage
-  );
 
   return (
     <div className="flex flex-col gap-2">
@@ -308,26 +389,29 @@ export default function OrdersPage() {
 
       {/* Orders Table with Tabs */}
       <div className="w-full">
-      <OrderTableCard
+        <OrderTableCard
           title="Orders"
-          data={paginatedData}
+          data={paginatedData} // This should be the sliced data (9 items max)
           columns={ordersColumns}
           page={ordersPage}
           totalPages={totalPages}
-          onPageChange={setOrdersPage}
+          itemsPerPage={itemsPerPage}
+          totalItems={filteredTabData.length} // Total count of filtered items
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={handleItemsPerPageChange}
           onAddItem={() => handleAction("Add Order")}
           onFilter={() => handleAction("Filter Orders")}
           onDownload={() => handleAction("Order History")}
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={handleTabChange}
-          tabData={tabData}
+          tabData={tabData} // This is used only for tab counts, not for display
           isLoading={loading}
           isClickable={true}
           onClickRow={handleRowClick}
           isAddButton={user?.role?.toLowerCase() === "health_facility"}
           isOrderButton={true}
-          // New props for order functionality
+          // Order functionality props
           user={user}
           userRole={user?.role}
           getUserPerspective={(order) => getUserPerspective(order, user)}
@@ -335,12 +419,32 @@ export default function OrdersPage() {
           onSchedulePickup={handleSchedulePickup}
           onCancelOrder={handleCancelOrder}
           onViewDetails={(order) => {
-            // Handle order details view
-            console.log("Viewing order details:", order);
-            // You can navigate to a details page or open a modal here
+            router.push(
+              `/medical-supplies/${user?.role?.toLowerCase()}/orders/${
+                order.orderId
+              }`
+            );
           }}
         />
       </div>
+
+      {/* Filter Modal */}
+      <OrderFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilters={applyFilters}
+        currentFilters={activeFilters}
+        userRole={user?.role?.toLowerCase()}
+      />
+
+      {/* Order History Modal */}
+      <OrderHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        orders={[...orders, ...ordersToFulfill]}
+        userRole={user?.role?.toLowerCase()}
+        getUserPerspective={(order) => getUserPerspective(order, user)}
+      />
     </div>
   );
 }

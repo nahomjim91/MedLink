@@ -400,8 +400,7 @@ export default function InventoryPage() {
               )
             }
             onDownload={() => {
-              // Implement download functionality
-              alert("Download functionality will be implemented here");
+             router.push(`/medical-supplies/${role}/orders`);
             }}
             isLoading={loading}
             // New tab properties
@@ -411,6 +410,7 @@ export default function InventoryPage() {
             tabData={tabData}
             isClickable={true}
             onClickRow={onClikeRow}
+            isFilterButton={false}
           />
         )}
         {/* add product card */}
