@@ -12,7 +12,6 @@ const rateLimit = require("express-rate-limit");
 const setupApolloServer = require("./graphql");
 const { authMiddleware } = require("../middleware/auth");
 const paymentRoutes = require("./route/payment");
-const orderRoutes = require("./route/orders");
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -42,7 +41,6 @@ app.use("/api/", limiter);
 
 // Routes
 app.use("/api/payments", paymentRoutes);
-app.use("/api/orders", orderRoutes);
 
 // Basic health check endpoint
 app.get("/medical-supplies/health", (req, res) => {

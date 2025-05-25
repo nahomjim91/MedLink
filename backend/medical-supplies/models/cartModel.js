@@ -45,8 +45,8 @@ const CartModel = {
 
       // Return cart with items
       const cart = formatDoc(cartDoc);
-      console.log("Cart found:", cart);
-      console.log("Cart items:", cartItems);
+      // console.log("Cart found:", cart);
+      // console.log("Cart items:", cartItems);
       return { ...cart, items: cartItems };
     } catch (error) {
       console.error("Error getting cart:", error);

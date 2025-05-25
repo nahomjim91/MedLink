@@ -3,38 +3,42 @@ const { db, FieldValue } = require("../../config/firebase");
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers");
 const CartModel = require("./cartModel");
 const MSUserModel = require("./msUser");
+const ProductModel = require("./productModel");
+const BatchModel = require("./batchModel");
 
 // Collection references
 const ordersRef = db.collection("orders");
 const orderItemsRef = db.collection("orderItems");
 const orderBatchItemsRef = db.collection("orderBatchItems");
+const productsRef = db.collection("products");
+const batchesRef = db.collection("batches");
 
 /**
  * Order Model
  */
 const OrderModel = {
- /**
+  /**
    * Create order directly (for frontend data)
    * @param {Object} orderData - Complete order data from frontend
    * @returns {Object} Created order
    */
   async createOrder(orderData) {
     const batch = db.batch();
-    
+
     try {
-      const { 
-        orderId, 
+      const {
+        orderId,
         orderNumber,
-        buyerId, 
-        buyerName, 
+        buyerId,
+        buyerName,
         buyerCompanyName,
         buyerContactInfo,
-        sellerId, 
+        sellerId,
         sellerName,
         sellerCompanyName,
         sellerContactInfo,
-        items, 
-        totalItems, 
+        items,
+        totalItems,
         totalCost,
         orderDate,
         status,
@@ -42,7 +46,7 @@ const OrderModel = {
         pickupScheduledDate,
         pickupConfirmedDate,
         transactionId,
-        notes 
+        notes,
       } = orderData;
 
       // Validate required fields
@@ -53,7 +57,7 @@ const OrderModel = {
       // Create main order
       const order = {
         orderId,
-        orderNumber: orderNumber || await this.getNextOrderNumber(),
+        orderNumber: orderNumber || (await this.getNextOrderNumber()),
         buyerId,
         buyerName,
         buyerCompanyName,
@@ -65,14 +69,20 @@ const OrderModel = {
         totalItems,
         totalCost,
         orderDate: orderDate ? new Date(orderDate) : timestamp(),
-        status: this.convertStatusFromFrontend(status) || "pending_confirmation",
-        paymentStatus: this.convertPaymentStatusFromFrontend(paymentStatus) || "pending",
-        pickupScheduledDate: pickupScheduledDate ? new Date(pickupScheduledDate) : null,
-        pickupConfirmedDate: pickupConfirmedDate ? new Date(pickupConfirmedDate) : null,
+        status:
+          this.convertStatusFromFrontend(status) || "pending-confirmation",
+        paymentStatus:
+          this.convertPaymentStatusFromFrontend(paymentStatus) || "pending",
+        pickupScheduledDate: pickupScheduledDate
+          ? new Date(pickupScheduledDate)
+          : null,
+        pickupConfirmedDate: pickupConfirmedDate
+          ? new Date(pickupConfirmedDate)
+          : null,
         transactionId,
         notes: notes || "",
         createdAt: timestamp(),
-        updatedAt: timestamp()
+        updatedAt: timestamp(),
       };
 
       batch.set(ordersRef.doc(orderId), order);
@@ -89,7 +99,7 @@ const OrderModel = {
           productImage: item.productImage,
           totalQuantity: item.totalQuantity,
           totalPrice: item.totalPrice,
-          createdAt: item.createdAt ? new Date(item.createdAt) : timestamp()
+          createdAt: item.createdAt ? new Date(item.createdAt) : timestamp(),
         };
 
         batch.set(orderItemsRef.doc(item.orderItemId), orderItem);
@@ -105,16 +115,26 @@ const OrderModel = {
               productId: item.productId,
               quantity: batchItem.quantity,
               unitPrice: batchItem.unitPrice,
-              subtotal: batchItem.subtotal || (batchItem.quantity * batchItem.unitPrice),
-              expiryDate: batchItem.expiryDate ? new Date(batchItem.expiryDate) : null,
-              manufacturingDate: batchItem.manufacturingDate ? new Date(batchItem.manufacturingDate) : null,
+              subtotal:
+                batchItem.subtotal || batchItem.quantity * batchItem.unitPrice,
+              expiryDate: batchItem.expiryDate
+                ? new Date(batchItem.expiryDate)
+                : null,
+              manufacturingDate: batchItem.manufacturingDate
+                ? new Date(batchItem.manufacturingDate)
+                : null,
               lotNumber: batchItem.lotNumber,
               batchSellerId: batchItem.batchSellerId,
               batchSellerName: batchItem.batchSellerName,
-              createdAt: batchItem.createdAt ? new Date(batchItem.createdAt) : timestamp()
+              createdAt: batchItem.createdAt
+                ? new Date(batchItem.createdAt)
+                : timestamp(),
             };
 
-            batch.set(orderBatchItemsRef.doc(batchItem.orderBatchItemId), orderBatchItem);
+            batch.set(
+              orderBatchItemsRef.doc(batchItem.orderBatchItemId),
+              orderBatchItem
+            );
           }
         }
       }
@@ -131,6 +151,482 @@ const OrderModel = {
   },
 
   /**
+   * Transfer products to buyer when order is completed (pickup_confirmed or delivered)
+   * @param {String} orderId - Order ID
+   * @param {String} buyerId - Buyer ID
+   * @param {String} transferType - Type of transfer ('pickup' or 'delivery')
+   * @returns {Object} Transfer result
+   */
+  async transferProductsToBuyer(orderId, buyerId, transferType = "pickup") {
+    const batch = db.batch();
+
+    try {
+      console.log(
+        `Starting product transfer for order ${orderId} to buyer ${buyerId} via ${transferType}`
+      );
+
+      // Get buyer information
+      const buyer = await MSUserModel.getById(buyerId);
+      if (!buyer) {
+        throw new Error("Buyer not found");
+      }
+
+      // Get order with all items and batch items
+      const order = await this.getById(orderId);
+      if (!order) {
+        throw new Error("Order not found");
+      }
+
+      const transferResults = [];
+
+      // Process each order item
+      for (const orderItem of order.items) {
+        console.log(
+          `Processing order item: ${orderItem.orderItemId} for product: ${orderItem.productId}`
+        );
+
+        // Get original product details
+        const originalProduct = await ProductModel.getById(orderItem.productId);
+        if (!originalProduct) {
+          console.warn(
+            `Original product ${orderItem.productId} not found, skipping`
+          );
+          continue;
+        }
+
+        // Check if buyer already has this product (by name and key attributes)
+        const existingBuyerProduct = await this.findExistingBuyerProduct(
+          buyerId,
+          originalProduct
+        );
+
+        let targetProductId;
+        let isNewProduct = false;
+
+        if (existingBuyerProduct) {
+          console.log(
+            `Found existing product ${existingBuyerProduct.productId} for buyer`
+          );
+          targetProductId = existingBuyerProduct.productId;
+        } else {
+          console.log(`Creating new product copy for buyer`);
+          // Create a copy of the product for the buyer
+          const newProduct = await this.createProductCopyForBuyer(
+            originalProduct,
+            buyer,
+            batch,
+            transferType
+          );
+          targetProductId = newProduct.productId;
+          isNewProduct = true;
+        }
+
+        // Transfer all batch items for this product
+        const batchTransferResults = [];
+        for (const orderBatchItem of orderItem.batchItems) {
+          console.log(
+            `Transferring batch ${orderBatchItem.batchId}, quantity: ${orderBatchItem.quantity}`
+          );
+
+          const batchResult = await this.transferBatchToBuyer(
+            orderBatchItem,
+            targetProductId,
+            buyer,
+            originalProduct.productType,
+            batch,
+            transferType
+          );
+
+          batchTransferResults.push(batchResult);
+        }
+
+        // Handle original product based on buyer type and transfer completion
+        await this.handleOriginalProductAfterTransfer(
+          originalProduct,
+          buyer,
+          orderItem,
+          batch,
+          transferType
+        );
+
+        transferResults.push({
+          orderItemId: orderItem.orderItemId,
+          originalProductId: orderItem.productId,
+          targetProductId,
+          isNewProduct,
+          batchTransfers: batchTransferResults,
+        });
+      }
+
+      // Commit all batch operations
+      await batch.commit();
+
+      console.log(
+        `Product transfer completed for order ${orderId} via ${transferType}`
+      );
+      return {
+        orderId,
+        buyerId,
+        transferType,
+        transferredItems: transferResults,
+        transferredAt: timestamp(),
+      };
+    } catch (error) {
+      console.error("Error transferring products to buyer:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Handle original product after transfer based on buyer type and conditions
+   * @param {Object} originalProduct - Original product data
+   * @param {Object} buyer - Buyer data
+   * @param {Object} orderItem - Order item data
+   * @param {Object} batch - Firestore batch
+   * @param {String} transferType - Type of transfer
+   */
+  async handleOriginalProductAfterTransfer(
+    originalProduct,
+    buyer,
+    orderItem,
+    batch,
+    transferType
+  ) {
+    try {
+      const productRef = productsRef.doc(originalProduct.productId);
+      const now = timestamp();
+
+      // Check if buyer is a health facility
+      const isHealthFacility =
+        buyer.role === "HEALTH_FACILITY" ||
+        buyer.userType === "HEALTH_FACILITY" ||
+        buyer.type === "HEALTH_FACILITY";
+
+      // Check if all product quantity has been transferred
+      const allQuantityTransferred = await this.isAllProductQuantityTransferred(
+        originalProduct.productId,
+        orderItem.totalQuantity
+      );
+
+      if (isHealthFacility) {
+        console.log(
+          `Deactivating original product ${originalProduct.productId} - buyer is health facility`
+        );
+
+        // Deactivate the original product for health facilities
+        batch.update(productRef, {
+          isActive: false,
+          lastUpdatedAt: now,
+          deactivatedReason: `Transferred to health facility: ${buyer.name} via ${transferType}`,
+          deactivatedAt: now,
+          deactivatedByOrder: orderItem.orderId,
+          transferredToHealthFacility: true,
+        });
+      } else if (allQuantityTransferred) {
+        console.log(
+          `All quantity transferred for product ${originalProduct.productId}, marking as sold out`
+        );
+
+        // Mark as sold out if all quantity has been transferred
+        batch.update(productRef, {
+          isActive: false,
+          lastUpdatedAt: now,
+          deactivatedReason: `All inventory sold - transferred via ${transferType}`,
+          deactivatedAt: now,
+          soldOut: true,
+          lastSoldOrder: orderItem.orderId,
+        });
+      } else {
+        console.log(
+          `Partial transfer for product ${originalProduct.productId}, keeping active`
+        );
+
+        // Just update the last activity timestamp for partial transfers
+        batch.update(productRef, {
+          lastUpdatedAt: now,
+          lastTransferDate: now,
+          lastTransferType: transferType,
+        });
+      }
+    } catch (error) {
+      console.error("Error handling original product after transfer:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check if all product quantity has been transferred
+   * @param {String} productId - Product ID
+   * @param {Number} transferredQuantity - Quantity being transferred
+   * @returns {Boolean} True if all quantity is transferred
+   */
+  async isAllProductQuantityTransferred(productId, transferredQuantity) {
+    try {
+      // Get all active batches for this product
+      const batchesSnapshot = await batchesRef
+        .where("productId", "==", productId)
+        .where("quantity", ">", 0)
+        .get();
+
+      if (batchesSnapshot.empty) {
+        return true; // No active batches means all transferred
+      }
+
+      // Calculate total remaining quantity
+      const totalRemainingQuantity = batchesSnapshot.docs
+        .map((doc) => doc.data().quantity || 0)
+        .reduce((sum, quantity) => sum + quantity, 0);
+
+      // If remaining quantity equals or is less than what's being transferred,
+      // it means all will be transferred
+      return totalRemainingQuantity <= transferredQuantity;
+    } catch (error) {
+      console.error(
+        "Error checking if all product quantity transferred:",
+        error
+      );
+      return false; // Conservative approach - assume not all transferred if error
+    }
+  }, 
+
+  /**
+   * Find existing product owned by buyer that matches the original product
+   * @param {String} buyerId - Buyer ID
+   * @param {Object} originalProduct - Original product data
+   * @returns {Object|null} Existing product or null
+   */
+  async findExistingBuyerProduct(buyerId, originalProduct) {
+    try {
+      // Search for products with matching name and key attributes
+      let query = productsRef
+        .where("ownerId", "==", buyerId)
+        .where("name", "==", originalProduct.name)
+        .where("productType", "==", originalProduct.productType)
+        .where("isActive", "==", true);
+
+      // Add category filter if available
+      if (originalProduct.category) {
+        query = query.where("category", "==", originalProduct.category);
+      }
+
+      const snapshot = await query.limit(1).get();
+
+      if (snapshot.empty) {
+        return null;
+      }
+
+      const existingProduct = formatDoc(snapshot.docs[0]);
+
+      // Additional validation for drug products
+      if (originalProduct.productType === "DRUG") {
+        if (
+          existingProduct.concentration !== originalProduct.concentration ||
+          existingProduct.packageType !== originalProduct.packageType
+        ) {
+          return null; // Not a match for drugs if concentration/package differs
+        }
+      }
+
+      // Additional validation for equipment products
+      if (originalProduct.productType === "EQUIPMENT") {
+        if (
+          existingProduct.brandName !== originalProduct.brandName ||
+          existingProduct.modelNumber !== originalProduct.modelNumber
+        ) {
+          return null; // Not a match for equipment if brand/model differs
+        }
+      }
+
+      return existingProduct;
+    } catch (error) {
+      console.error("Error finding existing buyer product:", error);
+      return null;
+    }
+  },
+
+  /**
+   * Create a copy of the product for the buyer
+   * @param {Object} originalProduct - Original product data
+   * @param {Object} buyer - Buyer data
+   * @param {Object} batch - Firestore batch
+   * @param {String} transferType - Type of transfer
+   * @returns {Object} New product data
+   */
+  async createProductCopyForBuyer(
+    originalProduct,
+    buyer,
+    batch,
+    transferType = "pickup"
+  ) {
+    try {
+      const newProductRef = productsRef.doc(); // Auto-generate ID
+      const now = timestamp();
+
+      const newProduct = {
+        productId: newProductRef.id,
+        productType: originalProduct.productType,
+        name: originalProduct.name,
+        originalListerId: originalProduct.originalListerId,
+        originalListerName: originalProduct.originalListerName,
+        ownerId: buyer.id,
+        ownerName: buyer.companyName,
+        category: originalProduct.category,
+        description: originalProduct.description,
+        imageList: originalProduct.imageList || [],
+        isActive: true,
+        createdAt: now,
+        lastUpdatedAt: now,
+        // Copy product-type specific fields
+        ...(originalProduct.productType === "DRUG" && {
+          packageType: originalProduct.packageType,
+          concentration: originalProduct.concentration,
+          requiresPrescription: originalProduct.requiresPrescription,
+        }),
+        ...(originalProduct.productType === "EQUIPMENT" && {
+          brandName: originalProduct.brandName,
+          modelNumber: originalProduct.modelNumber,
+          warrantyInfo: originalProduct.warrantyInfo,
+          sparePartInfo: originalProduct.sparePartInfo || [],
+          documentUrls: originalProduct.documentUrls || [],
+        }),
+        // Add transfer metadata
+        transferredFrom: originalProduct.productId,
+        transferredAt: now,
+        transferType: transferType,
+        acquiredVia: transferType === "delivery" ? "delivery" : "pickup",
+      };
+      console.log("New product data:", newProduct);
+
+      batch.set(newProductRef, newProduct);
+
+      return newProduct;
+    } catch (error) {
+      console.error("Error creating product copy:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Transfer a batch to the buyer
+   * @param {Object} orderBatchItem - Order batch item data
+   * @param {String} targetProductId - Target product ID
+   * @param {Object} buyer - Buyer data
+   * @param {String} productType - Product type
+   * @param {Object} batch - Firestore batch
+   * @param {String} transferType - Type of transfer
+   * @returns {Object} Batch transfer result
+   */
+  async transferBatchToBuyer(
+    orderBatchItem,
+    targetProductId,
+    buyer,
+    productType,
+    batch,
+    transferType = "pickup"
+  ) {
+    try {
+      // Get original batch details
+      const originalBatch = await BatchModel.getById(orderBatchItem.batchId);
+      if (!originalBatch) {
+        throw new Error(`Original batch ${orderBatchItem.batchId} not found`);
+      }
+
+      // Create new batch for buyer
+      const newBatchRef = batchesRef.doc(); // Auto-generate ID
+      const now = timestamp();
+
+      const newBatch = {
+        batchId: newBatchRef.id,
+        productId: targetProductId,
+        productType: productType,
+        currentOwnerId: buyer.id,
+        currentOwnerName: buyer.companyName,
+        quantity: orderBatchItem.quantity,
+        costPrice: orderBatchItem.unitPrice, // Use the purchase price as cost
+        sellingPrice: null, // Buyer can set this later
+        addedAt: now,
+        lastUpdatedAt: now,
+        sourceOriginalBatchId: orderBatchItem.batchId,
+        transferType: transferType,
+        acquiredVia: transferType,
+        // Copy batch-type specific fields
+        ...(productType === "DRUG" && {
+          expiryDate: originalBatch.expiryDate,
+          sizePerPackage: originalBatch.sizePerPackage,
+          manufacturer: originalBatch.manufacturer,
+          manufacturerCountry: originalBatch.manufacturerCountry,
+        }),
+        ...(productType === "EQUIPMENT" && {
+          serialNumbers: this.extractSerialNumbers(
+            originalBatch.serialNumbers,
+            orderBatchItem.quantity,
+            originalBatch.quantity
+          ),
+        }),
+        // Add transfer metadata
+        transferredFromOrder: orderBatchItem.orderId,
+        transferredAt: now,
+      };
+      console.log("New batch data:", newBatch);
+      batch.set(newBatchRef, newBatch);
+
+      // Update original batch quantity (reduce by transferred amount)
+      const originalBatchRef = batchesRef.doc(orderBatchItem.batchId);
+      const newQuantity = Math.max(
+        0,
+        (originalBatch.quantity || 0) - orderBatchItem.quantity
+      );
+
+      batch.update(originalBatchRef, {
+        quantity: newQuantity,
+        lastUpdatedAt: now,
+        lastTransferDate: now,
+        lastTransferType: transferType,
+        ...(newQuantity === 0 && {
+          soldOut: true,
+          soldOutAt: now,
+        }),
+      });
+
+      return {
+        originalBatchId: orderBatchItem.batchId,
+        newBatchId: newBatch.batchId,
+        transferredQuantity: orderBatchItem.quantity,
+        targetProductId,
+        transferType,
+      };
+    } catch (error) {
+      console.error("Error transferring batch to buyer:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Extract serial numbers for equipment based on quantity
+   * @param {Array} originalSerialNumbers - Original serial numbers
+   * @param {Number} transferQuantity - Quantity being transferred
+   * @param {Number} originalQuantity - Original batch quantity
+   * @returns {Array} Serial numbers for the new batch
+   */
+  extractSerialNumbers(
+    originalSerialNumbers,
+    transferQuantity,
+    originalQuantity
+  ) {
+    if (!originalSerialNumbers || originalSerialNumbers.length === 0) {
+      return [];
+    }
+
+    // If transferring all items, return all serial numbers
+    if (transferQuantity >= originalQuantity) {
+      return [...originalSerialNumbers];
+    }
+
+    // If transferring partial quantity, return first N serial numbers
+    return originalSerialNumbers.slice(0, Math.floor(transferQuantity));
+  },
+
+  /**
    * Get next order number
    * @returns {Number} Next order number
    */
@@ -138,16 +634,16 @@ const OrderModel = {
     try {
       const counterRef = db.collection("counters").doc("orders");
       const counterDoc = await counterRef.get();
-      
+
       if (!counterDoc.exists) {
         // Initialize counter
         await counterRef.set({ count: 1 });
         return 1;
       }
-      
+
       const currentCount = counterDoc.data().count;
       const nextCount = currentCount + 1;
-      
+
       await counterRef.update({ count: nextCount });
       return nextCount;
     } catch (error) {
@@ -164,20 +660,21 @@ const OrderModel = {
    */
   convertStatusFromFrontend(status) {
     const statusMap = {
-      "PENDING": "pending_confirmation",
-      "PENDING_CONFIRMATION": "pending_confirmation",
-      "CONFIRMED": "confirmed",
-      "REJECTED_BY_SELLER": "rejected_by_seller",
-      "PREPARING": "preparing",
-      "READY_FOR_PICKUP": "ready_for_pickup",
-      "PICKUP_SCHEDULED": "pickup_scheduled",
-      "PICKUP_CONFIRMED": "pickup_confirmed",
-      "COMPLETED": "completed",
-      "CANCELLED": "cancelled",
-      "DISPUTED": "disputed"
+      PENDING: "pending-confirmation",
+      PENDING_CONFIRMATION: "pending-confirmation",
+      CONFIRMED: "confirmed",
+      REJECTED_BY_SELLER: "rejected-by-seller",
+      PREPARING: "preparing",
+      READY_FOR_PICKUP: "ready-for-pickup",
+      PICKUP_SCHEDULED: "pickup-scheduled",
+      PICKUP_CONFIRMED: "pickup-confirmed",
+      DELIVERED: "delivered",
+      COMPLETED: "completed",
+      CANCELLED: "cancelled",
+      DISPUTED: "disputed",
     };
-    
-    return statusMap[status] || status?.toLowerCase().replace(/_/g, '-');
+
+    return statusMap[status] || status?.toLowerCase().replace(/_/g, "-");
   },
 
   /**
@@ -187,72 +684,18 @@ const OrderModel = {
    */
   convertPaymentStatusFromFrontend(paymentStatus) {
     const statusMap = {
-      "PENDING": "pending",
-      "PROCESSING": "processing",
-      "PAID_HELD_BY_SYSTEM": "paid_held_by_system",
-      "RELEASED_TO_SELLER": "released_to_seller",
-      "REFUNDED": "refunded",
-      "FAILED": "failed"
+      PENDING: "pending",
+      PROCESSING: "processing",
+      PAID_HELD_BY_SYSTEM: "paid-held-by-system",
+      RELEASED_TO_SELLER: "released-to-seller",
+      REFUNDED: "refunded",
+      FAILED: "failed",
     };
-    
-    return statusMap[paymentStatus] || paymentStatus?.toLowerCase().replace(/_/g, '-');
-  },
 
-  /**
-   * Remove seller-specific items from cart
-   * @param {String} buyerId - Buyer ID
-   * @param {String} sellerId - Seller ID  
-   * @param {Object} batch - Firestore batch
-   */
-  async removeSellerItemsFromCart(buyerId, sellerId, batch) {
-    try {
-      const cart = await CartModel.getByUserId(buyerId);
-      
-      for (const cartItem of cart.items) {
-        const sellerBatchItems = cartItem.batchItems.filter(
-          batchItem => batchItem.batchSellerId === sellerId
-        );
-
-        if (sellerBatchItems.length === 0) continue;
-
-        // Remove seller's batch items
-        for (const batchItem of sellerBatchItems) {
-          const cartBatchId = `${buyerId}_${cartItem.productId}_${batchItem.batchId}`;
-          batch.delete(db.collection("cartBatchItems").doc(cartBatchId));
-        }
-
-        // Check if all batch items are removed for this product
-        const remainingBatchItems = cartItem.batchItems.filter(
-          batchItem => batchItem.batchSellerId !== sellerId
-        );
-
-        if (remainingBatchItems.length === 0) {
-          // Remove entire cart item
-          const cartItemId = `${buyerId}_${cartItem.productId}`;
-          batch.delete(db.collection("cartItems").doc(cartItemId));
-        } else {
-          // Update cart item totals
-          const newTotalQuantity = remainingBatchItems.reduce(
-            (sum, batch) => sum + batch.quantity, 0
-          );
-          const newTotalPrice = remainingBatchItems.reduce(
-            (sum, batch) => sum + (batch.quantity * batch.unitPrice), 0
-          );
-
-          const cartItemId = `${buyerId}_${cartItem.productId}`;
-          batch.update(db.collection("cartItems").doc(cartItemId), {
-            totalQuantity: newTotalQuantity,
-            totalPrice: newTotalPrice,
-            lastUpdated: timestamp()
-          });
-        }
-      }
-
-      // Update cart totals will be handled by cart model
-    } catch (error) {
-      console.error("Error removing seller items from cart:", error);
-      throw error;
-    }
+    return (
+      statusMap[paymentStatus] ||
+      paymentStatus?.toLowerCase().replace(/_/g, "-")
+    );
   },
 
   /**
@@ -263,7 +706,7 @@ const OrderModel = {
   async getById(orderId) {
     try {
       const orderDoc = await ordersRef.doc(orderId).get();
-      
+
       if (!orderDoc.exists) {
         return null;
       }
@@ -283,7 +726,7 @@ const OrderModel = {
             .get();
 
           const batchItems = formatDocs(batchItemsSnapshot.docs);
-          
+
           return { ...item, batchItems };
         })
       );
@@ -304,13 +747,13 @@ const OrderModel = {
   async getByBuyerId(buyerId, options = {}) {
     try {
       const { limit = 20, offset = 0, status } = options;
-      
+
       let query = ordersRef.where("buyerId", "==", buyerId);
-      
+
       if (status) {
         query = query.where("status", "==", status);
       }
-      
+
       const ordersSnapshot = await query
         .orderBy("createdAt", "desc")
         .limit(limit)
@@ -337,13 +780,13 @@ const OrderModel = {
   async getBySellerId(sellerId, options = {}) {
     try {
       const { limit = 20, offset = 0, status } = options;
-      
+
       let query = ordersRef.where("sellerId", "==", sellerId);
-      
+
       if (status) {
         query = query.where("status", "==", status);
       }
-      
+
       const ordersSnapshot = await query
         .orderBy("createdAt", "desc")
         .limit(limit)
@@ -371,7 +814,7 @@ const OrderModel = {
   async getOrderSummaries(filter = {}, limit = 20, offset = 0) {
     try {
       let query = ordersRef;
-      
+
       // Apply filters
       if (filter.status) {
         query = query.where("status", "==", filter.status);
@@ -385,14 +828,14 @@ const OrderModel = {
       if (filter.sellerId) {
         query = query.where("sellerId", "==", filter.sellerId);
       }
-      
+
       const ordersSnapshot = await query
         .orderBy("createdAt", "desc")
         .limit(limit)
         .offset(offset)
         .get();
 
-      return formatDocs(ordersSnapshot.docs).map(order => ({
+      return formatDocs(ordersSnapshot.docs).map((order) => ({
         orderId: order.orderId,
         orderNumber: order.orderNumber,
         buyerName: order.buyerName,
@@ -402,7 +845,7 @@ const OrderModel = {
         status: order.status,
         paymentStatus: order.paymentStatus,
         orderDate: order.orderDate,
-        pickupScheduledDate: order.pickupScheduledDate
+        pickupScheduledDate: order.pickupScheduledDate,
       }));
     } catch (error) {
       console.error("Error getting order summaries:", error);
@@ -421,20 +864,22 @@ const OrderModel = {
     try {
       const orderRef = ordersRef.doc(orderId);
       const orderDoc = await orderRef.get();
-      
+
       if (!orderDoc.exists) {
         throw new Error("Order not found");
       }
 
       const order = orderDoc.data();
-      
+
       // Validate status transition and permissions
       if (!this.isValidStatusTransition(order.status, status)) {
-        throw new Error(`Invalid status transition from ${order.status} to ${status}`);
+        throw new Error(
+          `Invalid status transition from ${order.status} to ${status}`
+        );
       }
 
       // Check permissions
-      if (status === "confirmed" || status === "rejected_by_seller") {
+      if (status === "confirmed" || status === "rejected-by-seller") {
         if (userId !== order.sellerId) {
           throw new Error("Only seller can confirm or reject orders");
         }
@@ -442,177 +887,260 @@ const OrderModel = {
 
       const updateData = {
         status,
-        updatedAt: timestamp()
+        updatedAt: timestamp(),
       };
-
-      // Add specific timestamp fields based on status
-      if (status === "pickup_confirmed") {
-        updateData.pickupConfirmedDate = timestamp();
-      }
-
-      await orderRef.update(updateData);
-
-      return await this.getById(orderId);
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Update payment status
-   * @param {String} orderId - Order ID
-   * @param {String} paymentStatus - New payment status
-   * @param {String} transactionId - Transaction ID (optional)
-   * @returns {Object} Updated order
-   */
-  async updatePaymentStatus(orderId, paymentStatus, transactionId = null) {
-    try {
-      const updateData = {
-        paymentStatus,
-        updatedAt: timestamp()
-      };
-
-      if (transactionId) {
-        updateData.transactionId = transactionId;
-      }
-
-      await ordersRef.doc(orderId).update(updateData);
-
-      return await this.getById(orderId);
-    } catch (error) {
-      console.error("Error updating payment status:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Schedule pickup
-   * @param {String} orderId - Order ID
-   * @param {Date} pickupDate - Scheduled pickup date
-   * @param {String} userId - User ID
-   * @returns {Object} Updated order
-   */
-  async schedulePickup(orderId, pickupDate, userId) {
-    try {
-      const orderRef = ordersRef.doc(orderId);
-      const orderDoc = await orderRef.get();
-      
-      if (!orderDoc.exists) {
-        throw new Error("Order not found");
-      }
-
-      const order = orderDoc.data();
-      
-      // Only buyer or seller can schedule pickup
-      if (userId !== order.buyerId && userId !== order.sellerId) {
-        throw new Error("Unauthorized to schedule pickup");
-      }
-
-      await orderRef.update({
-        pickupScheduledDate: new Date(pickupDate),
-        status: "pickup_scheduled",
-        updatedAt: timestamp()
-      });
-
-      return await this.getById(orderId);
-    } catch (error) {
-      console.error("Error scheduling pickup:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Cancel order
-   * @param {String} orderId - Order ID
-   * @param {String} userId - User ID
-   * @param {String} reason - Cancellation reason
-   * @returns {Object} Updated order
-   */
-  async cancelOrder(orderId, userId, reason = "") {
-    const batch = db.batch();
-    
-    try {
-      const orderRef = ordersRef.doc(orderId);
-      const orderDoc = await orderRef.get();
-      
-      if (!orderDoc.exists) {
-        throw new Error("Order not found");
-      }
-
-      const order = orderDoc.data();
-      
-      // Only buyer or seller can cancel, and only in certain statuses
-      if (userId !== order.buyerId && userId !== order.sellerId) {
-        throw new Error("Unauthorized to cancel order");
-      }
-
-      const cancellableStatuses = [
-        "pending_confirmation", 
-        "confirmed", 
-        "preparing", 
-        "ready_for_pickup"
-      ];
-      
-      if (!cancellableStatuses.includes(order.status)) {
-        throw new Error("Order cannot be cancelled in current status");
-      }
-
-      // Restore batch quantities
-      const orderBatchItemsSnapshot = await orderBatchItemsRef
-        .where("orderId", "==", orderId)
-        .get();
-
-      for (const doc of orderBatchItemsSnapshot.docs) {
-        const batchItem = doc.data();
-        const batchRef = db.collection("batches").doc(batchItem.batchId);
-        
-        batch.update(batchRef, {
-          quantity: FieldValue.increment(batchItem.quantity),
-          updatedAt: timestamp()
-        });
-      }
-
-      // Update order status
-      batch.update(orderRef, {
-        status: "cancelled",
-        cancellationReason: reason,
-        cancelledBy: userId,
-        cancelledAt: timestamp(),
-        updatedAt: timestamp()
-      });
-
-      await batch.commit();
-
-      return await this.getById(orderId);
-    } catch (error) {
-      console.error("Error cancelling order:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Validate status transition
-   * @param {String} currentStatus - Current status
-   * @param {String} newStatus - New status
-   * @returns {Boolean} Is valid transition
-   */
-  isValidStatusTransition(currentStatus, newStatus) {
-    const validTransitions = {
-      "pending-confirmation": ["confirmed", "rejected-by-seller", "cancelled"],
-      "confirmed": ["preparing", "cancelled"],
-      "preparing": ["ready-for-pickup", "cancelled"], // Fixed: hyphen format
-      "ready-for-pickup": ["pickup-scheduled", "cancelled"], // Fixed: hyphen format  
-      "pickup-scheduled": ["pickup-confirmed", "cancelled"], // Fixed: hyphen format
-      "pickup-confirmed": ["completed"], // Fixed: hyphen format
-      "completed": [],
-      "cancelled": [],
-      "rejected-by-seller": ["disputed"], // Fixed: hyphen format
-      "disputed": ["completed", "cancelled"]
-    };
+// Handle product transfer for pickup_confirmed and delivered statuses
+if (status === "pickup-confirmed" || status === "delivered") {
+  const transferType = status === "delivered" ? "delivery" : "pickup";
   
-    return validTransitions[currentStatus]?.includes(newStatus) || false;
+  // Add specific timestamp fields
+  if (status === "pickup-confirmed") {
+    updateData.pickupConfirmedDate = timestamp();
+  } else if (status === "delivered") {
+    updateData.deliveredDate = timestamp();
   }
+
+  // Transfer products to buyer
+  try {
+    const transferResult = await this.transferProductsToBuyer(
+      orderId, 
+      order.buyerId, 
+      transferType
+    );
+    
+    updateData.productTransferResult = transferResult;
+    updateData.productsTransferredAt = timestamp();
+    
+    console.log(`Products successfully transferred for order ${orderId} via ${transferType}`);
+  } catch (transferError) {
+    console.error(`Error transferring products for order ${orderId}:`, transferError);
+    // Don't fail the status update if transfer fails, but log it
+    updateData.productTransferError = transferError.message;
+    updateData.productTransferFailedAt = timestamp();
+  }
+}
+
+// Handle ready for pickup status
+if (status === "ready-for-pickup") {
+  updateData.readyForPickupDate = timestamp();
+}
+
+// Handle preparation status
+if (status === "preparing") {
+  updateData.preparingStartedDate = timestamp();
+}
+
+// Update the order
+await orderRef.update(updateData);
+
+// Return updated order with full details
+return await this.getById(orderId);
+} catch (error) {
+console.error("Error updating order status:", error);
+throw error;
+}
+},
+
+/**
+* Update payment status
+* @param {String} orderId - Order ID
+* @param {String} paymentStatus - New payment status
+* @param {String} transactionId - Transaction ID (optional)
+* @returns {Object} Updated order
+*/
+async updatePaymentStatus(orderId, paymentStatus, transactionId = null) {
+try {
+const orderRef = ordersRef.doc(orderId);
+const orderDoc = await orderRef.get();
+
+if (!orderDoc.exists) {
+  throw new Error("Order not found");
+}
+
+const updateData = {
+  paymentStatus,
+  updatedAt: timestamp()
+};
+
+if (transactionId) {
+  updateData.transactionId = transactionId;
+}
+
+// Add specific timestamp fields based on payment status
+if (paymentStatus === "paid-held-by-system") {
+  updateData.paidAt = timestamp();
+} else if (paymentStatus === "released-to-seller") {
+  updateData.releasedToSellerAt = timestamp();
+} else if (paymentStatus === "refunded") {
+  updateData.refundedAt = timestamp();
+}
+
+await orderRef.update(updateData);
+
+return await this.getById(orderId);
+} catch (error) {
+console.error("Error updating payment status:", error);
+throw error;
+}
+},
+
+/**
+* Schedule pickup date
+* @param {String} orderId - Order ID
+* @param {Date} pickupDate - Scheduled pickup date
+* @param {String} userId - User scheduling the pickup
+* @returns {Object} Updated order
+*/
+async schedulePickup(orderId, pickupDate, userId) {
+try {
+const orderRef = ordersRef.doc(orderId);
+const orderDoc = await orderRef.get();
+
+if (!orderDoc.exists) {
+  throw new Error("Order not found");
+}
+
+const order = orderDoc.data();
+
+// Validate permissions (buyer or seller can schedule)
+if (userId !== order.buyerId && userId !== order.sellerId) {
+  throw new Error("Only buyer or seller can schedule pickup");
+}
+
+const updateData = {
+  pickupScheduledDate: new Date(pickupDate),
+  status: "pickup-scheduled",
+  updatedAt: timestamp(),
+  pickupScheduledBy: userId
+};
+
+await orderRef.update(updateData);
+
+return await this.getById(orderId);
+} catch (error) {
+console.error("Error scheduling pickup:", error);
+throw error;
+}
+},
+
+/**
+* Cancel order
+* @param {String} orderId - Order ID
+* @param {String} userId - User cancelling the order
+* @param {String} reason - Cancellation reason
+* @returns {Object} Updated order
+*/
+async cancelOrder(orderId, userId, reason = "") {
+try {
+const orderRef = ordersRef.doc(orderId);
+const orderDoc = await orderRef.get();
+
+if (!orderDoc.exists) {
+  throw new Error("Order not found");
+}
+
+const order = orderDoc.data();
+
+// Validate permissions and status
+if (userId !== order.buyerId && userId !== order.sellerId) {
+  throw new Error("Only buyer or seller can cancel orders");
+}
+
+// Check if order can be cancelled
+const nonCancellableStatuses = [
+  "pickup-confirmed", 
+  "delivered", 
+  "completed", 
+  "cancelled"
+];
+
+if (nonCancellableStatuses.includes(order.status)) {
+  throw new Error(`Cannot cancel order with status: ${order.status}`);
+}
+
+const updateData = {
+  status: "cancelled",
+  paymentStatus: order.paymentStatus === "paid-held-by-system" ? "refunded" : order.paymentStatus,
+  cancelledAt: timestamp(),
+  cancelledBy: userId,
+  cancellationReason: reason,
+  updatedAt: timestamp()
+};
+
+// Add refund timestamp if payment was held
+if (order.paymentStatus === "paid-held-by-system") {
+  updateData.refundedAt = timestamp();
+}
+
+await orderRef.update(updateData);
+
+return await this.getById(orderId);
+} catch (error) {
+console.error("Error cancelling order:", error);
+throw error;
+}
+},
+
+/**
+* Validate status transition
+* @param {String} currentStatus - Current order status
+* @param {String} newStatus - New status to transition to
+* @returns {Boolean} True if transition is valid
+*/
+isValidStatusTransition(currentStatus, newStatus) {
+const validTransitions = {
+"pending-confirmation": ["confirmed", "rejected-by-seller", "cancelled"],
+"confirmed": ["preparing", "cancelled"],
+"preparing": ["ready-for-pickup", "cancelled"],
+"ready-for-pickup": ["pickup-scheduled", "pickup-confirmed", "cancelled"],
+"pickup-scheduled": ["pickup-confirmed", "cancelled"],
+"pickup-confirmed": ["completed"],
+"delivered": ["completed"],
+"completed": [], // No further transitions
+"cancelled": [], // No further transitions
+"disputed": ["resolved", "cancelled"]
+};
+
+return validTransitions[currentStatus]?.includes(newStatus) || false;
+},
+
+/**
+* Delete order (admin only)
+* @param {String} orderId - Order ID
+* @returns {Boolean} Success status
+*/
+async deleteOrder(orderId) {
+const batch = db.batch();
+
+try {
+// Delete order items
+const orderItemsSnapshot = await orderItemsRef
+  .where("orderId", "==", orderId)
+  .get();
+
+orderItemsSnapshot.docs.forEach(doc => {
+  batch.delete(doc.ref);
+});
+
+// Delete order batch items
+const orderBatchItemsSnapshot = await orderBatchItemsRef
+  .where("orderId", "==", orderId)
+  .get();
+
+orderBatchItemsSnapshot.docs.forEach(doc => {
+  batch.delete(doc.ref);
+});
+
+// Delete main order
+batch.delete(ordersRef.doc(orderId));
+
+await batch.commit();
+return true;
+} catch (error) {
+console.error("Error deleting order:", error);
+throw error;
+}
+}
 };
 
 module.exports = OrderModel;

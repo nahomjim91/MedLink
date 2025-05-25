@@ -977,7 +977,7 @@ export const OrderStatCard = ({ title, metrics = [], subtitle = "" }) => {
 
       <div className="flex gap-x-8 justify-around ">
         {metrics.map((metric, index) => (
-          <span className="text-xl font-medium text-secondary/80">
+          <span className="text-xl font-medium text-secondary/80" key={index}>
             {metric.value}
           </span>
         ))}

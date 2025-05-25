@@ -64,10 +64,10 @@ router.post('/initialize', async (req, res) => {
       }
     };
 
-    console.log('Initializing payment with Chapa:', { 
-      ...paymentData, 
-      testMode: process.env.NODE_ENV !== 'production'
-    });
+    // console.log('Initializing payment with Chapa:', { 
+    //   ...paymentData, 
+    //   testMode: process.env.NODE_ENV !== 'production'
+    // });
 
     const response = await axios.post(
       `${CHAPA_BASE_URL}/transaction/initialize`,
@@ -75,7 +75,7 @@ router.post('/initialize', async (req, res) => {
       getChapaHeaders()
     );
 
-    console.log('Chapa initialization response:', response.data);
+    // console.log('Chapa initialization response:', response.data);
 
     if (response.data.status === 'success') {
       // Store payment info in database (optional)
@@ -139,7 +139,7 @@ router.post('/verify', async (req, res) => {
       });
     }
 
-    console.log('Verifying payment:', { txRef, orderId });
+    // console.log('Verifying payment:', { txRef, orderId });
 
     const response = await axios.get(
       `${CHAPA_BASE_URL}/transaction/verify/${txRef}`,
@@ -215,10 +215,10 @@ router.post('/callback', express.raw({ type: 'application/json' }), async (req, 
     const signature = req.headers['chapa-signature'];
     const payload = req.body;
 
-    console.log('Payment callback received:', {
-      signature,
-      payload: payload.toString()
-    });
+    // console.log('Payment callback received:', {
+    //   signature,
+    //   payload: payload.toString()
+    // });
 
     // Verify webhook signature (recommended for production)
     if (process.env.CHAPA_WEBHOOK_SECRET) {
@@ -308,7 +308,7 @@ router.get('/status/:txRef', async (req, res) => {
       getChapaHeaders()
     );
     
-    console.log('Payment status response:', response.data);
+    // console.log('Payment status response:', response.data);
     
     if (response.data.status === 'success') {
       res.json({
