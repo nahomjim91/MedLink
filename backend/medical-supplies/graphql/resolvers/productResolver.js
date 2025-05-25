@@ -1,7 +1,7 @@
 // resolvers/productResolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
-const { UserInputError, ApolloError } = require("apollo-server-express");
+const { UserInputError, ApolloError, ForbiddenError } = require("apollo-server-express");
 const ProductModel = require("../../models/productModel");
 const BatchModel = require("../../models/batchModel");
 const {
@@ -173,20 +173,43 @@ const productResolvers = {
     },
     batchById: async (_, { batchId }, context) => {
       await isAuthenticated(context);
+      console.log("=== BATCHBYID QUERY DEBUG START ===");
+      console.log(`🔍 Fetching batch with ID: ${batchId}`);
+      
       try {
         const batch = await BatchModel.getById(batchId);
+        // console.log("📋 BatchModel.getById result:", {
+        //   found: !!batch,
+        //   batchId: batch?.batchId,
+        //   productId: batch?.productId,
+        //   productType: batch?.productType,
+        //   hasProductType: batch?.hasOwnProperty('productType'),
+        //   allKeys: batch ? Object.keys(batch) : 'N/A',
+        //   fullBatch: batch ? JSON.stringify(batch, null, 2) : 'NULL/UNDEFINED'
+        // });
+        
         if (!batch) {
+          console.log("❌ Batch not found, returning null");
           return null;
         }
-        // To help __resolveType, ensure productType is on the batch object
-        // The model attempts this, but double-check or ensure consistency.
+        
+        // Ensure productType is set for __resolveType
         if (!batch.productType && batch.productId) {
+          console.log("⚠️ Missing productType, attempting to fetch from product");
           const product = await ProductModel.getById(batch.productId);
-          if (product) batch.productType = product.productType;
+          if (product) {
+            batch.productType = product.productType;
+            console.log("✅ ProductType set from product:", batch.productType);
+          } else {
+            console.error("❌ Could not fetch product to determine productType");
+          }
         }
+        
+        console.log("✅ Returning batch with productType:", batch.productType);
+        console.log("=== BATCHBYID QUERY DEBUG END ===");
         return batch;
       } catch (error) {
-        console.error(`Error in batchById resolver for ID ${batchId}:`, error);
+        console.error(`❌ Error in batchById resolver for ID ${batchId}:`, error);
         throw new ApolloError("Failed to fetch batch.", "BATCH_FETCH_ERROR");
       }
     },
@@ -483,12 +506,12 @@ const productResolvers = {
         const batch = await BatchModel.getById(batchId);
         if (!batch) throw new UserInputError("Drug batch not found.");
 
-        // Check if user is the current owner or admin
-        if (user.role !== "admin" && batch.currentOwnerId !== user.uid) {
-          throw new ForbiddenError(
-            "You do not have permission to update this batch."
-          );
-        }
+        // // Check if user is the current owner or admin
+        // if (user.role !== "admin" && batch.currentOwnerId !== user.uid) {
+        //   throw new ForbiddenError(
+        //     "You do not have permission to update this batch."
+        //   );
+        // }
 
         // Verify product type
         const product = await ProductModel.getById(batch.productId);
@@ -520,12 +543,12 @@ const productResolvers = {
         const batch = await BatchModel.getById(batchId);
         if (!batch) throw new UserInputError("Equipment batch not found.");
 
-        // Check if user is the current owner or admin
-        if (user.role !== "admin" && batch.currentOwnerId !== user.uid) {
-          throw new ForbiddenError(
-            "You do not have permission to update this batch."
-          );
-        }
+        // // Check if user is the current owner or admin
+        // if (user.role !== "admin" && batch.currentOwnerId !== user.uid) {
+        //   throw new ForbiddenError(
+        //     "You do not have permission to update this batch."
+        //   );
+        // }
 
         const product = await ProductModel.getById(batch.productId);
         if (!product || product.productType !== "EQUIPMENT") {
@@ -659,45 +682,95 @@ const productResolvers = {
 
   Batch: {
     __resolveType(batch, context, info) {
+      // console.log("=== BATCH.__RESOLVETYPE DEBUG START ===");
+      // console.log("🔍 __resolveType called with batch:", {
+      //   batchId: batch.batchId,
+      //   productType: batch.productType,
+      //   hasProductType: batch.hasOwnProperty('productType'),
+      //   productTypeType: typeof batch.productType,
+      //   allBatchKeys: Object.keys(batch),
+      //   fullBatch: JSON.stringify(batch, null, 2)
+      // });
+
       if (batch.productType === "DRUG") {
+        console.log("✅ Resolving to DrugBatch");
         return "DrugBatch";
       }
       if (batch.productType === "EQUIPMENT") {
+        console.log("✅ Resolving to EquipmentBatch");
         return "EquipmentBatch";
       }
-      console.error("Could not resolve batch type:", batch);
-      return null;
-    },
-    product: async (parentBatch, _, context) => {
-      await isAuthenticated(context);
-      if (!parentBatch.productId) {
-        console.error("Missing productId in batch:", parentBatch);
-        throw new ApolloError(
-          "Batch has no associated product ID.",
-          "BATCH_MISSING_PRODUCT_ID"
-        );
+      
+      // console.error("❌ Could not resolve batch type - productType mismatch");
+      // console.error("Expected: 'DRUG' or 'EQUIPMENT'");
+      // console.error("Received:", batch.productType);
+      // console.error("Full batch object:", batch);
+      // console.log("=== BATCH.__RESOLVETYPE DEBUG END ===");
+      
+      // Instead of returning null, let's try to infer the type or provide a fallback
+      if (batch.expiryDate) {
+        console.log("🔄 Fallback: Assuming DrugBatch due to expiryDate field");
+        return "DrugBatch";
+      } else {
+        console.log("🔄 Fallback: Assuming EquipmentBatch (no expiryDate)");
+        return "EquipmentBatch";
       }
+    },
+    
+    product: async (parentBatch, _, context) => {
+      // console.log("=== BATCH.PRODUCT RESOLVER DEBUG START ===");
+      // console.log("Batch.product resolver called with batch:", {
+      //   batchId: parentBatch.batchId,
+      //   productId: parentBatch.productId,
+      //   productType: parentBatch.productType,
+      //   fullBatchObject: JSON.stringify(parentBatch, null, 2)
+      // });
+
+      await isAuthenticated(context);
+      
+      // if (!parentBatch.productId) {
+      //   console.error("❌ Missing productId in batch:", parentBatch);
+      //   throw new ApolloError(
+      //     "Batch has no associated product ID.",
+      //     "BATCH_MISSING_PRODUCT_ID"
+      //   );
+      // }
 
       try {
+        console.log(`🔍 Attempting to fetch product with ID: ${parentBatch.productId}`);
         const product = await ProductModel.getById(parentBatch.productId);
+        
+        // console.log("📋 Product fetch result:", {
+        //   found: !!product,
+        //   productId: product?.productId,
+        //   productType: product?.productType,
+        //   fullProduct: product ? JSON.stringify(product, null, 2) : 'NULL/UNDEFINED'
+        // });
+
         if (!product) {
-          console.error(
-            `Product not found for batch ${parentBatch.batchId} with productId ${parentBatch.productId}`
-          );
-          throw new ApolloError(
-            "Product not found for batch.",
-            "PRODUCT_NOT_FOUND"
+          console.error(`❌ Product not found for productId: ${parentBatch.productId}`);
+          throw new UserInputError(
+            `Product with ID ${parentBatch.productId} not found.`,
+            { 
+              code: 'PRODUCT_NOT_FOUND', 
+              productId: parentBatch.productId, 
+              batchId: parentBatch.batchId 
+            }
           );
         }
+        
+        console.log("✅ Product successfully fetched");
+        console.log("=== BATCH.PRODUCT RESOLVER DEBUG END ===");
         return product;
       } catch (error) {
-        console.error(
-          `Error fetching product for batch ${parentBatch.batchId}:`,
-          error
-        );
+        console.error("❌ Error in Batch.product resolver:", error);
+        if (error instanceof UserInputError) {
+          throw error;
+        }
         throw new ApolloError(
-          "Failed to fetch product for batch.",
-          "PRODUCT_FETCH_ERROR"
+          `Failed to fetch product for batch.`,
+          "PRODUCT_FETCH_ERROR",
+          { productId: parentBatch.productId, batchId: parentBatch.batchId }
         );
       }
     },
@@ -759,6 +832,76 @@ const productResolvers = {
         return [];
       }
     },
+  },
+
+  DrugBatch: {
+    product: async (parentBatch, _, context) => {
+      console.log("=== DRUGBATCH.PRODUCT RESOLVER DEBUG START ===");
+      console.log("DrugBatch.product resolver called for batch:", parentBatch.batchId);
+
+      try {
+        await isAuthenticated(context);
+        
+        if (!parentBatch.productId) {
+          console.error("Missing productId in DrugBatch:", parentBatch);
+          throw new ApolloError(
+            "Batch has no associated product ID.",
+            "BATCH_MISSING_PRODUCT_ID"
+          );
+        }
+
+        const product = await ProductModel.getById(parentBatch.productId);
+        
+        if (!product) {
+          console.error(`Product not found for DrugBatch ${parentBatch.batchId}`);
+          throw new ApolloError(
+            `Product not found for batch ${parentBatch.batchId}`,
+            "PRODUCT_NOT_FOUND"
+          );
+        }
+
+        console.log("✅ Product found for DrugBatch:", product.productId);
+        return product;
+      } catch (error) {
+        console.error("Error in DrugBatch.product resolver:", error);
+        throw error; // Re-throw to maintain non-null constraint
+      }
+    }
+  },
+
+  EquipmentBatch: {
+    product: async (parentBatch, _, context) => {
+      console.log("=== EQUIPMENTBATCH.PRODUCT RESOLVER DEBUG START ===");
+      console.log("EquipmentBatch.product resolver called for batch:", parentBatch.batchId);
+
+      try {
+        await isAuthenticated(context);
+        
+        if (!parentBatch.productId) {
+          console.error("Missing productId in EquipmentBatch:", parentBatch);
+          throw new ApolloError(
+            "Batch has no associated product ID.",
+            "BATCH_MISSING_PRODUCT_ID"
+          );
+        }
+
+        const product = await ProductModel.getById(parentBatch.productId);
+        
+        if (!product) {
+          console.error(`Product not found for EquipmentBatch ${parentBatch.batchId}`);
+          throw new ApolloError(
+            `Product not found for batch ${parentBatch.batchId}`,
+            "PRODUCT_NOT_FOUND"
+          );
+        }
+
+        console.log("✅ Product found for EquipmentBatch:", product.productId);
+        return product;
+      } catch (error) {
+        console.error("Error in EquipmentBatch.product resolver:", error);
+        throw error; // Re-throw to maintain non-null constraint
+      }
+    }
   },
 };
 

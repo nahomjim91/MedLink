@@ -93,17 +93,34 @@ export const DELETE_BATCH = gql`
   }
 `;
 
-export const PURCHASE_PRODUCT = gql`
-  mutation PurchaseProduct($input: PurchaseProductInput!) {
-    purchaseProduct(input: $input) {
-      ... on DrugProduct {
-        ...DrugProductFields
-      }
-      ... on EquipmentProduct {
-        ...EquipmentProductFields
+
+// Mutation to update drug batch quantities
+export const UPDATE_DRUG_BATCH_QUANTITY = gql`
+  mutation UpdateDrugBatch($batchId: ID!, $input: UpdateDrugBatchInput!) {
+    updateDrugBatch(batchId: $batchId, input: $input) {
+      batchId
+      quantity
+      sellingPrice
+      product {
+        productId
+        name
       }
     }
   }
-  ${DRUG_PRODUCT_FIELDS}
-  ${EQUIPMENT_PRODUCT_FIELDS}
 `;
+
+// Mutation to update equipment batch quantities  
+export const UPDATE_EQUIPMENT_BATCH_QUANTITY = gql`
+  mutation UpdateEquipmentBatch($batchId: ID!, $input: UpdateEquipmentBatchInput!) {
+    updateEquipmentBatch(batchId: $batchId, input: $input) {
+      batchId
+      quantity
+      sellingPrice
+      product {
+        productId
+        name
+      }
+    }
+  }
+`;
+

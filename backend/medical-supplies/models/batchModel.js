@@ -23,6 +23,7 @@ const BatchModel = {
           batch.productType = productDoc.data().productType;
         }
       }
+      // console.log("Batch retrieved by ID:", batchId, batch);
       return batch;
     } catch (error) {
       console.error("Error getting batch by ID:", error);

@@ -15,6 +15,7 @@ const ProductModel = {
   async getById(productId) {
     try {
       const doc = await productsRef.doc(productId).get();
+      // console.log("Product retrieved by ID:", productId, doc);
       return formatDoc(doc);
     } catch (error) {
       console.error("Error getting product by ID:", error);

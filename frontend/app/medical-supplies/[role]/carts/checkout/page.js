@@ -5,9 +5,15 @@ import { DateInput } from "../../../components/ui/Input";
 import { Button, StepButtons } from "../../../components/ui/Button";
 import Image from "next/image";
 import { apiRequest } from "../../../utils/api";
-import { useMutation } from "@apollo/client";
+import { useLazyQuery, useMutation } from "@apollo/client";
 import { CREATE_ORDER_DIRECTLY } from "../../../api/graphql/order/orderMutation";
+import {
+  UPDATE_DRUG_BATCH_QUANTITY,
+  UPDATE_EQUIPMENT_BATCH_QUANTITY,
+} from "../../../api/graphql/product/productMutations";
 import { useRouter } from "next/navigation";
+import { GET_BATCH_CURRENT_QUANTITY } from "../../../api/graphql/product/productQueries";
+import client from "../../../api/graphql/client";
 
 // Method 1: Popup Window Approach
 function ChapaPopup({
@@ -238,101 +244,6 @@ function ChapaPopup({
     </div>
   );
 }
-// Helper function to categorize cart items by seller
-const categorizeCartBySeller = (cart, user) => {
-  if (!cart?.items || !user) return [];
-
-  const sellerGroups = {};
-
-  cart.items.forEach((item) => {
-    item.batchItems.forEach((batchItem) => {
-      const sellerId = batchItem.batchSellerId;
-      const sellerName = batchItem.batchSellerName;
-
-      if (!sellerGroups[sellerId]) {
-        sellerGroups[sellerId] = {
-          sellerId,
-          sellerName,
-          items: {},
-          totalItems: 0,
-          totalCost: 0,
-        };
-      }
-
-      if (!sellerGroups[sellerId].items[item.productId]) {
-        sellerGroups[sellerId].items[item.productId] = {
-          productId: item.productId,
-          productName: item.productName,
-          productType: item.productType,
-          productImage: item.productImage,
-          batchItems: [],
-          totalQuantity: 0,
-          totalPrice: 0,
-        };
-      }
-
-      const orderBatchItem = {
-        batchId: batchItem.batchId,
-        productId: batchItem.productId,
-        quantity: batchItem.quantity,
-        unitPrice: batchItem.unitPrice,
-        subtotal: batchItem.quantity * batchItem.unitPrice,
-        expiryDate: batchItem.expiryDate,
-      };
-
-      sellerGroups[sellerId].items[item.productId].batchItems.push(
-        orderBatchItem
-      );
-      sellerGroups[sellerId].items[item.productId].totalQuantity +=
-        batchItem.quantity;
-      sellerGroups[sellerId].items[item.productId].totalPrice +=
-        orderBatchItem.subtotal;
-
-      sellerGroups[sellerId].totalItems += batchItem.quantity;
-      sellerGroups[sellerId].totalCost += orderBatchItem.subtotal;
-    });
-  });
-
-  return Object.values(sellerGroups).map((sellerGroup, index) => ({
-    orderId: `order_${Date.now()}_${index}`,
-    orderNumber: index + 1,
-    buyerId: user.userId,
-    buyerName: user.contactName,
-    buyerCompanyName: user.companyName,
-    buyerContactInfo: {
-      email: user.email,
-      phone: user.phoneNumber,
-      address: user.address,
-    },
-    sellerId: sellerGroup.sellerId,
-    sellerName: sellerGroup.sellerName,
-    items: Object.values(sellerGroup.items).map((item) => ({
-      orderItemId: `item_${Date.now()}_${item.productId}`,
-      productId: item.productId,
-      productName: item.productName,
-      productType: item.productType,
-      batchItems: item.batchItems.map((batchItem) => ({
-        orderBatchItemId: `batch_${Date.now()}_${batchItem.batchId}`,
-        ...batchItem,
-        createdAt: new Date().toISOString(),
-      })),
-      totalQuantity: item.totalQuantity,
-      totalPrice: item.totalPrice,
-      createdAt: new Date().toISOString(),
-    })),
-    totalItems: sellerGroup.totalItems,
-    totalCost: sellerGroup.totalCost,
-    orderDate: new Date().toISOString(),
-    status: "PENDING",
-    paymentStatus: "PENDING",
-    pickupScheduledDate: null,
-    pickupConfirmedDate: null,
-    transactionId: null,
-    notes: "",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
-};
 
 // Enhanced Step Progress Component
 function StepProgress({ currentStep }) {
@@ -479,7 +390,6 @@ function StepProgress({ currentStep }) {
     </div>
   );
 }
-
 // Step 1: Order Summary Component
 function OrderSummaryStep({
   orders,
@@ -647,7 +557,6 @@ function OrderSummaryStep({
     </div>
   );
 }
-
 // Step 2: Payment Component
 function PaymentStep({
   orders,
@@ -813,7 +722,6 @@ function PaymentStep({
     </div>
   );
 }
-
 // Step 3: Finished Component
 function FinishedStep({ onNext }) {
   return (
@@ -858,6 +766,102 @@ function FinishedStep({ onNext }) {
   );
 }
 
+// Helper function to categorize cart items by seller
+const categorizeCartBySeller = (cart, user) => {
+  if (!cart?.items || !user) return [];
+
+  const sellerGroups = {};
+
+  cart.items.forEach((item) => {
+    item.batchItems.forEach((batchItem) => {
+      const sellerId = batchItem.batchSellerId;
+      const sellerName = batchItem.batchSellerName;
+
+      if (!sellerGroups[sellerId]) {
+        sellerGroups[sellerId] = {
+          sellerId,
+          sellerName,
+          items: {},
+          totalItems: 0,
+          totalCost: 0,
+        };
+      }
+
+      if (!sellerGroups[sellerId].items[item.productId]) {
+        sellerGroups[sellerId].items[item.productId] = {
+          productId: item.productId,
+          productName: item.productName,
+          productType: item.productType,
+          productImage: item.productImage,
+          batchItems: [],
+          totalQuantity: 0,
+          totalPrice: 0,
+        };
+      }
+
+      const orderBatchItem = {
+        batchId: batchItem.batchId,
+        productId: batchItem.productId,
+        quantity: batchItem.quantity,
+        unitPrice: batchItem.unitPrice,
+        subtotal: batchItem.quantity * batchItem.unitPrice,
+        expiryDate: batchItem.expiryDate,
+      };
+
+      sellerGroups[sellerId].items[item.productId].batchItems.push(
+        orderBatchItem
+      );
+      sellerGroups[sellerId].items[item.productId].totalQuantity +=
+        batchItem.quantity;
+      sellerGroups[sellerId].items[item.productId].totalPrice +=
+        orderBatchItem.subtotal;
+
+      sellerGroups[sellerId].totalItems += batchItem.quantity;
+      sellerGroups[sellerId].totalCost += orderBatchItem.subtotal;
+    });
+  });
+
+  return Object.values(sellerGroups).map((sellerGroup, index) => ({
+    orderId: `order_${Date.now()}_${index}`,
+    orderNumber: index + 1,
+    buyerId: user.userId,
+    buyerName: user.contactName,
+    buyerCompanyName: user.companyName,
+    buyerContactInfo: {
+      email: user.email,
+      phone: user.phoneNumber,
+      address: user.address,
+    },
+    sellerId: sellerGroup.sellerId,
+    sellerName: sellerGroup.sellerName,
+    items: Object.values(sellerGroup.items).map((item) => ({
+      orderItemId: `item_${Date.now()}_${item.productId}`,
+      productId: item.productId,
+      productName: item.productName,
+      productType: item.productType,
+      batchItems: item.batchItems.map((batchItem) => ({
+        orderBatchItemId: `batch_${Date.now()}_${batchItem.batchId}`,
+        ...batchItem,
+        createdAt: new Date().toISOString(),
+      })),
+      totalQuantity: item.totalQuantity,
+      totalPrice: item.totalPrice,
+      createdAt: new Date().toISOString(),
+    })),
+    totalItems: sellerGroup.totalItems,
+    totalCost: sellerGroup.totalCost,
+    orderDate: new Date().toISOString(),
+    status: "PENDING",
+    paymentStatus: "PENDING",
+    pickupScheduledDate: null,
+    pickupConfirmedDate: null,
+    transactionId: null,
+    notes: "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }));
+};
+
 export default function CheckoutPage() {
   const { user, cart, loading, removeProductFromCart } = useMSAuth();
   const router = useRouter();
@@ -870,9 +874,13 @@ export default function CheckoutPage() {
   const [currentPayment, setCurrentPayment] = useState(null);
   const [paidOrders, setPaidOrders] = useState([]); // Track paid orders
   const [createdOrders, setCreatedOrders] = useState([]); // Track created orders
+  const [inventoryErrors, setInventoryErrors] = useState({});
   const [createOrderMutation, { loading: orderCreationLoading }] = useMutation(
     CREATE_ORDER_DIRECTLY
   );
+  const [updateDrugBatch] = useMutation(UPDATE_DRUG_BATCH_QUANTITY);
+  const [updateEquipmentBatch] = useMutation(UPDATE_EQUIPMENT_BATCH_QUANTITY);
+  const [getBatchQuantity] = useLazyQuery(GET_BATCH_CURRENT_QUANTITY);
 
   // Categorize cart items by seller
   const ordersBySeller = useMemo(
@@ -1002,8 +1010,6 @@ export default function CheckoutPage() {
         [order.orderId]: data.createOrderDirect,
       }));
 
-
-
       return data.createOrderDirect;
     } catch (error) {
       console.error("Error creating order in database:", error);
@@ -1069,11 +1075,12 @@ export default function CheckoutPage() {
   // Handle payment success
   const handlePaymentSuccess = async (paymentData) => {
     console.log("Payment success data received:", paymentData);
+    let rollbackData = null;
 
     try {
       setPaymentLoading(currentPayment.order.orderId);
 
-      // Verify payment with backend
+      // Step 1: Verify payment with backend
       const verificationResponse = await apiRequest("/api/payments/verify", {
         method: "POST",
         body: JSON.stringify({
@@ -1083,48 +1090,48 @@ export default function CheckoutPage() {
         }),
       });
 
-      console.log("Payment verification response:", verificationResponse);
-
-      if (verificationResponse.success) {
-        // Create order in GraphQL database
-        const createdOrder = await createOrderInDatabase(currentPayment.order, {
-          ...verificationResponse.data,
-          transactionId:
-            verificationResponse.data.transactionId || currentPayment.txRef,
-        });
-
-        console.log("Order created in database:", createdOrder);
-
-        // Remove items from cart after successful order creation
-        await handleRemoveItemsFromCart(currentPayment.order);
-
-        // Mark order as paid locally
-        setPaidOrders((prev) => [...prev, currentPayment.order.orderId]);
-
-        // Close popup
-        setShowPopup(false);
-        setCurrentPayment(null);
-
-        // Check if all orders are paid and auto-proceed
-        const allPaid = ordersBySeller.every(
-          (order) =>
-            paidOrders.includes(order.orderId) ||
-            order.orderId === currentPayment.order.orderId
-        );
-
-        if (allPaid) {
-          setTimeout(() => {
-            setCurrentStep(3);
-          }, 1500);
-        }
-      } else {
-        throw new Error(
-          verificationResponse.message || "Payment verification failed"
-        );
+      if (!verificationResponse.success) {
+        throw new Error(verificationResponse.message || "Payment verification failed");
       }
+
+      // Step 2: Update batch quantities (with rollback capability)
+      rollbackData = await updateBatchQuantitiesOptimistic(currentPayment.order);
+      
+      // Step 3: Create order in database
+      const createdOrder = await createOrderInDatabase(currentPayment.order, {
+        ...verificationResponse.data,
+        transactionId: verificationResponse.data.transactionId || currentPayment.txRef,
+      });
+
+      // Step 4: Remove items from cart
+      await handleRemoveItemsFromCart(currentPayment.order);
+
+      // Step 5: Update UI state
+      setPaidOrders((prev) => [...prev, currentPayment.order.orderId]);
+      setShowPopup(false);
+      setCurrentPayment(null);
+
+      // Check if all orders are paid
+      const allPaid = ordersBySeller.every(
+        (order) =>
+          paidOrders.includes(order.orderId) ||
+          order.orderId === currentPayment.order.orderId
+      );
+
+      if (allPaid) {
+        setTimeout(() => setCurrentStep(3), 1500);
+      }
+
     } catch (error) {
       console.error("Payment success handling failed:", error);
-      setPaymentError(`Payment verification failed: ${error.message}`);
+      
+      // Rollback batch quantities if we updated them
+      if (rollbackData?.rollbackOperations) {
+        console.log("Rolling back batch quantities due to error...");
+        await rollbackBatchQuantities(rollbackData.rollbackOperations);
+      }
+      
+      setPaymentError(`Payment processing failed: ${error.message}`);
     } finally {
       setPaymentLoading(null);
     }
@@ -1140,14 +1147,46 @@ export default function CheckoutPage() {
     setCurrentPayment(null);
   };
 
-  // Handle pay order button click
+  // handler with proper validation flow
   const handlePayOrder = async (order) => {
     setPaymentError(null);
+    setInventoryErrors({});
     setPaymentLoading(order.orderId);
 
     try {
       console.log("Starting payment process for order:", order.orderId);
 
+      // Step 1: Real-time inventory validation
+      const inventoryCheck = await validateInventoryRealTime(order);
+
+      if (!inventoryCheck.isValid) {
+        console.log("Inventory validation failed:", inventoryCheck.errors);
+
+        setInventoryErrors({
+          [order.orderId]: {
+            errors: inventoryCheck.errors,
+            unavailableItems: inventoryCheck.unavailableItems,
+          },
+        });
+
+        // Ask user if they want to remove unavailable items
+        const shouldRemove = window.confirm(
+          `Some items are no longer available or have insufficient stock:\n\n${inventoryCheck.errors.join(
+            "\n"
+          )}\n\nWould you like to remove these items from your cart?`
+        );
+
+        if (shouldRemove && inventoryCheck.unavailableItems.length > 0) {
+          await handleUnavailableItems(inventoryCheck.unavailableItems, order);
+          return;
+        }
+
+        setPaymentError("Please resolve inventory issues before proceeding.");
+        setPaymentLoading(null);
+        return;
+      }
+
+      // Step 2: Initialize payment
       const paymentData = await initializePayment(order);
 
       setCurrentPayment({
@@ -1165,6 +1204,252 @@ export default function CheckoutPage() {
     }
   };
 
+  // Real-time inventory validation - fetch fresh data from database
+  const validateInventoryRealTime = async (order) => {
+    console.log("Validating inventory in real-time for order:", order.orderId);
+
+    const errors = [];
+    const unavailableItems = [];
+    const validationPromises = [];
+
+    try {
+      // Create validation promises for each batch item
+      for (const item of order.items) {
+        for (const batchItem of item.batchItems) {
+          const validationPromise = getBatchQuantity({
+            variables: { batchId: batchItem.batchId },
+          })
+            .then(({ data }) => {
+              const currentBatch = data?.batchById;
+
+              if (!currentBatch) {
+                errors.push(
+                  `Product "${item.productName}" batch is no longer available`
+                );
+                unavailableItems.push({
+                  productId: item.productId,
+                  productName: item.productName,
+                  batchId: batchItem.batchId,
+                  reason: "batch_not_found",
+                });
+                return false;
+              }
+
+              // Check if requested quantity exceeds available quantity
+              if (batchItem.quantity > currentBatch.quantity) {
+                errors.push(
+                  `Insufficient stock for "${item.productName}". Requested: ${batchItem.quantity}, Available: ${currentBatch.quantity}`
+                );
+                unavailableItems.push({
+                  productId: item.productId,
+                  productName: item.productName,
+                  batchId: batchItem.batchId,
+                  requested: batchItem.quantity,
+                  available: currentBatch.quantity,
+                  reason: "insufficient_stock",
+                });
+                return false;
+              }
+
+              return true;
+            })
+            .catch((error) => {
+              console.error(
+                `Error validating batch ${batchItem.batchId}:`,
+                error
+              );
+              errors.push(
+                `Failed to validate "${item.productName}" availability`
+              );
+              unavailableItems.push({
+                productId: item.productId,
+                productName: item.productName,
+                batchId: batchItem.batchId,
+                reason: "validation_error",
+              });
+              return false;
+            });
+
+          validationPromises.push(validationPromise);
+        }
+      }
+
+      // Wait for all validation promises to resolve
+      await Promise.all(validationPromises);
+
+      if (errors.length > 0) {
+        return {
+          isValid: false,
+          errors,
+          unavailableItems,
+        };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      console.error("Error in real-time inventory validation:", error);
+      return {
+        isValid: false,
+        errors: ["Failed to validate inventory. Please try again."],
+        unavailableItems: [],
+      };
+    }
+  };
+
+  // Optimistic batch quantity update with rollback capability
+  const updateBatchQuantitiesOptimistic = async (order) => {
+    console.log("Updating batch quantities for order:", order.orderId);
+    const updateOperations = [];
+    const rollbackOperations = [];
+    try {
+      // Prepare all update operations
+      for (const item of order.items) {
+        for (const batchItem of item.batchItems) {
+          // Get current quantity first
+          const { data } = await getBatchQuantity({
+            variables: { batchId: batchItem.batchId },
+          });
+          const currentBatch = data?.batchById;
+          if (!currentBatch) {
+            throw new Error(`Batch ${batchItem.batchId} not found during update`);
+          }
+          const newQuantity = currentBatch.quantity - batchItem.quantity;
+          if (newQuantity < 0) {
+            throw new Error(`Insufficient stock for batch ${batchItem.batchId}`);
+          }
+  
+          // Prepare update operation
+          const productType = item.productType || "DRUG";
+          let updateOperation;
+  
+          if (productType === "DRUG") {
+            console.log('Update Operation:', {
+              batchId: batchItem.batchId,
+              input: { quantity: newQuantity }
+            });
+            updateOperation = {
+              mutation: UPDATE_DRUG_BATCH_QUANTITY,
+              variables: {
+                batchId: batchItem.batchId,
+                input: { quantity: newQuantity },
+              },
+            };
+          } else if (productType === "EQUIPMENT") {
+            console.log('Update Operation:', {
+              batchId: batchItem.batchId,
+              input: { quantity: newQuantity }
+            });
+            updateOperation = {
+              mutation: UPDATE_EQUIPMENT_BATCH_QUANTITY,
+              variables: {
+                batchId: batchItem.batchId,
+                input: { quantity: newQuantity },
+              },
+            };
+          }
+  
+          if (updateOperation) {
+            updateOperations.push(updateOperation);
+            rollbackOperations.push({
+              batchId: batchItem.batchId,
+              originalQuantity: currentBatch.quantity,
+              productType: productType,
+            });
+          }
+        }
+      }
+  
+      // Execute all updates using Apollo Client's mutate
+      const updatePromises = updateOperations.map((op) =>
+        client.mutate(op)  // Use client.mutate instead of directly calling the mutation
+      );
+      await Promise.all(updatePromises);
+      
+      console.log("All batch quantities updated successfully");
+      return { success: true, rollbackOperations };
+    } catch (error) {
+      console.error("Error updating batch quantities:", error);
+      if (rollbackOperations.length > 0) {
+        console.log("Attempting to rollback batch quantity updates...");
+        await rollbackBatchQuantities(rollbackOperations);
+      }
+      throw error;
+    }
+  };
+
+  // Rollback batch quantities if payment fails
+  const rollbackBatchQuantities = async (rollbackOperations) => {
+    const rollbackPromises = rollbackOperations.map(async (operation) => {
+      try {
+        if (operation.productType === "DRUG") {
+          await updateDrugBatch({
+            variables: {
+              batchId: operation.batchId,
+              input: { quantity: operation.originalQuantity },
+            },
+          });
+        } else if (operation.productType === "EQUIPMENT") {
+          await updateEquipmentBatch({
+            variables: {
+              batchId: operation.batchId,
+              input: { quantity: operation.originalQuantity },
+            },
+          });
+        }
+        console.log(
+          `Rolled back batch ${operation.batchId} to quantity ${operation.originalQuantity}`
+        );
+      } catch (error) {
+        console.error(`Failed to rollback batch ${operation.batchId}:`, error);
+      }
+    });
+
+    await Promise.all(rollbackPromises);
+  };
+
+  // Handle unavailable items by removing them from cart and refreshing
+  const handleUnavailableItems = async (unavailableItems, order) => {
+    console.log("Handling unavailable items:", unavailableItems);
+
+    try {
+      // Group unavailable items by product
+      const productsToRemove = [
+        ...new Set(unavailableItems.map((item) => item.productId)),
+      ];
+
+      // Remove products from cart
+      for (const productId of productsToRemove) {
+        try {
+          await removeProductFromCart(productId);
+          console.log(`Removed unavailable product ${productId} from cart`);
+        } catch (error) {
+          console.error(`Failed to remove product ${productId}:`, error);
+        }
+      }
+
+      // Refresh cart to get updated data
+      await refreshCart();
+
+      // Show user-friendly message
+      const itemNames = unavailableItems.map((item) => item.productName);
+      const uniqueNames = [...new Set(itemNames)];
+
+      alert(
+        `The following items were removed from your cart due to insufficient stock:\n\n${uniqueNames.join(
+          "\n"
+        )}\n\nYour cart has been updated. Please review and try again.`
+      );
+
+      // Refresh the page to show updated cart
+      window.location.reload();
+    } catch (error) {
+      console.error("Error handling unavailable items:", error);
+      alert(
+        "There was an error updating your cart. Please refresh the page and try again."
+      );
+    }
+  };
+
   // Handle popup close
   const handleClosePopup = () => {
     setShowPopup(false);
@@ -1177,8 +1462,6 @@ export default function CheckoutPage() {
     setPaymentError(null);
   };
 
-
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1189,7 +1472,7 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
+  console.log("Orders by seller:", ordersBySeller);
 
   return (
     <div className="container mx-auto bg-white rounded-lg shadow-sm">
@@ -1216,10 +1499,15 @@ export default function CheckoutPage() {
             paymentError={paymentError}
             paidOrders={paidOrders}
             onDismissError={handleDismissError}
+            inventoryErrors={inventoryErrors}
           />
         )}
 
-        {currentStep === 3 && <FinishedStep onNext= {() => router.push(`/medical-supplies/${user.role}/orders`)} />}
+        {currentStep === 3 && (
+          <FinishedStep
+            onNext={() => router.push(`/medical-supplies/${user.role}/orders`)}
+          />
+        )}
 
         {showPopup && currentPayment && (
           <ChapaPopup

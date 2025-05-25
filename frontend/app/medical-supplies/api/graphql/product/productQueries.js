@@ -345,3 +345,29 @@ export const SEARCH_PRODUCTS = gql`
     }
   }
 `;
+
+// Add these queries to your GraphQL queries file
+export const GET_BATCH_CURRENT_QUANTITY = gql`
+  query GetBatchCurrentQuantity($batchId: ID!) {
+    batchById(batchId: $batchId) {
+      ... on DrugBatch {
+        batchId
+        quantity
+        sellingPrice
+        product {
+          productId
+          name
+        }
+      }
+      ... on EquipmentBatch {
+        batchId
+        quantity
+        sellingPrice
+        product {
+          productId
+          name
+        }
+      }
+    }
+  }
+`;
