@@ -1,4 +1,4 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 // Mutation to update user profile
 export const UPDATE_USER_PROFILE = gql`
@@ -84,5 +84,64 @@ export const ADD_CERTIFICATE = gql`
         url
       }
     }
+  }
+`;
+
+export const CREATE_APPOINTMENT = gql`
+  mutation CreateAppointment($input: AppointmentInput!) {
+    createAppointment(input: $input) {
+      appointmentId
+      patientId
+      patientName
+      doctorId
+      doctorName
+      status
+      scheduledStartTime
+      scheduledEndTime
+      actualStartTime
+      actualEndTime
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const UPDATE_APPOINTMENT = gql`
+  mutation UpdateAppointment($id: ID!, $input: UpdateAppointmentInput!) {
+    updateAppointment(id: $id, input: $input) {
+      appointmentId
+      status
+      updatedAt
+    }
+  }
+`;
+
+export const CANCEL_APPOINTMENT = gql`
+  mutation CancelAppointment($id: ID!) {
+    cancelAppointment(id: $id) {
+      appointmentId
+      status
+      updatedAt
+    }
+  }
+`;
+
+export const Create_Available_Slot = gql`
+  mutation CreateAvailableSlot($input: AvailableSlotInput!) {
+    createAvailableSlot(input: $input) {
+      slotId
+      doctorId
+      doctorName
+      startTime
+      endTime
+      isBooked
+      createdAt
+    }
+  }
+`;
+
+export const REMOVE_AVAILABLE_SLOT = gql`
+  mutation RemoveAvailableSlot($slotId: ID!) {
+    removeAvailableSlot(slotId: $slotId)
   }
 `;

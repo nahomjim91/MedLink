@@ -30,6 +30,10 @@
   },
   "keywords": [],
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.0.3",
+      "react-big-calendar": "^1.8.6",
+       "moment": "^2.30.1"
   }
+
+  
 }

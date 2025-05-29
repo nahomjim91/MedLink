@@ -1,8 +1,13 @@
 // /graphql/index.js
-const { ApolloServer } = require('apollo-server-express');
-const typeDefs = require('./schemas');
-const resolvers = require('./resolvers');
-const { createContext } = require('../../middleware/auth');
+const { ApolloServer } = require("apollo-server-express");
+const typeDefs = require("./schema/index");
+const resolvers = require("./resolver/index");
+const { createContext } = require("../../middleware/auth");
+const dotenv = require("dotenv");
+// Load environment variables if not already loaded
+if (!process.env.NODE_ENV) {
+  dotenv.config();
+}
 
 /**
  * Create and configure Apollo Server
@@ -15,47 +20,58 @@ const setupApolloServer = async (app) => {
     resolvers,
     context: createContext,
     formatError: (error) => {
-      console.error('GraphQL Error:', error);
-      
+      console.error("GraphQL Error:", error);
+
       // Return sanitized error message in production
-      if (process.env.NODE_ENV === 'production') {
-        if (error.extensions.code === 'INTERNAL_SERVER_ERROR') {
+      if (process.env.NODE_ENV === "production") {
+        if (error.extensions.code === "INTERNAL_SERVER_ERROR") {
           return {
-            message: 'Internal server error',
-            extensions: { code: 'INTERNAL_SERVER_ERROR' }
+            message: "Internal server error",
+            extensions: { code: "INTERNAL_SERVER_ERROR" },
           };
         }
       }
-      
+
       return error;
     },
     plugins: [
       {
         // Basic logging plugin
         requestDidStart(requestContext) {
-          console.log(`Request started: ${requestContext.request.operationName}`);
-          
+          console.log(
+            `Request started: ${requestContext.request.operationName}`
+          );
+
           return {
             didEncounterErrors(context) {
-              console.error('Apollo Server encountered errors:', context.errors);
+              console.error(
+                "Apollo Server encountered errors:",
+                context.errors
+              );
             },
             willSendResponse(context) {
-              console.log(`Request completed: ${requestContext.request.operationName}`);
-            }
+              console.log(
+                `Request completed: ${requestContext.request.operationName}`
+              );
+            },
           };
-        }
-      }
-    ]
+        },
+      },
+    ],
   });
 
   // Start the server
   await server.start();
-  
+
   // Apply middleware to Express app
-  server.applyMiddleware({ app, path: '/graphql' });
-  
-  console.log(`Apollo Server ready at http://localhost:${process.env.TELEHEALTH_SERVER_PORT}${server.graphqlPath}`);
-  
+  server.applyMiddleware({ app, path: "/graphql" });
+
+  console.log(
+    `Apollo Server ready at http://localhost:${
+      process.env.TELEHEALTH_SERVER_PORT || 4002
+    }${server.graphqlPath}`
+  );
+
   return server;
 };
 

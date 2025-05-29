@@ -85,3 +85,68 @@ export const GET_ALL_DOCTORS = gql`
   }
 `;
 
+export const GET_MY_APPOINTMENTS = gql`
+  query GetMyAppointments {
+    myAppointments {
+      appointmentId
+      patientId
+      patientName
+      doctorId
+      doctorName
+      status
+      scheduledStartTime
+      scheduledEndTime
+      actualStartTime
+      actualEndTime
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const GET_DOCTOR_APPOINTMENTS = gql`
+  query GetDoctorAppointments($doctorId: ID!) {
+    doctorAppointments(doctorId: $doctorId) {
+      appointmentId
+      patientId
+      patientName
+      doctorId
+      doctorName
+      status
+      scheduledStartTime
+      scheduledEndTime
+      actualStartTime
+      actualEndTime
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const GET_DOCTOR_AVAILABLE_SLOTS = gql`
+  query GetDoctorAvailableSlots($doctorId: ID!) {
+    doctorAvailableSlots(doctorId: $doctorId) {
+      slotId
+      doctorId
+      doctorName
+      startTime
+      endTime
+      isBooked
+      createdAt
+    }
+  }
+`;
+
+export const GET_AVAILABLE_SLOTS_BY_DATE = gql`
+  query GetAvailableSlotsByDate($doctorId: ID!, $date: Date!) {
+    availableSlotsByDate(doctorId: $doctorId, date: $date) {
+      slotId
+      doctorId
+      doctorName
+      startTime
+      endTime
+      isBooked
+      createdAt
+    }
+  }
+`;

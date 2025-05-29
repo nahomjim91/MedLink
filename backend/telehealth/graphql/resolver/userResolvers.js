@@ -1,9 +1,9 @@
 // /graphql/resolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
-const UserModel = require("../models/user");
-const DoctorProfileModel = require("../models/doctorProfile");
-const PatientProfileModel = require("../models/patientProfile");
+const UserModel = require("../../models/user");
+const DoctorProfileModel = require("../../models/doctorProfile");
+const PatientProfileModel = require("../../models/patientProfile");
 const {
   AuthenticationError,
   ForbiddenError,
@@ -15,19 +15,23 @@ const dateScalar = new GraphQLScalarType({
   description: "Date custom scalar type",
   serialize(value) {
     // Handle Firestore timestamp objects
-    if (value && value._seconds !== undefined && value._nanoseconds !== undefined) {
+    if (
+      value &&
+      value._seconds !== undefined &&
+      value._nanoseconds !== undefined
+    ) {
       // Convert Firestore timestamp to milliseconds
       return value._seconds * 1000 + Math.floor(value._nanoseconds / 1000000);
     }
-    
+
     if (value instanceof Date) {
       return value.getTime(); // Convert outgoing Date to integer for JSON
     }
-    
+
     if (typeof value === "string" || typeof value === "number") {
       return new Date(value).getTime();
     }
-    
+
     console.log("Failed to serialize date value:", value);
     return null;
   },
@@ -199,15 +203,17 @@ const resolvers = {
       if (!userId) {
         throw new AuthenticationError("Authentication required");
       }
-      console.log("Resolver: completeRegistration - userId from context:", userId);
+      console.log(
+        "Resolver: completeRegistration - userId from context:",
+        userId
+      );
       console.log("Resolver: completeRegistration - THuserInput:", THuserInput);
-
 
       try {
         // 1. Update the base user information
         const updatedUser = await UserModel.createOrUpdate(userId, {
           ...THuserInput,
-          profileComplete: true, 
+          profileComplete: true,
         });
 
         const user = isAuthenticated(context);
