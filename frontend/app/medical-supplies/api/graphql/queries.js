@@ -105,20 +105,41 @@ export const GET_PENDING_APPROVAL_USERS = gql`
   }
 `;
 
-// Query to search for users (for admin use)
+// export const SEARCH_MS_USERS = gql`
+//   query SearchMSUsers($query: String!, $limit: Int, $offset: Int) {
+//     searchMSUsers(query: $query, limit: $limit, offset: $offset) {
+//       userId
+//       email
+//       role
+//       companyName
+//       contactName
+//       phoneNumber
+//       profileImageUrl
+//       isApproved
+//     }
+//   }
+// `;
+
+// GraphQL query for searching users
 export const SEARCH_MS_USERS = gql`
-  query SearchMSUsers($query: String!, $limit: Int, $offset: Int) {
-    searchMSUsers(query: $query, limit: $limit, offset: $offset) {
+  query SearchMSUsers($searchQuery: String!) {
+    searchMSUsers(query: $searchQuery) {
       userId
       email
-      role
       companyName
       contactName
       phoneNumber
       profileImageUrl
+      address {
+        street
+        city
+        state
+        country
+        postalCode
+      }
       isApproved
+      profileComplete
     }
   }
 `;
-
 

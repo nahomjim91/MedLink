@@ -2,18 +2,21 @@
 const userResolvers = require('./userResolver');
 const productResolvers = require('./productResolver'); 
 const orderResolvers = require('./orderResolver'); // Import order resolvers
+const chatResolvers = require('./chatResolver'); // Import chat resolvers
 
 // Merge resolvers
 const resolvers = {
   Query: {
     ...userResolvers.Query,
     ...productResolvers.Query,
-    ...orderResolvers.Query
+    ...orderResolvers.Query,
+    ...chatResolvers.Query
   },
   Mutation: {
     ...userResolvers.Mutation,
     ...productResolvers.Mutation,
-    ...orderResolvers.Mutation
+    ...orderResolvers.Mutation,
+    ...chatResolvers.Mutation
   },
   // Custom scalars
   Date: productResolvers.Date, // Ensure Date scalar is included only once

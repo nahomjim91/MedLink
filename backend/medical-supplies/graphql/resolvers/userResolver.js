@@ -177,10 +177,8 @@ const resolvers = {
       return await MSUserModel.getPendingApproval(limit, offset);
     },
 
-    // Search users (admin only)
-    searchMSUsers: async (_, { query, limit, offset }, context) => {
-      // await isAdmin(context);
-      return await MSUserModel.search(query, limit, offset);
+    searchMSUsers: async (_, { query }, context) => {
+      return await MSUserModel.search(query , context.user?.uid);
     },
 
     myCart: async (_, __, context) => {

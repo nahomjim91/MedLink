@@ -130,9 +130,8 @@ const MSUserModel = {
    * @param {Number} offset - Offset for pagination
    * @returns {Array} Array of users
    */
-  async search(query, limit, offset) {
+  async search(query , currentUserId) {
     try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
       
       // Normalize query
       const normalizedQuery = query.toLowerCase().trim();
@@ -188,10 +187,8 @@ const MSUserModel = {
         return false;
       });
       
-      // Apply pagination
-      const paginatedDocs = filteredDocs.slice(offsetVal, offsetVal + limitVal);
       
-      return formatDocs(paginatedDocs);
+      return formatDocs(filteredDocs.filter(userData => userData.data().userId !== currentUserId));
     } catch (error) {
       console.error('Error searching MS users:', error);
       throw error;

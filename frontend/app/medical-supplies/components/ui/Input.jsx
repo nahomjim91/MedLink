@@ -352,7 +352,11 @@ export function OrderSelectInput({
             </option>
           ))}
         </select>
-        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center text-gray-500 ${compact ? 'px-1' : 'px-3'}`}>
+        <div
+          className={`pointer-events-none absolute inset-y-0 right-0 flex items-center text-gray-500 ${
+            compact ? "px-1" : "px-3"
+          }`}
+        >
           <ChevronDown size={compact ? 14 : 18} />
         </div>
         {error && errorMessage && (
@@ -394,7 +398,11 @@ export function OrderSelectInput({
             </option>
           ))}
         </select>
-        <div className={`pointer-events-none absolute inset-y-0 right-0 flex items-center text-gray-500 ${compact ? 'px-1' : 'px-3'}`}>
+        <div
+          className={`pointer-events-none absolute inset-y-0 right-0 flex items-center text-gray-500 ${
+            compact ? "px-1" : "px-3"
+          }`}
+        >
           <ChevronDown size={compact ? 14 : 18} />
         </div>
       </div>
@@ -1058,19 +1066,32 @@ export function ChatInput({
   onSend,
   fullWidth = true,
   className = "",
+  disabled,
+  error,
+  loading,
   ...props
 }) {
   const [isFocused, setIsFocused] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (value.trim()) {
-      onSend();
+    if (disabled || !value.trim() || loading) return;
+
+    try {
+      setLocalError(null);
+      await onSend(value.trim()); // Pass the value to onSend
+    } catch (error) {
+      console.error("Send error:", error);
+      setLocalError(error.message);
     }
   };
 
   return (
     <div className={`${fullWidth ? "w-full" : ""} ${className}`}>
+      {(error || localError) && (
+        <div className="text-red-500 text-sm mb-2">{error || localError}</div>
+      )}
       <form
         onSubmit={handleSubmit}
         className={`
@@ -1080,29 +1101,38 @@ export function ChatInput({
               ? "border-primary ring-2 ring-primary/20"
               : "border-secondary/40"
           }
+          ${disabled ? "opacity-50 cursor-not-allowed" : ""}
+          ${error || localError ? "border-red-500" : ""}
         `}
       >
         <button
           type="button"
-          className="p-1 bg-primary text-white rounded-full hover:bg-emerald-600"
+          disabled={disabled || loading}
+          className="p-1 bg-primary text-white rounded-full hover:bg-emerald-600 disabled:opacity-50"
         >
           <Plus size={28} />
         </button>
         <input
           type="text"
-          placeholder={placeholder}
+          placeholder={loading ? "Sending..." : placeholder}
           value={value}
           onChange={onChange}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          className="flex-1 p-2 mx-2 bg-transparent focus:outline-none text-gray-600 text-xs md:text-sm"
+          disabled={disabled || loading}
+          className="flex-1 p-2 mx-2 bg-transparent focus:outline-none text-gray-600 text-xs md:text-sm disabled:opacity-50"
           {...props}
         />
         <button
           type="submit"
-          className="p-2 bg-primary text-white rounded-full hover:bg-emerald-600 transition-colors"
+          disabled={disabled || loading || !value.trim()}
+          className="p-2 bg-primary text-white rounded-full hover:bg-emerald-600 transition-colors disabled:opacity-50"
         >
-          <Send size={24} />
+          {loading ? (
+            <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+          ) : (
+            <Send size={24} />
+          )}
         </button>
       </form>
     </div>

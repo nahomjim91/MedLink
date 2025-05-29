@@ -131,7 +131,7 @@ const typeDefs = gql`
     pendingApprovalUsers(limit: Int, offset: Int): [MSUser]
 
     # Search queries
-    searchMSUsers(query: String!, limit: Int, offset: Int): [MSUser]
+    searchMSUsers(query: String!): [MSUser]
 
     # Cart queries
     myCart: Cart

@@ -1,36 +1,59 @@
 "use client";
 
-import { useParams } from 'next/navigation';
-import { useMSAuth } from '../hooks/useMSAuth'; // Adjust path as needed
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import SharedLayout from '../components/layout/SharedLayout';
+import { useParams } from "next/navigation";
+import { useMSAuth } from "../hooks/useMSAuth";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import SharedLayout from "../components/layout/SharedLayout";
+import { auth } from "../api/firebase/config";
+import { SocketProvider } from "../context/SocketContext";
 
 export default function RoleLayout({ children }) {
   const { user, loading } = useMSAuth();
+  const [authToken, setAuthToken] = useState(null);
   const router = useRouter();
   const params = useParams();
   const { role } = params;
-  
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdToken();
+          setAuthToken(token);
+        } catch (error) {
+          console.error("Error getting ID token:", error);
+          setAuthToken(null);
+        }
+      } else {
+        setAuthToken(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
   // Check if user is accessing the correct role-based route
   useEffect(() => {
     if (loading) return;
-    
+
     if (!user) {
       // Not authenticated
-      router.push('/medical-supplies/auth/login');
+      router.push("/medical-supplies/auth/login");
       return;
     }
-    
+
     // Verify that the user's role matches the URL role parameter
     if (user.role !== role) {
-      console.log(`User with role ${user.role} attempted to access ${role} route - redirecting`);
-      
+      console.log(
+        `User with role ${user.role} attempted to access ${role} route - redirecting`
+      );
+
       // Redirect to their correct role path
-      const correctRolePath = user.role === 'admin' 
-        ? '/medical-supplies/admin/' 
-        : `/medical-supplies/${user.role}/`;
-        
+      const correctRolePath =
+        user.role === "admin"
+          ? "/medical-supplies/admin/"
+          : `/medical-supplies/${user.role}/`;
+
       router.push(correctRolePath);
     }
   }, [user, loading, role, router]);
@@ -57,9 +80,9 @@ export default function RoleLayout({ children }) {
   return (
     <div className="min-h-screen ">
       <SharedLayout>
-      <main className="">
-        {children}
-      </main>
+        <SocketProvider>
+          <main className="">{children}</main>
+        </SocketProvider>
       </SharedLayout>
     </div>
   );

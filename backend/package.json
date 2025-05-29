@@ -23,6 +23,7 @@
     "firebase-admin": "^13.2.0",
     "graphql": "^16.10.0",
     "graphql-subscriptions": "^3.0.0",
+    "graphql-type-json": "^0.3.2",
     "helmet": "^8.1.0",
     "http": "^0.0.1-security",
     "socket.io": "^4.8.1"

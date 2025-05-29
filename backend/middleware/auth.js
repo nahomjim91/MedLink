@@ -20,6 +20,7 @@ const authMiddleware = async (req, res, next) => {
     const decodedToken = await auth.verifyIdToken(token);
     req.user = {
       uid: decodedToken.uid,
+      userId: decodedToken.uid, // For compatibility with resolvers
       email: decodedToken.email,
       // Add any other claims or user data as needed
     };
