@@ -54,7 +54,7 @@ const setupApolloServer = async (app) => {
   // Apply middleware to Express app
   server.applyMiddleware({ app, path: '/graphql' });
   
-  console.log(`Apollo Server ready at http://localhost:${process.env.MEDICAL_SUPPLIES_SERVER_PORT || 4000}${server.graphqlPath}`);
+  console.log(`Apollo Server ready at http://localhost:${process.env.MEDICAL_SUPPLIES_SERVER_PORT || 4001}${server.graphqlPath}`);
   
   return server;
 };

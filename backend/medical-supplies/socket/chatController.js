@@ -424,7 +424,7 @@ module.exports = {
   sendChatMessage: async (req, res) => {
     try {
       const userId = req.user.uid;
-      const { textContent, to } = req.body;
+      const { textContent, to , messageProductId } = req.body;
 
       if (!textContent || !textContent.trim()) {
         return res.status(400).json({ error: "Message cannot be empty" });
@@ -455,6 +455,7 @@ module.exports = {
 
       const messageData = {
         textContent: textContent.trim(),
+        messageProductId: messageProductId,
         from: userId,
         to: to,
         participants: [userId, to],
@@ -463,7 +464,7 @@ module.exports = {
         sendTime: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
       };
-
+// console.log("📧 Sending message:", messageData)
       const messageRef = await db.collection("chatMessages").add(messageData);
       const messageDoc = await messageRef.get();
       const savedMessage = { id: messageDoc.id, ...messageDoc.data() };
@@ -643,3 +644,4 @@ module.exports = {
     }
   },
 };
+

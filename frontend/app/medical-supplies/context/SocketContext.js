@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import { useSocket } from '../hooks/useSocket';
+import { auth } from '../api/firebase/config';
 
 const SocketContext = createContext();
 
@@ -20,6 +21,26 @@ export const SocketProvider = ({ children }) => {
   const [chats, setChats] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const chatBackendUrl = 'http://localhost:4001';
+    const [token, setToken] = useState(null);
+  // Get the current user token
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        user
+          .getIdToken()
+          .then((token) => {
+            setToken(token);
+          })
+          .catch((error) => {
+            console.error("Error getting token:", error);
+            setToken(null);
+          });
+      } else {
+        setToken(null);
+      }
+    });
+    return () => unsubscribe();
+  });
 
   // Handle new messages
   useEffect(() => {
@@ -77,15 +98,15 @@ export const SocketProvider = ({ children }) => {
   }, [socket.socket]);
 
   // API calls for chat functionality
-  const sendMessage = async (chatId, textContent) => {
+  const sendMessage = async (chatId, textContent , messageProductId) => {
     try {
       const response = await fetch(`${chatBackendUrl}/api/chat/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ textContent, to: chatId }),
+        body: JSON.stringify({ textContent , messageProductId, to: chatId }),
       });
 
       if (!response.ok) {
@@ -118,7 +139,7 @@ export const SocketProvider = ({ children }) => {
 
       const response = await fetch(`${chatBackendUrl}/api/chat/messages?${params}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -155,7 +176,7 @@ export const SocketProvider = ({ children }) => {
     try {
       const response = await fetch(`${chatBackendUrl}/api/chat/chats`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -174,7 +195,7 @@ export const SocketProvider = ({ children }) => {
     try {
       const response = await fetch(`${chatBackendUrl}/api/chat/unread-count`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -195,7 +216,7 @@ export const SocketProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ chatId }),
       });

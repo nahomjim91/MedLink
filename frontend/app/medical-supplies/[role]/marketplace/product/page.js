@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
 import {
   GET_PRODUCT_BY_ID,
@@ -130,6 +130,7 @@ const RelatedProducts = ({ currentProductId, productType, category, role }) => {
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const productId = searchParams.get("id");
 
   // GraphQL query
@@ -586,30 +587,29 @@ export default function ProductDetails() {
             {/* Purchase section */}
             <div className="mt-3">
               {/* Selection mode tabs for drugs */}
-               
-                <div className="flex border-b border-secondary/20 mb-4">
-                  <button
-                    className={`py-2 px-4 font-semibold transition-colors ${
-                      activeTab === "automatically"
-                        ? "border-b-2 border-primary text-primary"
-                        : "text-secondary/80 hover:text-secondary"
-                    }`}
-                    onClick={() => handleTabChange("automatically")}
-                  >
-                    Automatically
-                  </button>
-                  <button
-                    className={`py-2 px-4 font-semibold transition-colors ${
-                      activeTab === "manually"
-                        ? "border-b-2 border-primary text-primary"
-                        : "text-secondary/80 hover:text-secondary"
-                    }`}
-                    onClick={() => handleTabChange("manually")}
-                  >
-                    Manually
-                  </button>
-                </div>
-              
+
+              <div className="flex border-b border-secondary/20 mb-4">
+                <button
+                  className={`py-2 px-4 font-semibold transition-colors ${
+                    activeTab === "automatically"
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-secondary/80 hover:text-secondary"
+                  }`}
+                  onClick={() => handleTabChange("automatically")}
+                >
+                  Automatically
+                </button>
+                <button
+                  className={`py-2 px-4 font-semibold transition-colors ${
+                    activeTab === "manually"
+                      ? "border-b-2 border-primary text-primary"
+                      : "text-secondary/80 hover:text-secondary"
+                  }`}
+                  onClick={() => handleTabChange("manually")}
+                >
+                  Manually
+                </button>
+              </div>
 
               {/* Cart message feedback */}
               {cartMessage.message && (
@@ -643,7 +643,7 @@ export default function ProductDetails() {
               )}
 
               {/* Batch selection */}
-              {(activeTab === "manually") &&
+              {activeTab === "manually" &&
                 processedData.batches?.length > 0 && (
                   <div className="w-full px-4">
                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
@@ -739,7 +739,22 @@ export default function ProductDetails() {
                     ? "Out of Stock"
                     : "Add To Cart"}
                 </Button>
-                <Button variant="outline" className="px-8">
+                <Button
+                  variant="outline"
+                  className="px-8"
+                  onClick={() => {
+                    const params = new URLSearchParams({
+                      productId: processedData?.productId || "",
+                      sellerId: processedData?.ownerId || "",
+                    });
+
+                    router.push(
+                      `/medical-supplies/${
+                        user.role
+                      }/chats?${params.toString()}`
+                    );
+                  }}
+                >
                   Contact
                 </Button>
               </div>

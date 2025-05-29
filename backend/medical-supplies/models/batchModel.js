@@ -36,13 +36,13 @@ const BatchModel = {
     { limit, offset, sortBy = "addedAt", sortOrder = "desc" }
   ) {
     try {
-      console.log("BATCH MODEL: getByProductId called with:", {
-        productId,
-        limit,
-        offset,
-        sortBy,
-        sortOrder
-      });
+      // console.log("BATCH MODEL: getByProductId called with:", {
+      //   productId,
+      //   limit,
+      //   offset,
+      //   sortBy,
+      //   sortOrder
+      // });
 
       // Guard against invalid productId
       if (!productId) {

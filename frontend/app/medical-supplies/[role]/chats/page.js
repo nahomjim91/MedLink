@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   MessageCircle,
@@ -9,14 +10,74 @@ import {
   Plus,
 } from "lucide-react";
 import Image from "next/image";
-import { ChatInput } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
 import { useSocketContext } from "../../context/SocketContext";
 import { useMSAuth } from "../../hooks/useMSAuth";
 import { NewConversationModal } from "../../components/modal/NewConversationModal";
+import { ProductContextCard } from "../../components/ui/product/ProductContextCard";
+import useProductContext from "../../hooks/useProduct";
+
+const MessageWithProduct = ({ msg, isCurrentUser, user, formatTime }) => {
+  const { productData } = useProductContext(msg.messageProductId);
+
+  return (
+    <div
+      className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
+    >
+      <div className={`max-w-xs ${isCurrentUser ? "ml-auto" : "mr-auto"}`}>
+        {/* Product Context Card (if message has productId) */}
+        {msg.productId && productData && (
+          <div className="mb-2">
+            <ProductContextCard productData={productData} />
+          </div>
+        )}
+
+        {/* Message Bubble */}
+        <div
+          className={`
+            p-3 text-sm inline-block max-w-full break-words
+            ${
+              isCurrentUser
+                ? "bg-primary text-white rounded-t-2xl rounded-l-2xl"
+                : "bg-gray-100 text-secondary rounded-t-2xl rounded-r-2xl"
+            }
+          `}
+        >
+          {msg.textContent}
+        </div>
+
+        {/* Message Footer */}
+        <div
+          className={`flex items-center mt-1 ${
+            isCurrentUser ? "justify-end" : "justify-start"
+          }`}
+        >
+          <span className="text-xs text-gray-500">
+            {formatTime(msg.createdAt)}
+          </span>
+          {isCurrentUser && (
+            <Check
+              className={`h-3 w-3 ml-1 ${
+                msg.isSeen ? "text-blue-500" : "text-gray-400"
+              }`}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function ChatsPage() {
-  const { user } = useMSAuth(); // Get current user
+  const { user } = useMSAuth();
+  const searchParams = useSearchParams();
+  const productId = searchParams.get("productId");
+  const sellerId = searchParams.get("sellerId");
+  const [pendingProductId, setPendingProductId] = useState(null);
+  const [processedParams, setProcessedParams] = useState(new Set());
+
+  const { productData: pendingProductData } =
+    useProductContext(pendingProductId);
   const {
     // Socket state
     isConnected,
@@ -57,6 +118,65 @@ export default function ChatsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const initiateChatWithSeller = async () => {
+      if (!sellerId || !user?.userId) return;
+
+      // Create unique key for this sellerId + productId combination
+      const paramKey = `${sellerId}-${productId}`;
+
+      // Skip if we've already processed these params
+      if (processedParams.has(paramKey)) return;
+
+      // Mark params as being processed
+      setProcessedParams((prev) => new Set([...prev, paramKey]));
+
+      try {
+        console.log("Processing chat initiation for:", paramKey);
+
+        // Wait a bit for chats to load if they're empty
+        if (chats.length === 0) {
+          await refreshChats();
+        }
+
+        const existingConversation = chats.find((chat) =>
+          chat.participants?.some(
+            (p) => (typeof p === "string" ? p : p.id) === sellerId
+          )
+        );
+
+        let conversation;
+        if (existingConversation) {
+          console.log("Using existing conversation:", existingConversation);
+          conversation = existingConversation;
+        } else {
+          console.log("Creating new conversation with seller:", sellerId);
+          const newConversation = await createConversation([sellerId]);
+          await refreshChats();
+          conversation =
+            chats.find((chat) => chat.id === newConversation.id) ||
+            newConversation;
+        }
+
+        await handleConversationSelect(conversation);
+        setActiveConversation((prev) => ({ ...prev, productId }));
+        if (productId) {
+          setPendingProductId(productId);
+        }
+      } catch (error) {
+        console.error("Error initiating chat with seller:", error);
+        // Remove from processed params on error so it can be retried
+        setProcessedParams((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(paramKey);
+          return newSet;
+        });
+      }
+    };
+
+    initiateChatWithSeller();
+  }, [sellerId, productId, user?.userId, chats.length]);
+
   // Handle conversation selection
   const handleConversationSelect = async (conversation) => {
     // Leave previous chat room
@@ -79,18 +199,25 @@ export default function ChatsPage() {
     if (!message.trim() || !activeConversation?.id || !isConnected) return;
 
     const messageText = message.trim();
+    const messageProductId = pendingProductId;
+
     setMessage("");
+    setPendingProductId(null); // Clear pending product
 
     try {
-      await sendMessage(activeConversation.id, messageText);
-      // Stop typing indicator
+      // Send message with product context
+      await sendMessage(activeConversation.id, messageText, messageProductId);
       stopTyping(activeConversation.id);
       setIsTyping(false);
     } catch (error) {
       console.error("Failed to send message:", error);
-      // Restore message on error
       setMessage(messageText);
+      setPendingProductId(messageProductId); // Restore on error
     }
+  };
+
+  const removePendingProduct = () => {
+    setPendingProductId(null);
   };
 
   // Handle typing indicators
@@ -161,32 +288,58 @@ export default function ChatsPage() {
       )
   );
 
-  // Get conversation display name
+  const getConversationName = (conversation) => {
+    // console.log("Conversation:", conversation);
 
-  // const getConversationName = (conversation) => {
-  //   // console.log("getConversationName called with conversation:", conversation);
-  //   if (conversation.name) return conversation.name;
+    if (!conversation) return "Unknown";
 
-  //   // For private chats, show other participant's name
-  //   const otherParticipant = conversation.participants?.find(
-  //     p => p.userId !== user?.userId
-  //   );
-  //   return otherParticipant?.name || 'Unknown User';
-  // };
+    // If conversation has a name, use it
+    if (conversation.name) {
+      return conversation.name;
+    }
 
-  // // Get conversation avatar
-  // const getConversationAvatar = (conversation) => {
-  //   if (conversation.avatar) return conversation.avatar;
+    // Otherwise, try to get name from participants
+    if (conversation.participants && conversation.participants.length > 0) {
+      // Handle participants as objects or strings
+      const otherParticipant = conversation.participants.find((p) => {
+        const participantId = typeof p === "string" ? p : p.id;
+        return participantId !== user?.userId;
+      });
 
-  //   const otherParticipant = conversation.participants?.find(
-  //     p => p.userId !== user?.userId
-  //   );
-  //   return otherParticipant?.profilePictureURL;
-  // };
+      if (otherParticipant) {
+        // If participant is an object with name
+        if (typeof otherParticipant === "object" && otherParticipant.name) {
+          return otherParticipant.name;
+        }
+        // If participant is a string (ID), you might want to fetch user details
+        // For now, return a placeholder
+        return `User ${otherParticipant.slice(0, 8)}...`;
+      }
+    }
 
-  const getConversationName = (conversation) => conversation.name;
-  const getConversationAvatar = (conversation) => conversation.avatar;
+    return "Unknown Chat";
+  };
+  const getConversationAvatar = (conversation) => {
+    if (!conversation) return null;
 
+    if (conversation.avatar) {
+      return conversation.avatar;
+    }
+
+    // Try to get avatar from participants
+    if (conversation.participants && conversation.participants.length > 0) {
+      const otherParticipant = conversation.participants.find((p) => {
+        const participantId = typeof p === "string" ? p : p.id;
+        return participantId !== user?.userId;
+      });
+
+      if (otherParticipant && typeof otherParticipant === "object") {
+        return otherParticipant.avatar || null;
+      }
+    }
+
+    return null;
+  };
   // Format message time
   const formatTime = (timestamp) => {
     // Check if it's a Firestore timestamp
@@ -241,6 +394,31 @@ export default function ChatsPage() {
 
   const messageGroups = groupMessagesByDate(messages);
 
+  const renderMessages = () => {
+    return messageGroups.map((dateGroup, groupIndex) => (
+      <div key={groupIndex}>
+        <div className="text-center my-4">
+          <span className="text-xs bg-gray-200 text-secondary/60 px-3 py-1 rounded-full">
+            {dateGroup.date}
+          </span>
+        </div>
+
+        {dateGroup.messages.map((msg) => {
+          const isCurrentUser = msg.from === user?.userId;
+          return (
+            <MessageWithProduct
+              key={msg.id}
+              msg={msg}
+              isCurrentUser={isCurrentUser}
+              user={user}
+              formatTime={formatTime}
+            />
+          );
+        })}
+      </div>
+    ));
+  };
+
   return (
     <div className="flex flex-col">
       <div className="flex justify-between pb-2">
@@ -255,7 +433,6 @@ export default function ChatsPage() {
           onClick={() => setIsModalOpen(true)}
           disabled={!isConnected}
         >
-          
           <Plus className="w-4 h-4 mr-1" />
           New Conversation
         </Button>
@@ -429,71 +606,17 @@ export default function ChatsPage() {
               {/* Chat Messages */}
               <div className="h-[31rem] overflow-y-auto">
                 <div className="flex-1 overflow-y-auto px-4 py-2 bg-background flex flex-col">
-                  {messageGroups.map((dateGroup, groupIndex) => (
-                    <div key={groupIndex}>
-                      <div className="text-center my-4">
-                        <span className="text-xs bg-gray-200 text-secondary/60 px-3 py-1 rounded-full">
-                          {dateGroup.date}
-                        </span>
-                      </div>
-
-                      {dateGroup.messages.map((msg) => {
-                        const isCurrentUser = msg.from === user?.userId;
-
-                        return (
-                          <div
-                            key={msg.id}
-                            className={`mb-4 flex ${
-                              isCurrentUser ? "justify-end" : "justify-start"
-                            }`}
-                          >
-                            <div
-                              className={`max-w-xs ${
-                                isCurrentUser ? "ml-auto" : "mr-auto"
-                              }`}
-                            >
-                              <div
-                                className={`
-                                p-3 text-sm inline-block max-w-full break-words
-                                ${
-                                  isCurrentUser
-                                    ? "bg-primary text-white rounded-t-2xl rounded-l-2xl"
-                                    : "bg-gray-100 text-secondary rounded-t-2xl rounded-r-2xl"
-                                }
-                              `}
-                              >
-                                {msg.textContent}
-                              </div>
-                              <div
-                                className={`flex items-center mt-1 ${
-                                  isCurrentUser
-                                    ? "justify-end"
-                                    : "justify-start"
-                                }`}
-                              >
-                                <span className="text-xs text-gray-500">
-                                  {formatTime(msg.createdAt)}
-                                </span>
-                                {isCurrentUser && (
-                                  <Check
-                                    className={`h-3 w-3 ml-1 ${
-                                      msg.isSeen
-                                        ? "text-blue-500"
-                                        : "text-gray-400"
-                                    }`}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                  {renderMessages()}
                   <div ref={messagesEndRef} />
                 </div>
               </div>
-
+              {pendingProductId && pendingProductData && (
+                <ProductContextCard
+                  productData={pendingProductData}
+                  onRemove={removePendingProduct}
+                  isPreview={true}
+                />
+              )}
               {/* Message Input */}
               <div className="bg-white px-4 py-3 border-t border-secondary/10">
                 <div className="flex items-center space-x-2">
@@ -528,7 +651,10 @@ export default function ChatsPage() {
               <p className="text-sm text-gray-500 mb-6">
                 Choose a conversation from the list to start messaging.
               </p>
-              <Button onClick={() => setIsModalOpen(true)} className="py-2 px-4 flex items-center">
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                className="py-2 px-4 flex items-center"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 New Conversation
               </Button>
