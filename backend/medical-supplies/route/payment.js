@@ -29,6 +29,7 @@ router.post('/initialize', async (req, res) => {
       customerInfo,
       orderDetails
     } = req.body;
+console.log('Chapa Base URL:', CHAPA_AUTH_KEY);
 
     // Validate required fields
     if (!orderId || !amount || !customerInfo?.email || !customerInfo?.firstName) {
@@ -63,12 +64,14 @@ router.post('/initialize', async (req, res) => {
         orderNumber: orderDetails.orderNumber
       }
     };
+    // console.log('Payment initialization data:', paymentData);
 
     // console.log('Initializing payment with Chapa:', { 
     //   ...paymentData, 
     //   testMode: process.env.NODE_ENV !== 'production'
     // });
 
+    console.error('Chapa initialization getChapaHeaders:', getChapaHeaders());
     const response = await axios.post(
       `${CHAPA_BASE_URL}/transaction/initialize`,
       paymentData,

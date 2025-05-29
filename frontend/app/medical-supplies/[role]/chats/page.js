@@ -17,18 +17,18 @@ import { NewConversationModal } from "../../components/modal/NewConversationModa
 import { ProductContextCard } from "../../components/ui/product/ProductContextCard";
 import useProductContext from "../../hooks/useProduct";
 
-const MessageWithProduct = ({ msg, isCurrentUser, user, formatTime }) => {
+const MessageWithProduct = ({ msg, isCurrentUser, user, formatTime , onclikeProduct }) => {
   const { productData } = useProductContext(msg.messageProductId);
-
+// console.log("MessageWithProduct",productData);
   return (
     <div
       className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
     >
-      <div className={`max-w-xs ${isCurrentUser ? "ml-auto" : "mr-auto"}`}>
+      <div className={`max-w-xs ${isCurrentUser ? "ml-auto" : "mr-auto"} flex flex-col` }>
         {/* Product Context Card (if message has productId) */}
-        {msg.productId && productData && (
-          <div className="mb-2">
-            <ProductContextCard productData={productData} />
+        {msg.messageProductId && productData && (
+          <div className="">
+            <ProductContextCard productData={productData} onclick={onclikeProduct} />
           </div>
         )}
 
@@ -118,67 +118,72 @@ export default function ChatsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    const initiateChatWithSeller = async () => {
-      if (!sellerId || !user?.userId) return;
+useEffect(() => {
+  const initiateChatWithSeller = async () => {
+    if (!sellerId || !user?.userId) return;
 
-      // Create unique key for this sellerId + productId combination
-      const paramKey = `${sellerId}-${productId}`;
+    // Create unique key for this sellerId + productId combination
+    const paramKey = `${sellerId}`;
 
-      // Skip if we've already processed these params
-      if (processedParams.has(paramKey)) return;
+    // Skip if we've already processed these params
+    if (processedParams.has(paramKey)) return;
 
-      // Mark params as being processed
-      setProcessedParams((prev) => new Set([...prev, paramKey]));
+    // Mark params as being processed
+    setProcessedParams((prev) => new Set([...prev, paramKey]));
 
-      try {
-        console.log("Processing chat initiation for:", paramKey);
+    try {
+      console.log("Processing chat initiation for:", paramKey);
 
-        // Wait a bit for chats to load if they're empty
-        if (chats.length === 0) {
-          await refreshChats();
-        }
-
-        const existingConversation = chats.find((chat) =>
-          chat.participants?.some(
-            (p) => (typeof p === "string" ? p : p.id) === sellerId
-          )
-        );
-
-        let conversation;
-        if (existingConversation) {
-          console.log("Using existing conversation:", existingConversation);
-          conversation = existingConversation;
-        } else {
-          console.log("Creating new conversation with seller:", sellerId);
-          const newConversation = await createConversation([sellerId]);
-          await refreshChats();
-          conversation =
-            chats.find((chat) => chat.id === newConversation.id) ||
-            newConversation;
-        }
-
-        await handleConversationSelect(conversation);
-        setActiveConversation((prev) => ({ ...prev, productId }));
-        if (productId) {
-          setPendingProductId(productId);
-        }
-      } catch (error) {
-        console.error("Error initiating chat with seller:", error);
-        // Remove from processed params on error so it can be retried
-        setProcessedParams((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(paramKey);
-          return newSet;
-        });
+      // Wait a bit for chats to load if they're empty
+      if (chats.length === 0) {
+        await refreshChats();
       }
-    };
 
-    initiateChatWithSeller();
-  }, [sellerId, productId, user?.userId, chats.length]);
+      const existingConversation = filteredChats.find((chat) =>
+        chat.participants?.some(
+          (p) =>p.id === sellerId || p.userId === sellerId
+        )
+      );
 
+      let conversation;
+      let isNewConversation = false;
+
+      if (existingConversation) {
+        console.log("Using existing conversation:", existingConversation);
+        conversation = existingConversation;
+        isNewConversation = false;
+      } else {
+        console.log("Creating new conversation with seller:", sellerId);
+        const newConversation = await createConversation([sellerId]);
+        await refreshChats();
+        conversation =
+          chats.find((chat) => chat.id === newConversation.id) ||
+          newConversation;
+        isNewConversation = true;
+      }
+
+      await handleConversationSelect(conversation);
+      
+      // Only set pending product for NEW conversations
+      if (productId) {
+        setPendingProductId(productId);
+      }
+    } catch (error) {
+      console.error("Error initiating chat with seller:", error);
+      // Remove from processed params on error so it can be retried
+      setProcessedParams((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(paramKey);
+        return newSet;
+      });
+    }
+  };
+
+  initiateChatWithSeller();
+}, [sellerId, productId, user?.userId, chats.length]);
   // Handle conversation selection
   const handleConversationSelect = async (conversation) => {
+    console.log("Selected conversation:", conversation);
     // Leave previous chat room
     if (activeConversation?.id) {
       leaveChatRoom(activeConversation.id);
@@ -604,7 +609,7 @@ export default function ChatsPage() {
               </div>
 
               {/* Chat Messages */}
-              <div className="h-[31rem] overflow-y-auto">
+              <div className="h-[28rem] overflow-y-auto">
                 <div className="flex-1 overflow-y-auto px-4 py-2 bg-background flex flex-col">
                   {renderMessages()}
                   <div ref={messagesEndRef} />
