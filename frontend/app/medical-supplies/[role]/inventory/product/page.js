@@ -35,7 +35,7 @@ export default function ProductPage() {
   const [newImages, setNewImages] = useState([]);
   const [removedImages, setRemovedImages] = useState([]);
   const [editingBatchId, setEditingBatchId] = useState(null);
-  
+
   // Pagination
   const ITEMS_PER_PAGE = 10;
   const offset = (batchesPage - 1) * ITEMS_PER_PAGE;
@@ -221,15 +221,16 @@ export default function ProductPage() {
           { key: "Size Per Package", label: "Size Per Package" },
           { key: "Manufacturer", label: "Manufacturer" },
           { key: "Manufacturer Country", label: "Manufacturer Country" },
-          { key: "Added At", label: "Added At" },
+          { key: "Manufactuerr Date", label: "Manufactuerr Date" },
           { key: "Buying Price", label: "Buying Price" },
           { key: "Selling Price", label: "Selling Price" },
           { key: "Quantity", label: "Quantity" },
         ]
       : [
           { key: "BatchID", label: "BatchID" },
-          { key: "Added At", label: "Added At" },
-          { key: "Serial Numbers", label: "Serial Numbers" },
+          { key: "Manufacturer", label: "Manufacturer" },
+          { key: "Manufacturer Country", label: "Manufacturer Country" },
+          { key: "Manufactuerr Date", label: "Manufactuerr Date" },
           { key: "Buying Price", label: "Buying Price" },
           { key: "Selling Price", label: "Selling Price" },
           { key: "Quantity", label: "Quantity" },
@@ -242,24 +243,26 @@ export default function ProductPage() {
     return batches.map((batch) => {
       if (productType === "DRUG") {
         return {
-          BatchID: batch.batchId,
-          "Expiry Date": batch.expiryDate,
-          "Size Per Package": batch.sizePerPackage,
-          Manufacturer: batch.manufacturer,
-          "Manufacturer Country": batch.manufacturerCountry,
-          "Added At": batch.addedAt,
-          "Buying Price": batch.costPrice,
-          "Selling Price": batch.sellingPrice,
-          Quantity: batch.quantity,
+          BatchID: batch.batchId|| "-",
+          "Expiry Date": batch.expiryDate|| "-",
+          "Size Per Package": batch.sizePerPackage|| "-",
+          Manufacturer: batch.manufacturer|| "-",
+          "Manufacturer Country": batch.manufacturerCountry|| "-",
+          "Manufactuerr Date": batch.manufactureredDate|| "-",
+          "Buying Price": batch.costPrice|| "-",
+          "Selling Price": batch.sellingPrice|| "-",
+          Quantity: batch.quantity|| "-",
         };
       } else {
         return {
-          BatchID: batch.batchId,
-          "Added At": batch.addedAt,
-          "Serial Numbers": batch.serialNumbers?.join(", ") || "-",
-          "Buying Price": batch.costPrice,
-          "Selling Price": batch.sellingPrice,
-          Quantity: batch.quantity,
+          BatchID: batch.batchId|| "-",
+          "Added At": batch.addedAt|| "-",
+           Manufacturer: batch.manufacturer|| "-",
+          "Manufacturer Country": batch.manufacturerCountry|| "-",
+          "Manufactuerr Date": batch.manufactureredDate|| "-",
+          "Buying Price": batch.costPrice|| "-",
+          "Selling Price": batch.sellingPrice|| "-",
+          Quantity: batch.quantity|| "-",
         };
       }
     });
@@ -447,7 +450,7 @@ export default function ProductPage() {
             isAddButton={false}
             isOrderButton={false}
             isEditable={true}
-            editableColumns= {'Selling Price'} ///{["Buying Price", "Selling Price", "Quantity"]}
+            editableColumns={"Selling Price"} ///{["Buying Price", "Selling Price", "Quantity"]}
             onUpdateItem={handleBatchUpdate}
             onEditToggle={handleEditToggle}
             editingRowId={editingBatchId}
