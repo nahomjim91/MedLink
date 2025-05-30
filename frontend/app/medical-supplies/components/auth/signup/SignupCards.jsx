@@ -95,7 +95,7 @@ export function MSSignupFormCard() {
     try {
       // Using the MS-specific signup function
       await signup(formData.email, formData.password);
-      gotoRegister();
+      gotoVerifyEmail();
     } catch (error) {
       console.error("Signup error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -109,7 +109,7 @@ export function MSSignupFormCard() {
     
     try {
       await signInWithGoogle();
-      gotoRegister();
+      gotoVerifyEmail();
     } catch (error) {
       console.error("Google signup error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -117,9 +117,9 @@ export function MSSignupFormCard() {
     }
   };
 
-  const gotoRegister = () => {
+  const gotoVerifyEmail = () => {
     // Redirect to MS registration page
-    router.push("/medical-supplies/auth/registering");
+    router.push("/medical-supplies/auth/verify-email");
   };
 
   // Function to get user-friendly error messages

@@ -30,7 +30,6 @@ export function LogInFormCard() {
     
     try {
       await login(formData.email, formData.password);
-      router.push("/telehealth/dashboard");
     } catch (error) {
       console.error("Login error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -45,7 +44,6 @@ export function LogInFormCard() {
     
     try {
       await signInWithGoogle();
-      router.push("/telehealth/dashboard");
     } catch (error) {
       console.error("Google login error:", error);
       setError(getAuthErrorMessage(error.code));

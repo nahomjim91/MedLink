@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import ForgotPassword from "@/app/telehealth/components/auth/ForgotPassword";
+import ForgotPassword from "../../components/auth/ForgotPassword";
 
 
 export default function LoginPage() {

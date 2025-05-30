@@ -99,7 +99,6 @@ export function SignupFormCard({ }) {
         subscribeNewsletter,
         role: "" // Will be set during registration process
       });
-      gotoRegister();
     } catch (error) {
       console.error("Signup error:", error);
       setError(getAuthErrorMessage(error.code));
@@ -113,18 +112,11 @@ export function SignupFormCard({ }) {
     
     try {
       await signInWithGoogle();
-      gotoRegister();
     } catch (error) {
       console.error("Google signup error:", error);
       setError(getAuthErrorMessage(error.code));
       setIsLoading(false);
     }
-  };
-
-  const gotoRegister = () => {
-    router.push( "/telehealth/auth/registering" , 
-      { state: { email: formData.email } }
-    );
   };
 
   // Function to get user-friendly error messages
