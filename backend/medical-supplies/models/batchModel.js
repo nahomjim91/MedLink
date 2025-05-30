@@ -285,3 +285,4 @@ const BatchModel = {
 };
 
 module.exports = BatchModel;
+

@@ -1,7 +1,11 @@
 // resolvers/productResolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
-const { UserInputError, ApolloError, ForbiddenError } = require("apollo-server-express");
+const {
+  UserInputError,
+  ApolloError,
+  ForbiddenError,
+} = require("apollo-server-express");
 const ProductModel = require("../../models/productModel");
 const BatchModel = require("../../models/batchModel");
 const {
@@ -17,7 +21,7 @@ const dateScalar = new GraphQLScalarType({
   serialize(value) {
     // Debug logging to help identify the issue
     // console.log("Date scalar serializing:", value);
-    
+
     // Handle case when value is null or undefined
     if (value == null) {
       // console.log("Date value is null/undefined, returning null");
@@ -37,9 +41,10 @@ const dateScalar = new GraphQLScalarType({
 
     // Handle ServerTimestampTransform objects and empty objects
     if (
-      value && 
-      ((value.constructor && value.constructor.name === 'ServerTimestampTransform') ||
-       (typeof value === 'object' && Object.keys(value).length === 0))
+      value &&
+      ((value.constructor &&
+        value.constructor.name === "ServerTimestampTransform") ||
+        (typeof value === "object" && Object.keys(value).length === 0))
     ) {
       // console.log("Handling ServerTimestampTransform or empty object, returning current timestamp");
       // Always return current timestamp for server timestamp transforms
@@ -51,19 +56,19 @@ const dateScalar = new GraphQLScalarType({
       return value.getTime(); // Convert outgoing Date to integer for JSON
     }
 
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       // console.log("Converting string date to timestamp");
       return new Date(value).getTime();
     }
-    
-    if (typeof value === 'number') {
+
+    if (typeof value === "number") {
       // console.log("Value is already a number timestamp");
       return value;
     }
 
     // If we get here, we have an unhandled type
     // console.log("Unhandled value type for serialization:", value);
-    
+
     // Return current timestamp as fallback
     // console.log("Using current timestamp as fallback");
     return Date.now();
@@ -81,8 +86,6 @@ const dateScalar = new GraphQLScalarType({
 
 const productResolvers = {
   Date: dateScalar,
-
-
 
   Query: {
     productById: async (_, { productId }, context) => {
@@ -162,7 +165,7 @@ const productResolvers = {
     searchProducts: async (_, { searchInput }, context) => {
       const user = await isAuthenticated(context);
       try {
-        return ProductModel.searchProducts(searchInput , user.uid);
+        return ProductModel.searchProducts(searchInput, user.uid);
       } catch (error) {
         console.error("Error in searchProducts resolver:", error);
         throw new ApolloError(
@@ -175,7 +178,7 @@ const productResolvers = {
       await isAuthenticated(context);
       console.log("=== BATCHBYID QUERY DEBUG START ===");
       console.log(`🔍 Fetching batch with ID: ${batchId}`);
-      
+
       try {
         const batch = await BatchModel.getById(batchId);
         // console.log("📋 BatchModel.getById result:", {
@@ -187,29 +190,36 @@ const productResolvers = {
         //   allKeys: batch ? Object.keys(batch) : 'N/A',
         //   fullBatch: batch ? JSON.stringify(batch, null, 2) : 'NULL/UNDEFINED'
         // });
-        
+
         if (!batch) {
           console.log("❌ Batch not found, returning null");
           return null;
         }
-        
+
         // Ensure productType is set for __resolveType
         if (!batch.productType && batch.productId) {
-          console.log("⚠️ Missing productType, attempting to fetch from product");
+          console.log(
+            "⚠️ Missing productType, attempting to fetch from product"
+          );
           const product = await ProductModel.getById(batch.productId);
           if (product) {
             batch.productType = product.productType;
             console.log("✅ ProductType set from product:", batch.productType);
           } else {
-            console.error("❌ Could not fetch product to determine productType");
+            console.error(
+              "❌ Could not fetch product to determine productType"
+            );
           }
         }
-        
+
         console.log("✅ Returning batch with productType:", batch.productType);
         console.log("=== BATCHBYID QUERY DEBUG END ===");
         return batch;
       } catch (error) {
-        console.error(`❌ Error in batchById resolver for ID ${batchId}:`, error);
+        console.error(
+          `❌ Error in batchById resolver for ID ${batchId}:`,
+          error
+        );
         throw new ApolloError("Failed to fetch batch.", "BATCH_FETCH_ERROR");
       }
     },
@@ -247,7 +257,7 @@ const productResolvers = {
           sortBy,
           sortOrder,
         });
-     
+
         const enrichedBatches = [];
         for (const batch of batches) {
           if (batch.productId) {
@@ -382,27 +392,45 @@ const productResolvers = {
       }
     },
     deleteProduct: async (_, { productId }, context) => {
-      // First check if user is authenticated
       const user = await isAuthenticated(context);
 
       try {
         const product = await ProductModel.getById(productId);
-        if (!product) throw new UserInputError("Product not found.");
+        if (!product) {
+          throw new UserInputError("Product not found.");
+        }
 
-        // Check if user is the original lister or admin
+        // Check permissions
         if (user.role !== "admin" && product.originalListerId !== user.uid) {
           throw new ForbiddenError(
             "You do not have permission to delete this product."
           );
         }
 
-        return ProductModel.delete(productId); // This is a soft delete
+        const result = await ProductModel.delete(productId);
+        console.log("Product deletion result:", result); // Add this log
+        return result;
       } catch (error) {
-        console.error(`Error deleting product ${productId}:`, error);
-        if (error instanceof UserInputError || error instanceof ForbiddenError)
+        console.error(
+          `Error in deleteProduct resolver for ${productId}:`,
+          error
+        );
+
+        // Handle specific error types
+        if (error.message.includes("exists in one or more orders")) {
+          throw new UserInputError(error.message);
+        }
+
+        if (
+          error instanceof UserInputError ||
+          error instanceof ForbiddenError
+        ) {
           throw error;
+        }
+
+        // For any other errors
         throw new ApolloError(
-          "Failed to delete product.",
+          `Failed to delete product: ${error.message}`,
           "PRODUCT_DELETE_ERROR"
         );
       }
@@ -700,13 +728,13 @@ const productResolvers = {
         console.log("✅ Resolving to EquipmentBatch");
         return "EquipmentBatch";
       }
-      
+
       // console.error("❌ Could not resolve batch type - productType mismatch");
       // console.error("Expected: 'DRUG' or 'EQUIPMENT'");
       // console.error("Received:", batch.productType);
       // console.error("Full batch object:", batch);
       // console.log("=== BATCH.__RESOLVETYPE DEBUG END ===");
-      
+
       // Instead of returning null, let's try to infer the type or provide a fallback
       if (batch.expiryDate) {
         console.log("🔄 Fallback: Assuming DrugBatch due to expiryDate field");
@@ -716,7 +744,7 @@ const productResolvers = {
         return "EquipmentBatch";
       }
     },
-    
+
     product: async (parentBatch, _, context) => {
       // console.log("=== BATCH.PRODUCT RESOLVER DEBUG START ===");
       // console.log("Batch.product resolver called with batch:", {
@@ -727,7 +755,7 @@ const productResolvers = {
       // });
 
       await isAuthenticated(context);
-      
+
       // if (!parentBatch.productId) {
       //   console.error("❌ Missing productId in batch:", parentBatch);
       //   throw new ApolloError(
@@ -737,9 +765,11 @@ const productResolvers = {
       // }
 
       try {
-        console.log(`🔍 Attempting to fetch product with ID: ${parentBatch.productId}`);
+        console.log(
+          `🔍 Attempting to fetch product with ID: ${parentBatch.productId}`
+        );
         const product = await ProductModel.getById(parentBatch.productId);
-        
+
         // console.log("📋 Product fetch result:", {
         //   found: !!product,
         //   productId: product?.productId,
@@ -748,17 +778,19 @@ const productResolvers = {
         // });
 
         if (!product) {
-          console.error(`❌ Product not found for productId: ${parentBatch.productId}`);
+          console.error(
+            `❌ Product not found for productId: ${parentBatch.productId}`
+          );
           throw new UserInputError(
             `Product with ID ${parentBatch.productId} not found.`,
-            { 
-              code: 'PRODUCT_NOT_FOUND', 
-              productId: parentBatch.productId, 
-              batchId: parentBatch.batchId 
+            {
+              code: "PRODUCT_NOT_FOUND",
+              productId: parentBatch.productId,
+              batchId: parentBatch.batchId,
             }
           );
         }
-        
+
         console.log("✅ Product successfully fetched");
         console.log("=== BATCH.PRODUCT RESOLVER DEBUG END ===");
         return product;
@@ -775,25 +807,28 @@ const productResolvers = {
       }
     },
   },
-   // Add explicit type resolvers for implementing types
+  // Add explicit type resolvers for implementing types
   DrugProduct: {
     batches: async (parentProduct, args, context) => {
-      console.log("DrugProduct.batches resolver called for:", parentProduct.productId);
+      console.log(
+        "DrugProduct.batches resolver called for:",
+        parentProduct.productId
+      );
       // Use the same logic as Product.batches
       try {
         await isAuthenticated(context);
-        
+
         if (!parentProduct.productId) {
           console.warn("Missing productId in DrugProduct:", parentProduct);
-          return []; 
+          return [];
         }
-        
+
         // Get batches logic
         const batches = await BatchModel.getByProductId(
           parentProduct.productId,
           args
         );
-        
+
         return batches.map((b) => ({
           ...b,
           productType: b.productType || "DRUG",
@@ -807,22 +842,25 @@ const productResolvers = {
 
   EquipmentProduct: {
     batches: async (parentProduct, args, context) => {
-      console.log("EquipmentProduct.batches resolver called for:", parentProduct.productId);
+      console.log(
+        "EquipmentProduct.batches resolver called for:",
+        parentProduct.productId
+      );
       // Use the same logic as Product.batches
       try {
         await isAuthenticated(context);
-        
+
         if (!parentProduct.productId) {
           console.warn("Missing productId in EquipmentProduct:", parentProduct);
-          return []; 
+          return [];
         }
-        
+
         // Get batches logic
         const batches = await BatchModel.getByProductId(
           parentProduct.productId,
           args
         );
-        
+
         return batches.map((b) => ({
           ...b,
           productType: b.productType || "EQUIPMENT",
@@ -837,11 +875,14 @@ const productResolvers = {
   DrugBatch: {
     product: async (parentBatch, _, context) => {
       console.log("=== DRUGBATCH.PRODUCT RESOLVER DEBUG START ===");
-      console.log("DrugBatch.product resolver called for batch:", parentBatch.batchId);
+      console.log(
+        "DrugBatch.product resolver called for batch:",
+        parentBatch.batchId
+      );
 
       try {
         await isAuthenticated(context);
-        
+
         if (!parentBatch.productId) {
           console.error("Missing productId in DrugBatch:", parentBatch);
           throw new ApolloError(
@@ -851,9 +892,11 @@ const productResolvers = {
         }
 
         const product = await ProductModel.getById(parentBatch.productId);
-        
+
         if (!product) {
-          console.error(`Product not found for DrugBatch ${parentBatch.batchId}`);
+          console.error(
+            `Product not found for DrugBatch ${parentBatch.batchId}`
+          );
           throw new ApolloError(
             `Product not found for batch ${parentBatch.batchId}`,
             "PRODUCT_NOT_FOUND"
@@ -866,17 +909,20 @@ const productResolvers = {
         console.error("Error in DrugBatch.product resolver:", error);
         throw error; // Re-throw to maintain non-null constraint
       }
-    }
+    },
   },
 
   EquipmentBatch: {
     product: async (parentBatch, _, context) => {
       console.log("=== EQUIPMENTBATCH.PRODUCT RESOLVER DEBUG START ===");
-      console.log("EquipmentBatch.product resolver called for batch:", parentBatch.batchId);
+      console.log(
+        "EquipmentBatch.product resolver called for batch:",
+        parentBatch.batchId
+      );
 
       try {
         await isAuthenticated(context);
-        
+
         if (!parentBatch.productId) {
           console.error("Missing productId in EquipmentBatch:", parentBatch);
           throw new ApolloError(
@@ -886,9 +932,11 @@ const productResolvers = {
         }
 
         const product = await ProductModel.getById(parentBatch.productId);
-        
+
         if (!product) {
-          console.error(`Product not found for EquipmentBatch ${parentBatch.batchId}`);
+          console.error(
+            `Product not found for EquipmentBatch ${parentBatch.batchId}`
+          );
           throw new ApolloError(
             `Product not found for batch ${parentBatch.batchId}`,
             "PRODUCT_NOT_FOUND"
@@ -901,7 +949,7 @@ const productResolvers = {
         console.error("Error in EquipmentBatch.product resolver:", error);
         throw error; // Re-throw to maintain non-null constraint
       }
-    }
+    },
   },
 };
 

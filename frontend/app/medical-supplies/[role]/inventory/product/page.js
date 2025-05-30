@@ -7,11 +7,12 @@ import {
   UPDATE_DRUG_PRODUCT,
   UPDATE_EQUIPMENT_BATCH,
   UPDATE_EQUIPMENT_PRODUCT,
+  DELETE_PRODUCT,
 } from "../../../api/graphql/product/productMutations";
 import { useMSAuth } from "../../../hooks/useMSAuth";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/Button";
-import { Check, X, Pen, Plus } from "lucide-react";
+import { Check, X, Pen, Plus, Trash2 } from "lucide-react";
 import { TextField, LongTextField } from "../../../components/ui/FormField";
 import { TableCard } from "../../../components/ui/Cards";
 import { EditableImageGallery } from "../../../components/ui/ProductImageGallery";
@@ -21,6 +22,8 @@ import {
   EditableTextAreaField,
   EditableTextField,
 } from "../../../components/ui/Input";
+import { useRouter } from "next/navigation";
+import { ConfirmationModal } from "../../../components/modal/ConfirmationModal";
 
 export default function ProductPage() {
   const searchParams = useSearchParams();
@@ -35,6 +38,8 @@ export default function ProductPage() {
   const [newImages, setNewImages] = useState([]);
   const [removedImages, setRemovedImages] = useState([]);
   const [editingBatchId, setEditingBatchId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const router = useRouter();
 
   // Pagination
   const ITEMS_PER_PAGE = 10;
@@ -42,7 +47,8 @@ export default function ProductPage() {
 
   const { data, loading, error, refetch } = useQuery(GET_PRODUCT_BY_ID, {
     variables: { productId },
-    skip: !productId, // skip if no ID
+    skip: !productId,
+    fetchPolicy: "cache-and-network",
   });
 
   // Mutations for updating products
@@ -53,6 +59,8 @@ export default function ProductPage() {
   );
   const [updateDrugBatch] = useMutation(UPDATE_DRUG_BATCH);
   const [updateEquipmentBatch] = useMutation(UPDATE_EQUIPMENT_BATCH);
+  const [deleteProduct, { loading: deletingProduct }] =
+    useMutation(DELETE_PRODUCT);
 
   useEffect(() => {
     if (loading) return;
@@ -185,6 +193,35 @@ export default function ProductPage() {
     }
   };
 
+  const handleDeleteProduct = async () => {
+    try {
+      const result = await deleteProduct({
+        variables: { productId },
+        errorPolicy: "all", // This ensures errors are returned
+      });
+
+      console.log("Delete result:", result); // Add this log
+
+      if (result.data?.deleteProduct) {
+        toast.success("Product deleted successfully!");
+        router.push("/medical-supplies/products");
+      }
+    } catch (error) {
+      console.error("Error deleting product:", error);
+
+      // Handle GraphQL errors specifically
+      if (error.graphQLErrors?.length > 0) {
+        const message = error.graphQLErrors[0].message;
+        toast.error("Failed to delete product: " + message);
+      } else if (error.networkError) {
+        toast.error("Network error occurred while deleting product");
+      } else {
+        toast.error("Failed to delete product: " + error.message);
+      }
+    } finally {
+      setShowDeleteModal(false);
+    }
+  };
   const handleEditToggle = (batchId) => {
     setEditingBatchId(editingBatchId === batchId ? null : batchId);
   };
@@ -243,26 +280,26 @@ export default function ProductPage() {
     return batches.map((batch) => {
       if (productType === "DRUG") {
         return {
-          BatchID: batch.batchId|| "-",
-          "Expiry Date": batch.expiryDate|| "-",
-          "Size Per Package": batch.sizePerPackage|| "-",
-          Manufacturer: batch.manufacturer|| "-",
-          "Manufacturer Country": batch.manufacturerCountry|| "-",
-          "Manufactuerr Date": batch.manufactureredDate|| "-",
-          "Buying Price": batch.costPrice|| "-",
-          "Selling Price": batch.sellingPrice|| "-",
-          Quantity: batch.quantity|| "-",
+          BatchID: batch.batchId || "-",
+          "Expiry Date": batch.expiryDate || "-",
+          "Size Per Package": batch.sizePerPackage || "-",
+          Manufacturer: batch.manufacturer || "-",
+          "Manufacturer Country": batch.manufacturerCountry || "-",
+          "Manufactuerr Date": batch.manufactureredDate || "-",
+          "Buying Price": batch.costPrice || "-",
+          "Selling Price": batch.sellingPrice || "-",
+          Quantity: batch.quantity || "-",
         };
       } else {
         return {
-          BatchID: batch.batchId|| "-",
-          "Added At": batch.addedAt|| "-",
-           Manufacturer: batch.manufacturer|| "-",
-          "Manufacturer Country": batch.manufacturerCountry|| "-",
-          "Manufactuerr Date": batch.manufactureredDate|| "-",
-          "Buying Price": batch.costPrice|| "-",
-          "Selling Price": batch.sellingPrice|| "-",
-          Quantity: batch.quantity|| "-",
+          BatchID: batch.batchId || "-",
+          "Added At": batch.addedAt || "-",
+          Manufacturer: batch.manufacturer || "-",
+          "Manufacturer Country": batch.manufacturerCountry || "-",
+          "Manufactuerr Date": batch.manufactureredDate || "-",
+          "Buying Price": batch.costPrice || "-",
+          "Selling Price": batch.sellingPrice || "-",
+          Quantity: batch.quantity || "-",
         };
       }
     });
@@ -282,6 +319,15 @@ export default function ProductPage() {
         </h2>
         {!isEditing ? (
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex gap-1 items-center "
+              color="error"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </Button>
             <Button
               variant="outline"
               className="flex gap-1 items-center"
@@ -472,6 +518,17 @@ export default function ProductPage() {
           onClose={handleAddBatch}
         />
       )}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteProduct}
+        title="Delete Product"
+        message={`Are you sure you want to permanently delete "${productData?.name}"? This will completely remove the product and all associated batches from the system. This action cannot be undone. The product cannot be deleted if it exists in any orders.`}
+        confirmText="Delete Product"
+        cancelText="Cancel"
+        type="danger"
+        isLoading={deletingProduct}
+      />
     </div>
   );
 }

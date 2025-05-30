@@ -44,12 +44,6 @@ export const UPDATE_EQUIPMENT_PRODUCT = gql`
   ${EQUIPMENT_PRODUCT_FIELDS}
 `;
 
-export const DELETE_PRODUCT = gql`
-  mutation DeleteProduct($productId: ID!) {
-    deleteProduct(productId: $productId)
-  }
-`;
-
 // Batch Mutations
 export const CREATE_DRUG_BATCH = gql`
   mutation CreateDrugBatch($input: CreateDrugBatchInput!) {
@@ -124,3 +118,8 @@ export const UPDATE_EQUIPMENT_BATCH_QUANTITY = gql`
   }
 `;
 
+export const DELETE_PRODUCT = gql`
+  mutation DeleteProduct($productId: ID!) {
+    deleteProduct(productId: $productId)
+  }
+`;

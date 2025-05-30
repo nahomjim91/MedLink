@@ -10,6 +10,7 @@ const {
 
 const productsRef = db.collection("products");
 const batchesRef = db.collection("batches");
+const orderItemsRef = db.collection("orderItems");
 
 const ProductModel = {
   async getById(productId) {
@@ -487,25 +488,61 @@ const ProductModel = {
   },
 
   async delete(productId) {
-    // Soft delete by setting isActive to false
     try {
+      console.log("Starting deletion process for product:", productId);
+
       const productRef = productsRef.doc(productId);
       const doc = await productRef.get();
+
       if (!doc.exists) {
+        console.log("Product not found:", productId);
         throw new Error("Product not found for deletion");
       }
-      await productRef.update({
-        isActive: false,
-        lastUpdatedAt: timestamp(),
-      });
-      // Consider also deactivating related batches or other cleanup.
+
+      // Check if product exists in any orders
+      const orderItemsQuery = orderItemsRef.where("productId", "==", productId);
+      const orderItemsSnapshot = await orderItemsQuery.get();
+
+      if (!orderItemsSnapshot.empty) {
+        console.log("Product exists in orders, cannot delete:", productId);
+        throw new Error(
+          "Cannot delete product. It exists in one or more orders."
+        );
+      }
+
+      // Use batch for atomic deletion
+      const batch = db.batch();
+
+      // Add all batches to deletion batch
+      const batchesQuery = batchesRef.where("productId", "==", productId);
+      const batchesSnapshot = await batchesQuery.get();
+
+      if (!batchesSnapshot.empty) {
+        console.log(
+          "Adding associated batches to deletion batch:",
+          batchesSnapshot.size
+        );
+        batchesSnapshot.docs.forEach((batchDoc) => {
+          batch.delete(batchDoc.ref);
+        });
+      }
+
+      // Add product to deletion batch
+      batch.delete(productRef);
+
+      // Execute all deletions atomically
+      await batch.commit();
+      console.log(
+        "Product and all associated batches deleted successfully:",
+        productId
+      );
+
       return true;
     } catch (error) {
-      console.error("Error deleting product (soft delete):", error);
+      console.error("Error in ProductModel.delete:", error);
       throw error;
     }
   },
-
   // You might add methods to find products by other fields if needed
   // e.g., findByName, searchProducts, etc.
 };
