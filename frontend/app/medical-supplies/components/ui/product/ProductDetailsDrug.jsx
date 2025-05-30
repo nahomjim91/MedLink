@@ -22,8 +22,8 @@ export default function ProductDetailsDrug({
   // Local form state that syncs with parent component
   const [formData, setFormData] = useState({
     name: productData.name || "",
-    category: productData.category || "",
-    packageType: productData.packageType || "",
+    category: productData.category || "category1", 
+    packageType: productData.packageType || "packageType1",
     concentration: productData.concentration || "",
     description: productData.description || "",
     requiresPrescription: productData.requiresPrescription === true,

@@ -578,7 +578,7 @@ const OrderModel = {
       );
 
       batch.update(originalBatchRef, {
-        quantity: newQuantity,
+        // quantity: newQuantity, // already updated when the user making order coz buyer pay money for it
         lastUpdatedAt: now,
         lastTransferDate: now,
         lastTransferType: transferType,
@@ -877,6 +877,7 @@ const OrderModel = {
 
       // Check permissions
       if (status === "confirmed" || status === "rejected-by-seller") {
+        console.log("userId: " , userId, "order: " , order )
         if (userId !== order.sellerId) {
           throw new Error("Only seller can confirm or reject orders");
         }

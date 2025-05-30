@@ -8,8 +8,10 @@ const { Server } = require('socket.io');
 const setupApolloServer = require("./graphql");
 const { authMiddleware } = require("../middleware/auth");
 const paymentRoutes = require("./route/payment");
-const chatController = require("./socket/chatController");
-const { auth } = require("../config/firebase");
+const chatController = require("./controllers/chatController");
+const notificationController = require("./controllers/notificationController");
+
+const { auth, db } = require("../config/firebase");
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -68,6 +70,12 @@ app.get("/api/chat/messages", chatController.fetchChatMessages);
 app.post("/api/chat/mark-seen", chatController.markMessagesAsSeen);
 app.get("/api/chat/unread-count", chatController.getTotalUnreadMessageCount);
 app.get("/api/chat/chats", chatController.getChatsWithCounts);
+
+// Notification API Routes
+app.get("/api/notification/", notificationController.getNotifications);
+app.post("/api/notification/create", notificationController.createNotification);
+app.post("/api/notification/mark-read", notificationController.markAsRead);
+
 
 // Basic health check endpoint
 app.get("/medical-supplies/health", (req, res) => {
@@ -206,6 +214,31 @@ io.on('connection', (socket) => {
       isTyping: false
     });
   });
+
+  /////////////////////////////////////////////
+  // Notification Handling
+  socket.on('send_notification', async (data) => {
+  const { userId, type, message, metadata } = data;
+  if (!userId || !type || !message) return;
+
+  const notification = {
+    userId,
+    type,
+    message,
+    metadata: metadata || {},
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  // Save to Firestore
+  await db.collection('notifications').add({
+    ...notification,
+    createdAt: FieldValue.serverTimestamp()
+  });
+
+  // Emit to user's room
+  io.to(`user_${userId}`).emit('notification', notification);
+});
 
   // Handle disconnect
   socket.on('disconnect', () => {

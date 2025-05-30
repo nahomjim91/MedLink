@@ -3,7 +3,9 @@ import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "@apollo/client";
 import { GET_PRODUCT_BY_ID } from "../../../api/graphql/product/productQueries";
 import {
+  UPDATE_DRUG_BATCH,
   UPDATE_DRUG_PRODUCT,
+  UPDATE_EQUIPMENT_BATCH,
   UPDATE_EQUIPMENT_PRODUCT,
 } from "../../../api/graphql/product/productMutations";
 import { useMSAuth } from "../../../hooks/useMSAuth";
@@ -15,13 +17,15 @@ import { TableCard } from "../../../components/ui/Cards";
 import { EditableImageGallery } from "../../../components/ui/ProductImageGallery";
 import AddBatchMultiSteps from "../../../components/ui/product/batch/AddBatchMultiSteps";
 import { toast } from "react-hot-toast"; // Make sure to install this package
-import { EditableTextAreaField, EditableTextField } from "../../../components/ui/Input";
+import {
+  EditableTextAreaField,
+  EditableTextField,
+} from "../../../components/ui/Input";
 
 export default function ProductPage() {
   const searchParams = useSearchParams();
   const productId = searchParams.get("id");
   const { user } = useMSAuth();
-  const [isOwner, setIsOwner] = useState(false);
   const [productData, setProductData] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [batchesPage, setBatchesPage] = useState(1);
@@ -30,7 +34,8 @@ export default function ProductPage() {
   const [editedProductData, setEditedProductData] = useState(null);
   const [newImages, setNewImages] = useState([]);
   const [removedImages, setRemovedImages] = useState([]);
-
+  const [editingBatchId, setEditingBatchId] = useState(null);
+  
   // Pagination
   const ITEMS_PER_PAGE = 10;
   const offset = (batchesPage - 1) * ITEMS_PER_PAGE;
@@ -46,6 +51,8 @@ export default function ProductPage() {
   const [updateEquipmentProduct, { loading: updatingEquipment }] = useMutation(
     UPDATE_EQUIPMENT_PRODUCT
   );
+  const [updateDrugBatch] = useMutation(UPDATE_DRUG_BATCH);
+  const [updateEquipmentBatch] = useMutation(UPDATE_EQUIPMENT_BATCH);
 
   useEffect(() => {
     if (loading) return;
@@ -55,12 +62,6 @@ export default function ProductPage() {
       // Not authenticated
       router.push("/medical-supplies/auth/login");
       return;
-    }
-
-    if (user.userId === data.productById.ownerId) {
-      setIsOwner(true);
-    } else {
-      setIsOwner(false);
     }
 
     setProductData(data.productById);
@@ -94,7 +95,7 @@ export default function ProductPage() {
           ...newImages,
         ];
       }
-console.log("editedProductData" , editedProductData);
+      // console.log("editedProductData" , editedProductData);
       if (editedProductData.__typename === "DrugProduct") {
         const drugInput = {
           ...commonInput,
@@ -148,6 +149,46 @@ console.log("editedProductData" , editedProductData);
     }
   };
 
+  const handleBatchUpdate = async (batch, field, value) => {
+    try {
+      const updates = {
+        [field]: parseFloat(value) || value,
+      };
+
+      if (productData.productType === "DRUG") {
+        await updateDrugBatch({
+          variables: {
+            batchId: batch.BatchID,
+            input: {
+              quantity: updates["Quantity"],
+              costPrice: updates["Cost Price"],
+              sellingPrice: updates["Selling Price"],
+            },
+          },
+        });
+      } else {
+        await updateEquipmentBatch({
+          variables: {
+            batchId: batch.BatchID,
+            input: {
+              quantity: updates["Quantity"],
+              costPrice: updates["Cost Price"],
+              sellingPrice: updates["Selling Price"],
+            },
+          },
+        });
+      }
+      refetch();
+      toast.success("Batch updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update batch: " + error.message);
+    }
+  };
+
+  const handleEditToggle = (batchId) => {
+    setEditingBatchId(editingBatchId === batchId ? null : batchId);
+  };
+
   const handleImageUpload = (imageUrls) => {
     setNewImages([...newImages, ...imageUrls]);
   };
@@ -172,7 +213,8 @@ console.log("editedProductData" , editedProductData);
   if (!productData) return <p>No product found</p>;
 
   const batchesColumns = (productType) => {
-    return productType === "DrugProduct"
+    console.log("productType", productType);
+    return productType === "DRUG"
       ? [
           { key: "BatchID", label: "BatchID" },
           { key: "Expiry Date", label: "Expiry Date" },
@@ -198,7 +240,7 @@ console.log("editedProductData" , editedProductData);
     if (!batches || !Array.isArray(batches)) return [];
 
     return batches.map((batch) => {
-      if (productType === "DrugProduct") {
+      if (productType === "DRUG") {
         return {
           BatchID: batch.batchId,
           "Expiry Date": batch.expiryDate,
@@ -289,6 +331,7 @@ console.log("editedProductData" , editedProductData);
               key={tab}
               onClick={() => {
                 setActiveTab(tab.toLowerCase());
+                refetch();
                 setIsEditing(false);
               }}
               className={`pb-2 px-1 ${
@@ -403,6 +446,11 @@ console.log("editedProductData" , editedProductData);
             isLoading={loading}
             isAddButton={false}
             isOrderButton={false}
+            isEditable={true}
+            editableColumns= {'Selling Price'} ///{["Buying Price", "Selling Price", "Quantity"]}
+            onUpdateItem={handleBatchUpdate}
+            onEditToggle={handleEditToggle}
+            editingRowId={editingBatchId}
           />
         )}
 

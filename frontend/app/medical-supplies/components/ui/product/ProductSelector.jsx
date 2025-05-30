@@ -16,7 +16,7 @@ export default function ProductSelector({ selectedType, onTypeSelect, onNext }) 
        
       </div>
 
-      <div className="flex justify-around py-10 ">
+      <div className="flex justify-around py-6 ">
         <IconCard
           icon={<Pill size={96} />}
           label="Drug"

@@ -5,11 +5,11 @@ import { StepProgressIndicator } from "../StepProgressIndicator";
 import { useMSAuth } from "../../../hooks/useMSAuth";
 
 // GraphQL Mutations
-import { 
-  CREATE_DRUG_PRODUCT, 
+import {
+  CREATE_DRUG_PRODUCT,
   CREATE_EQUIPMENT_PRODUCT,
   CREATE_DRUG_BATCH,
-  CREATE_EQUIPMENT_BATCH
+  CREATE_EQUIPMENT_BATCH,
 } from "../../../api/graphql/product/productMutations";
 
 // Step Components
@@ -22,6 +22,7 @@ import ProductEquipmentInventory from "./batch/ProductEquipmentInventory";
 import ProductSummaryDrug from "./ProductSummaryDrug";
 import ProductSummaryEquipment from "./ProductSummaryEquipment";
 import SuccessUpload from "./SuccessUpload";
+import {ProductAndBatchModel} from "../../modal/Modal";
 
 // Initial product data state schema
 const initialProductData = {
@@ -58,6 +59,7 @@ const initialProductData = {
     sizePerPackage: 0,
     manufacturer: "",
     manufacturerCountry: "",
+    manufactureredDate: "",
 
     // EquipmentBatch-specific
     serialNumbers: [],
@@ -87,7 +89,7 @@ export default function AddProductMultiSteps({ onClose }) {
     },
   });
 
-  const [createEquipmentProduct ]  = useMutation(CREATE_EQUIPMENT_PRODUCT, {
+  const [createEquipmentProduct] = useMutation(CREATE_EQUIPMENT_PRODUCT, {
     onError: (error) => {
       console.error("Error creating equipment product:", error);
       setError(`Failed to create equipment product: ${error.message}`);
@@ -163,7 +165,10 @@ export default function AddProductMultiSteps({ onClose }) {
           return false;
         }
 
-        if (productData.productType === "DRUG" && !productData.batch.expiryDate) {
+        if (
+          productData.productType === "DRUG" &&
+          !productData.batch.expiryDate
+        ) {
           setError("Expiry date is required for drugs.");
           return false;
         }
@@ -240,8 +245,10 @@ export default function AddProductMultiSteps({ onClose }) {
           variables: { input: drugProductInput },
         });
 
-        setCreatedProductId(createdProductResponse.data.createDrugProduct.productId);
-        
+        setCreatedProductId(
+          createdProductResponse.data.createDrugProduct.productId
+        );
+
         // Then create the batch for the product
         const drugBatchInput = {
           productId: createdProductResponse.data.createDrugProduct.productId,
@@ -254,6 +261,7 @@ export default function AddProductMultiSteps({ onClose }) {
           sizePerPackage: parseFloat(productData.batch.sizePerPackage) || 0,
           manufacturer: productData.batch.manufacturer,
           manufacturerCountry: productData.batch.manufacturerCountry,
+          manufactureredDate: productData.batch.manufactureredDate,
         };
 
         await createDrugBatch({
@@ -273,17 +281,23 @@ export default function AddProductMultiSteps({ onClose }) {
           variables: { input: equipmentProductInput },
         });
 
-        setCreatedProductId(createdProductResponse.data.createEquipmentProduct.productId);
-        
+        setCreatedProductId(
+          createdProductResponse.data.createEquipmentProduct.productId
+        );
+
         // Then create the batch for the product
         const equipmentBatchInput = {
-          productId: createdProductResponse.data.createEquipmentProduct.productId,
+          productId:
+            createdProductResponse.data.createEquipmentProduct.productId,
           currentOwnerId: productData.originalListerId,
           currentOwnerName: productData.originalListerName,
           quantity: parseFloat(productData.batch.quantity),
           costPrice: parseFloat(productData.batch.costPrice),
           sellingPrice: parseFloat(productData.batch.sellingPrice),
           serialNumbers: productData.batch.serialNumbers,
+          manufacturer: productData.batch.manufacturer,
+          manufacturerCountry: productData.batch.manufacturerCountry,
+          manufactureredDate: productData.batch.manufactureredDate,
         };
 
         await createEquipmentBatch({
@@ -300,12 +314,12 @@ export default function AddProductMultiSteps({ onClose }) {
       setIsLoading(false);
     }
   }, [
-    productData, 
-    getTotalSteps, 
-    createDrugProduct, 
-    createEquipmentProduct, 
-    createDrugBatch, 
-    createEquipmentBatch
+    productData,
+    getTotalSteps,
+    createDrugProduct,
+    createEquipmentProduct,
+    createDrugBatch,
+    createEquipmentBatch,
   ]);
 
   // Handle completion
@@ -323,23 +337,24 @@ export default function AddProductMultiSteps({ onClose }) {
         isLoading={isLoading}
       />
     ),
-    2: productData.productType === "DRUG" ? (
-      <ProductDetailsDrug
-        productData={productData}
-        onUpdate={updateProductData}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ) : (
-      <ProductDetailsEquipment
-        productData={productData}
-        onUpdate={updateProductData}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ),
+    2:
+      productData.productType === "DRUG" ? (
+        <ProductDetailsDrug
+          productData={productData}
+          onUpdate={updateProductData}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ) : (
+        <ProductDetailsEquipment
+          productData={productData}
+          onUpdate={updateProductData}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ),
     3: (
       <ProductImage
         images={productData.imageList}
@@ -350,40 +365,42 @@ export default function AddProductMultiSteps({ onClose }) {
         isLoading={isLoading}
       />
     ),
-    4: productData.productType === "DRUG" ? (
-      <ProductDrugInventory
-        productType={productData.productType}
-        productData={productData}
-        onUpdate={updateBatchData}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ) : (
-      <ProductEquipmentInventory
-        productType={productData.productType}
-        batchData={productData.batch}
-        onUpdate={updateBatchData}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ),
-    5: productData.productType === "DRUG" ? (
-      <ProductSummaryDrug
-        productData={productData}
-        onSubmit={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ) : (
-      <ProductSummaryEquipment
-        productData={productData}
-        onSubmit={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ),
+    4:
+      productData.productType === "DRUG" ? (
+        <ProductDrugInventory
+          productType={productData.productType}
+          productData={productData}
+          onUpdate={updateBatchData}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ) : (
+        <ProductEquipmentInventory
+          productType={productData.productType}
+          batchData={productData.batch}
+          onUpdate={updateBatchData}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ),
+    5:
+      productData.productType === "DRUG" ? (
+        <ProductSummaryDrug
+          productData={productData}
+          onSubmit={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ) : (
+        <ProductSummaryEquipment
+          productData={productData}
+          onSubmit={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ),
     6: (
       <SuccessUpload
         productData={productData}
@@ -399,45 +416,24 @@ export default function AddProductMultiSteps({ onClose }) {
     if (submissionComplete) {
       return `Product Added (${productData.productType || "Product"})`;
     }
-    
+
     if (!productData.productType) {
       return "Add New Product";
     }
-    
+
     return `Add New (${productData.productType})`;
   }, [submissionComplete, productData.productType]);
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="w-full max-w-md md:max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-6 md:py-6 md:px-12">
-        <h1 className="text-2xl font-bold text-secondary mb-6">
-          {getFormTitle()}
-        </h1>
-        
-        {/* Error message display */}
-        {error && (
-          <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
-            role="alert"
-          >
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-        
-        {/* Progress indicator - Hide on success page */}
-        {currentStep < getTotalSteps() && (
-          <StepProgressIndicator
-            currentStep={currentStep}
-            totalSteps={getTotalSteps() - 1}
-            className="mb-8"
-          />
-        )}
-        
-        {/* Current step content */}
-        <div className="overflow-y-auto max-h-[60vh] pr-2">
-          {stepComponents[currentStep]}
-        </div>
-      </div>
-    </div>
+    <ProductAndBatchModel
+      {...{
+        onClose,
+        currentStep,
+        getTotalSteps,
+        getFormTitle,
+        error,
+        stepComponents,
+      }}
+    />
   );
 }

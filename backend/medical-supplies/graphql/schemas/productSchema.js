@@ -65,6 +65,7 @@ const productSchema = gql`
     batches: [Batch]
 
     # Equipment-specific fields
+
     brandName: String
     modelNumber: String
     warrantyInfo: String
@@ -86,6 +87,9 @@ const productSchema = gql`
     lastUpdatedAt: Date
     # If this batch was copied from another batch during purchase
     sourceOriginalBatchId: ID
+    manufacturer: String
+    manufacturerCountry: String
+    manufactureredDate: Date
   }
 
   "Represents a Drug Batch"
@@ -102,12 +106,13 @@ const productSchema = gql`
     addedAt: Date!
     lastUpdatedAt: Date
     sourceOriginalBatchId: ID
+    manufacturer: String
+    manufacturerCountry: String
+    manufactureredDate: Date
 
     # DrugBatch-specific fields
     expiryDate: Date!
     sizePerPackage: Float # Using Float for Number type
-    manufacturer: String
-    manufacturerCountry: String
   }
 
   "Represents an Equipment Batch"
@@ -124,6 +129,9 @@ const productSchema = gql`
     addedAt: Date!
     lastUpdatedAt: Date
     sourceOriginalBatchId: ID
+    manufacturer: String
+    manufacturerCountry: String
+    manufactureredDate: Date
 
     # EquipmentBatch-specific fields
     serialNumbers: [String]
@@ -195,6 +203,7 @@ const productSchema = gql`
     sizePerPackage: Float
     manufacturer: String
     manufacturerCountry: String
+    manufactureredDate: Date
   }
 
   input CreateEquipmentBatchInput {
@@ -205,6 +214,9 @@ const productSchema = gql`
     serialNumbers: [String]
     currentOwnerId: ID!
     currentOwnerName: String
+    manufacturer: String
+    manufacturerCountry: String
+    manufactureredDate: Date
   }
 
   # Input types for updating batches
@@ -216,6 +228,7 @@ const productSchema = gql`
     sizePerPackage: Float
     manufacturer: String
     manufacturerCountry: String
+    manufactureredDate: Date
   }
 
   input UpdateEquipmentBatchInput {
@@ -223,6 +236,9 @@ const productSchema = gql`
     costPrice: Float
     sellingPrice: Float
     serialNumbers: [String]
+    manufacturer: String
+    manufacturerCountry: String
+    manufactureredDate: Date
   }
 
   # Input for purchasing a product (will create a copy for the buyer)
@@ -269,10 +285,7 @@ const productSchema = gql`
     ): [Product!]!
 
     "Search products by various criteria"
-    searchProducts(
-      searchInput: SearchProductsInput!
-    ): [Product!]!
-
+    searchProducts(searchInput: SearchProductsInput!): [Product!]!
 
     "Get a batch by its ID. Returns either DrugBatch or EquipmentBatch"
     batchById(batchId: ID!): Batch

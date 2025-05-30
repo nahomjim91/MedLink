@@ -1,25 +1,99 @@
-//  downloadOrderReceipt function for your React component
-export const downloadOrderReceipt = (data, otherUserData, user) => {
-  if (!data?.order) return;
+// Fixed downloadOrderReceipt function
+export const downloadOrderReceipt = (order, otherUser, user) => {
+  // Validate inputs
+  if (!order || !user) {
+    console.error('Missing required data for receipt generation');
+    return () => {}; // Return empty function if data is missing
+  }
 
-  const order = data.order;
-  const otherUser = otherUserData?.msUserById;
-  const isCurrentUserBuyer = order.buyerId === user.userId;
-  const currentDate = new Date().toLocaleDateString();
-  const totalQuantity = allBatchItems.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
-  const avgUnitPrice = order.totalCost / totalQuantity;
+  // Return the actual function that will be called on click
+  return () => {
+    try {
+      const isCurrentUserBuyer = order.buyerId === user.userId;
+      const currentDate = new Date().toLocaleDateString();
+      
+      // Calculate allBatchItems from the order data
+      const allBatchItems = order.items?.flatMap((item) =>
+        item.batchItems?.map((batch) => ({
+          ...batch,
+          productName: item.productName,
+          productImage: item.productImage,
+        })) || []
+      ) || [];
 
-  // Create a new window for PDF generation
-  const printWindow = window.open("", "_blank");
+      const totalQuantity = allBatchItems.reduce(
+        (sum, item) => sum + (item.quantity || 0),
+        0
+      );
+      const avgUnitPrice = totalQuantity > 0 ? order.totalCost / totalQuantity : 0;
 
-  const htmlContent = `
-<!DOCTYPE html>
+      // Generate the HTML content
+      const htmlContent = generateReceiptHTML({
+        order,
+        otherUser,
+        user,
+        isCurrentUserBuyer,
+        currentDate,
+        allBatchItems,
+        totalQuantity,
+        avgUnitPrice
+      });
+
+      // Create and configure the print window
+      const printWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+      
+      if (!printWindow) {
+        alert('Popup blocked! Please allow popups for this site to download the receipt.');
+        return;
+      }
+
+      // Write content to the new window
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+
+      // Handle the print dialog
+      const handlePrint = () => {
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch (error) {
+          console.error('Print failed:', error);
+          alert('Print failed. Please try again.');
+        }
+      };
+
+      // Wait for content to load, then print
+      if (printWindow.document.readyState === "complete") {
+        setTimeout(handlePrint, 100);
+      } else {
+        printWindow.onload = () => setTimeout(handlePrint, 100);
+      }
+
+    } catch (error) {
+      console.error('Receipt generation failed:', error);
+      alert('Failed to generate receipt. Please try again.');
+    }
+  };
+};
+
+// Separate function to generate HTML content for better maintainability
+const generateReceiptHTML = ({
+  order,
+  otherUser,
+  user,
+  isCurrentUserBuyer,
+  currentDate,
+  allBatchItems,
+  totalQuantity,
+  avgUnitPrice
+}) => {
+  return `<!DOCTYPE html>
 <html>
 <head>
   <title>Inventory Receipt - ${order.orderId}</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -40,7 +114,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
       overflow: hidden;
     }
     
-    /* Header Section - Using teal colors to match your UI */
+    /* Header Section */
     .header {
       background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
       color: white;
@@ -67,6 +141,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
       gap: 30px;
       font-size: 14px;
       opacity: 0.8;
+      flex-wrap: wrap;
     }
     
     /* Quick Stats Bar */
@@ -75,7 +150,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
       color: white;
       padding: 20px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
       text-align: center;
     }
@@ -122,7 +197,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
     /* Order & Participant Info Grid */
     .info-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 30px;
       margin-bottom: 30px;
     }
@@ -279,7 +354,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
     /* Compliance Section */
     .compliance-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 15px;
     }
     
@@ -340,9 +415,6 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
     
     /* Responsive */
     @media (max-width: 768px) {
-      .info-grid { grid-template-columns: 1fr; }
-      .stats-bar { grid-template-columns: repeat(2, 1fr); }
-      .compliance-grid { grid-template-columns: 1fr; }
       .header .order-meta { flex-direction: column; gap: 10px; }
       .inventory-table { font-size: 12px; }
       .inventory-table th, .inventory-table td { padding: 8px 6px; }
@@ -360,9 +432,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
         <span>•</span>
         <span>Generated: ${currentDate}</span>
         <span>•</span>
-        <span>Type: ${
-          isCurrentUserBuyer ? "PURCHASE ORDER" : "SALES ORDER"
-        }</span>
+        <span>Type: ${isCurrentUserBuyer ? "PURCHASE ORDER" : "SALES ORDER"}</span>
       </div>
     </div>
 
@@ -370,7 +440,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
     <div class="stats-bar">
       <div class="stat-item">
         <h4>Total Items</h4>
-        <div class="value">${order.items.length}</div>
+        <div class="value">${order.items?.length || 0}</div>
       </div>
       <div class="stat-item">
         <h4>Total Quantity</h4>
@@ -378,7 +448,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
       </div>
       <div class="stat-item">
         <h4>Total Value</h4>
-        <div class="value">$${order.totalCost.toFixed(2)}</div>
+        <div class="value">$${order.totalCost?.toFixed(2) || '0.00'}</div>
       </div>
       <div class="stat-item">
         <h4>Avg Unit Price</h4>
@@ -397,31 +467,23 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
             <h3>Order Information</h3>
             <div class="info-row">
               <span class="info-label">Status:</span>
-              <span class="status-badge status-${order.status.toLowerCase()}">${order.status.toUpperCase()}</span>
+              <span class="status-badge status-${order.status?.toLowerCase() || 'pending'}">${(order.status || 'PENDING').toUpperCase()}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Payment Status:</span>
-              <span class="status-badge status-${order.paymentStatus.toLowerCase()}">${order.paymentStatus.toUpperCase()}</span>
+              <span class="status-badge status-${order.paymentStatus?.toLowerCase() || 'pending'}">${(order.paymentStatus || 'PENDING').toUpperCase()}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Order Date:</span>
-              <span class="info-value">${new Date(
-                order.orderDate
-              ).toLocaleDateString()}</span>
+              <span class="info-value">${order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Transaction ID:</span>
-              <span class="info-value">#${
-                order.transactionId || "TXN" + order.orderId
-              }</span>
+              <span class="info-value">#${order.transactionId || "TXN" + order.orderId}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Received Date:</span>
-              <span class="info-value">${
-                order.pickupConfirmedDate
-                  ? new Date(order.pickupConfirmedDate).toLocaleDateString()
-                  : "Pending"
-              }</span>
+              <span class="info-value">${order.pickupConfirmedDate ? new Date(order.pickupConfirmedDate).toLocaleDateString() : "Pending"}</span>
             </div>
           </div>
 
@@ -429,19 +491,11 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
             <h3>🏢 ${isCurrentUserBuyer ? "Supplier" : "Buyer"} Details</h3>
             <div class="info-row">
               <span class="info-label">Company:</span>
-              <span class="info-value">${
-                otherUser?.companyName ||
-                (isCurrentUserBuyer
-                  ? order.sellerCompanyName
-                  : order.buyerCompanyName) ||
-                "N/A"
-              }</span>
+              <span class="info-value">${otherUser?.companyName || (isCurrentUserBuyer ? order.sellerCompanyName : order.buyerCompanyName) || "N/A"}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Contact Person:</span>
-              <span class="info-value">${
-                isCurrentUserBuyer ? order.sellerName : order.buyerName
-              }</span>
+              <span class="info-value">${isCurrentUserBuyer ? order.sellerName : order.buyerName}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Email:</span>
@@ -449,9 +503,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
             </div>
             <div class="info-row">
               <span class="info-label">License Status:</span>
-              <span class="info-value">${
-                otherUser?.businessLicenseUrl ? "✓ Verified" : "Not Available"
-              }</span>
+              <span class="info-value">${otherUser?.businessLicenseUrl ? "✓ Verified" : "Not Available"}</span>
             </div>
           </div>
         </div>
@@ -460,9 +512,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
       <!-- Inventory Details -->
       <div class="section">
         <div class="section-header">
-          <h2>📦 Inventory Items ${
-            isCurrentUserBuyer ? "Received" : "Sold"
-          }</h2>
+          <h2>📦 Inventory Items ${isCurrentUserBuyer ? "Received" : "Sold"}</h2>
         </div>
         <table class="inventory-table">
           <thead>
@@ -477,36 +527,22 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
             </tr>
           </thead>
           <tbody>
-            ${allBatchItems
-              .map(
-                (item) => `
+            ${allBatchItems.map(item => `
             <tr>
-              <td><strong>${
-                item.productName
-              }</strong><br><small>Batch Item</small></td>
-              <td><span class="batch-id">#${item.batchId}</span></td>
+              <td><strong>${item.productName || 'N/A'}</strong><br><small>Batch Item</small></td>
+              <td><span class="batch-id">#${item.batchId || 'N/A'}</span></td>
               <td>N/A</td>
-              <td><span class="expiry-date">${
-                item.expiryDate
-                  ? new Date(item.expiryDate).toLocaleDateString()
-                  : "N/A"
-              }</span></td>
-              <td class="quantity">${item.quantity}</td>
-              <td class="price">$${item.unitPrice.toFixed(2)}</td>
-              <td class="price">$${item.subtotal.toFixed(2)}</td>
+              <td><span class="expiry-date">${item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : "N/A"}</span></td>
+              <td class="quantity">${item.quantity || 0}</td>
+              <td class="price">$${(item.unitPrice || 0).toFixed(2)}</td>
+              <td class="price">$${(item.subtotal || 0).toFixed(2)}</td>
             </tr>
-            `
-              )
-              .join("")}
+            `).join('')}
             <tr class="total-row">
-              <td colspan="4"><strong>TOTAL INVENTORY ${
-                isCurrentUserBuyer ? "RECEIVED" : "SOLD"
-              }</strong></td>
+              <td colspan="4"><strong>TOTAL INVENTORY ${isCurrentUserBuyer ? "RECEIVED" : "SOLD"}</strong></td>
               <td class="quantity"><strong>${totalQuantity.toLocaleString()}</strong></td>
               <td class="price"><strong>—</strong></td>
-              <td class="price"><strong>$${order.totalCost.toFixed(
-                2
-              )}</strong></td>
+              <td class="price"><strong>$${(order.totalCost || 0).toFixed(2)}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -522,22 +558,14 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
             <div class="compliance-icon">✓</div>
             <div>
               <strong>FDA License</strong><br>
-              <small>${
-                otherUser?.efdaLicenseUrl
-                  ? "Verified & Current"
-                  : "Not Available"
-              }</small>
+              <small>${otherUser?.efdaLicenseUrl ? "Verified & Current" : "Not Available"}</small>
             </div>
           </div>
           <div class="compliance-item">
             <div class="compliance-icon">✓</div>
             <div>
               <strong>Business License</strong><br>
-              <small>${
-                otherUser?.businessLicenseUrl
-                  ? "Valid License on File"
-                  : "Not Available"
-              }</small>
+              <small>${otherUser?.businessLicenseUrl ? "Valid License on File" : "Not Available"}</small>
             </div>
           </div>
           <div class="compliance-item">
@@ -561,9 +589,7 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
     <!-- Footer -->
     <div class="footer">
       <p><strong>Inventory Receipt Confirmation</strong></p>
-      <p>This document serves as proof of goods ${
-        isCurrentUserBuyer ? "received" : "sold"
-      } and payment processed.</p>
+      <p>This document serves as proof of goods ${isCurrentUserBuyer ? "received" : "sold"} and payment processed.</p>
       <p>All items have been verified against the original purchase order.</p>
       <div class="company-info">
         <p>Generated by MedLink Medical Supply and Management System | For support: support@medlink.com | © 2025</p>
@@ -572,14 +598,4 @@ export const downloadOrderReceipt = (data, otherUserData, user) => {
   </div>
 </body>
 </html>`;
-
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
-
-  // Wait for content to load then trigger print
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
-  };
 };

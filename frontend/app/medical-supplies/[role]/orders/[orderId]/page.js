@@ -108,8 +108,6 @@ export default function OrderDetailsPage({ params }) {
   const endIndex = startIndex + itemsPerPage;
   const currentItems = allBatchItems.slice(startIndex, endIndex);
 
-
-
   const handlePageChange = (page) => {
     setCurrentPage(page);
   };
@@ -344,7 +342,7 @@ export default function OrderDetailsPage({ params }) {
             </div>
           </div>
           <Button
-            onClick={downloadOrderReceipt}
+            onClick={downloadOrderReceipt(order, otherUser, user)}
             className="flex gap-1.5 items-center"
           >
             <Download className="h-4 w-4" />

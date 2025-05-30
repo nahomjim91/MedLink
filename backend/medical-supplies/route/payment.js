@@ -8,7 +8,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Chapa configuration
-const CHAPA_AUTH_KEY = process.env.CHAPA_SECRET_KEY;
+const CHAPA_AUTH_KEY = "CHASECK_TEST-SZL3DthorQlMCC0X3l95fgnCpEz75TZj"//process.env.CHAPA_SECRET_KEY;
 const CHAPA_BASE_URL = 'https://api.chapa.co/v1';
 
 // Helper function to create Chapa headers
@@ -29,7 +29,6 @@ router.post('/initialize', async (req, res) => {
       customerInfo,
       orderDetails
     } = req.body;
-console.log('Chapa Base URL:', CHAPA_AUTH_KEY);
 
     // Validate required fields
     if (!orderId || !amount || !customerInfo?.email || !customerInfo?.firstName) {
@@ -41,6 +40,7 @@ console.log('Chapa Base URL:', CHAPA_AUTH_KEY);
 
     // Generate unique transaction reference
     const txRef = `tx_${orderId}_${Date.now()}`;
+    console.log('orderDetails:', orderDetails);
 
     const paymentData = {
       amount: parseFloat(amount),

@@ -24,6 +24,7 @@ const ordersColumns = [
 ];
 
 const getUserPerspective = (order, user) => {
+  console.log("getUserPerspective called with order:", order);
   // Determine if current user is buyer or seller for this order
   if (user?.role?.toLowerCase() === "health_facility") {
     return "buyer"; // Health facilities are always buyers
@@ -31,7 +32,7 @@ const getUserPerspective = (order, user) => {
     return "seller"; // Importers are always sellers
   } else if (user?.role?.toLowerCase() === "supplier") {
     // Suppliers can be both - check the specific order
-    return order.buyerId === user?.id ? "buyer" : "seller";
+    return order.sellerId !== user?.userId ? "buyer" : "seller";
   }
   return "buyer"; // Default fallback
 };
@@ -236,6 +237,7 @@ export default function OrdersPage() {
   // Handle tab change
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
+    refetch(); // Refetch data when changing tabs
     setOrdersPage(1); // Reset to first page when changing tabs
   };
 

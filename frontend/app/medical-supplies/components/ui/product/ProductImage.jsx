@@ -49,11 +49,11 @@ export default function ProductImage({
 
   return (
     <div className="px-6">
-      <h2 className="text-xl font-semibold text-secondary/80 mb-4">
+      <h2 className="text-xl font-semibold text-secondary/80 mb-2">
         Product Images
       </h2>
   
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-">
         Upload high-quality images of your product. You can upload multiple
         images to show different angles or features of the product.
       </p>

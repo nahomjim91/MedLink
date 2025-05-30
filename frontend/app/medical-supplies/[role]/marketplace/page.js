@@ -165,6 +165,7 @@ const Marketplace = () => {
 
   // Product card component
   const ProductCard = ({ product }) => {
+    console.log("ProductCard: ",product);
     const productPrice =
       product.batches && product.batches[0]
         ? product.batches[0].sellingPrice

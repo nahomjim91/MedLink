@@ -4,11 +4,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { io } from "socket.io-client";
 import { auth } from "../api/firebase/config";
+import { useMSAuth } from "./useMSAuth";
 export const useSocket = () => {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Map());
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const [token, setToken] = useState(null);
@@ -46,20 +49,18 @@ export const useSocket = () => {
 
     console.log("Establishing socket connection...");
 
-    const newSocket = io( "http://localhost:4001",
-      {
-        reconnection: true,
-        reconnectionDelayMax: 10000,
-        reconnectionDelay: 1000,
-        timeout: 10000,
-        auth: {
-          token: token,
-        },
-        extraHeaders: {
-          authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const newSocket = io("http://localhost:4001", {
+      reconnection: true,
+      reconnectionDelayMax: 10000,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+      auth: {
+        token: token,
+      },
+      extraHeaders: {
+        authorization: `Bearer ${token}`,
+      },
+    });
 
     // Connection event handlers
     newSocket.on("connect", () => {
@@ -111,6 +112,22 @@ export const useSocket = () => {
         return newMap;
       });
     });
+
+      // Notification handlers
+    newSocket.on("notification", (notification) => {
+      console.log("📩 New notification received:", notification);
+      setNotifications((prev) => [notification, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+      
+      // Show browser notification if permission granted
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(notification.message, {
+          icon: '/favicon.ico',
+          tag: notification.id,
+        });
+      }
+    });
+
 
     setSocket(newSocket);
     return newSocket;
@@ -213,6 +230,35 @@ export const useSocket = () => {
     [socket, isConnected]
   );
 
+  // notification functions
+   const sendNotification = useCallback(
+    (userId, type, message, metadata = {}) => {
+      if (socket && isConnected) {
+        socket.emit("send_notification", {
+          userId,
+          type,
+          message,
+          metadata,
+        });
+      }
+    },
+    [socket, isConnected]
+  );
+
+  const clearNotifications = useCallback(() => {
+    setNotifications([]);
+    setUnreadCount(0);
+  }, []);
+
+  const markNotificationAsRead = useCallback((notificationId) => {
+    setNotifications((prev) =>
+      prev.map((notif) =>
+        notif.id === notificationId ? { ...notif, isRead: true } : notif
+      )
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+  }, []);
+
   const disconnect = useCallback(() => {
     if (socket) {
       socket.disconnect();
@@ -261,6 +307,17 @@ export const useSocket = () => {
     [socket]
   );
 
+  // notification functions
+   const onNotification = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("notification", callback);
+        return () => socket.off("notification", callback);
+      }
+    },
+    [socket]
+  );
+
   const isUserOnline = useCallback(
     (userId) => {
       return onlineUsers.includes(userId);
@@ -293,6 +350,14 @@ export const useSocket = () => {
 
     // Status functions
     isUserOnline,
+
+     // Notification functions
+    notifications,
+    unreadCount,
+    sendNotification,
+    clearNotifications,
+    markNotificationAsRead,
+
 
     // Connection functions
     disconnect,

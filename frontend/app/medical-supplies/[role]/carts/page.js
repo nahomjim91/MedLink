@@ -83,15 +83,15 @@ export default function Carts() {
     );
   }
 
-  console.log("Cart:", cart);
+  // console.log("Cart:", cart);
 
   const cartItemCard = (key, item) => {
+    console.log("Cart Item:", item);
     return (
       <div
         key={key}
         className="bg-background/20 w-full flex justify-between items-start p-2 shadow-lg rounded-2xl"
       >
-        {/* Remove button (top right) */}
         <div className="flex px-3 py-1 items-center gap-4 w-[95%]">
           {item.productImage ? (
             <div className="w-20 h-20 flex-shrink-0">
@@ -105,7 +105,7 @@ export default function Carts() {
             </div>
           ) : (
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-              {item.productType !== "Drug" ? (
+              {item.productType !== "EQUIPMENT" ? (
                 <Pill size={40} className="text-primary" />
               ) : (
                 <Syringe size={40} className="text-primary" />
@@ -113,7 +113,7 @@ export default function Carts() {
             </div>
           )}
           <div className="flex flex-col w-full">
-            {/* Product Image and Basic Info */}
+            {/*Basic Info */}
             <div className="flex flex-col ">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-secondary text-lg">

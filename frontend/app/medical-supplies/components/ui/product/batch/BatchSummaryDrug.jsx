@@ -24,6 +24,7 @@ export default function BatchSummaryDrug({
       sizePerPackage: batch?.sizePerPackage || 0,
       manufacturer: batch?.manufacturer || "",
       manufacturerCountry: batch?.manufacturerCountry || "",
+      manufactureredDate: batch?.manufactureredDate || "",
     },
   };
 
@@ -175,6 +176,12 @@ export default function BatchSummaryDrug({
               </label>
               <div className="text-base border border-gray-300 rounded-md p-2 bg-gray-50">
                 {formData.batch.manufacturerCountry}
+              </div>
+            </div>
+             <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Manufacturer Date</label>
+              <div className="text-base border border-gray-300 rounded-md p-2 bg-gray-50">
+                {formData.batch.manufactureredDate}
               </div>
             </div>
           </div>

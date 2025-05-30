@@ -259,7 +259,7 @@ useEffect(() => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ms_token")}`,
           },
           body: JSON.stringify({
             participants: [user.userId, ...userIds],

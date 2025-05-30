@@ -186,10 +186,64 @@ const ProductModel = {
           `Filtered out products owned by current user (${currentUserId}), ${allProducts.length} products remaining`
         );
       }
-      // If no search term provided, return all products with base filters
+
+      // Filter out inactive products first
+      allProducts = allProducts.filter((product) => product.isActive === true);
+      console.log(
+        `Filtered out inactive products, ${allProducts.length} active products remaining`
+      );
+
+      // Helper function to check if a product has valid batches with selling price
+      const hasValidBatches = async (product) => {
+        try {
+          const batchQuery = batchesRef.where(
+            "productId",
+            "==",
+            product.productId
+          );
+          const batchesSnapshot = await batchQuery.get();
+          const batches = formatDocs(batchesSnapshot.docs);
+
+          // Check if there's at least one batch with selling price
+          return batches.some(
+            (batch) => batch.sellingPrice && batch.sellingPrice > 0
+          );
+        } catch (error) {
+          console.error(
+            `Error checking batches for product ${product.productId}:`,
+            error
+          );
+          return false;
+        }
+      };
+
+      // Filter products to only include those with valid batches
+      console.log("Filtering products for valid batches...");
+      const validProducts = [];
+
+      // Process in batches to avoid overwhelming Firestore
+      const batchSize = 10;
+      for (let i = 0; i < allProducts.length; i += batchSize) {
+        const batch = allProducts.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (product) => {
+          const isValid = await hasValidBatches(product);
+          return isValid ? product : null;
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        validProducts.push(
+          ...batchResults.filter((product) => product !== null)
+        );
+      }
+
+      console.log(
+        `Filtered to ${validProducts.length} products with valid batches and selling prices`
+      );
+
+      // If no search term provided, return all valid products
       if (!searchTerm || searchTerm.trim() === "") {
         // Apply pagination
-        const paginatedResults = allProducts.slice(
+        const paginatedResults = validProducts.slice(
           offsetVal,
           offsetVal + limitVal
         );
@@ -203,8 +257,7 @@ const ProductModel = {
       const lowerSearchTerm = searchTerm.toLowerCase().trim();
       console.log(`Filtering for search term: "${lowerSearchTerm}"`);
 
-      // For each product, we need to check if it matches the search criteria
-      // We'll also need to load its batches for some batch-specific filters
+      // For each valid product, we need to check if it matches the search criteria
       const matchingProducts = [];
       const processedProductIds = new Set(); // To avoid duplicates
 
@@ -237,7 +290,7 @@ const ProductModel = {
       };
 
       // First pass: Check for matches in the product fields
-      for (const product of allProducts) {
+      for (const product of validProducts) {
         if (productMatchesSearch(product)) {
           if (!processedProductIds.has(product.productId)) {
             matchingProducts.push(product);
@@ -251,7 +304,7 @@ const ProductModel = {
       );
 
       // Second pass: Check for matches in the batch fields (for non-matched products)
-      const remainingProducts = allProducts.filter(
+      const remainingProducts = validProducts.filter(
         (p) => !processedProductIds.has(p.productId)
       );
       console.log(
@@ -272,25 +325,24 @@ const ProductModel = {
                 product.productId
               );
 
-              // Apply expiry date filters if provided (for drug batches)
-              if (expiryDateStart || expiryDateEnd) {
-                // We need to fetch all batches and filter in memory since
-                // we can't combine "where" queries with OR conditions
-                console.log(
-                  `Applying expiry date filters for product ${product.productId}`
-                );
-              }
-
               const batchesSnapshot = await batchQuery.get();
               const batches = formatDocs(batchesSnapshot.docs);
 
               // No batches found, skip further processing
               if (batches.length === 0) return null;
 
-              // Check each batch for matches
+              // Check each batch for matches - only consider active batches with selling price
               for (const batch of batches) {
                 // Skip if we've already matched this product
                 if (processedProductIds.has(product.productId)) continue;
+
+                // Skip batches without selling price
+                if (!batch.sellingPrice || batch.sellingPrice <= 0) {
+                  console.log(
+                    `Skipping product ${product.productId} batch with no sellingPrice`
+                  );
+                  continue;
+                }
 
                 // Apply expiry date filtering if provided (for drug batches only)
                 if (

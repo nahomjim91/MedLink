@@ -5,7 +5,7 @@ import { DateInput } from "../../../components/ui/Input";
 import { Button, StepButtons } from "../../../components/ui/Button";
 import Image from "next/image";
 import { apiRequest } from "../../../utils/api";
-import { useLazyQuery, useMutation } from "@apollo/client";
+import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import { CREATE_ORDER_DIRECTLY } from "../../../api/graphql/order/orderMutation";
 import {
   UPDATE_DRUG_BATCH_QUANTITY,
@@ -13,7 +13,9 @@ import {
 } from "../../../api/graphql/product/productMutations";
 import { useRouter } from "next/navigation";
 import { GET_BATCH_CURRENT_QUANTITY } from "../../../api/graphql/product/productQueries";
+import { GET_MS_USER_BY_ID } from "../../../api/graphql/queries";
 import client from "../../../api/graphql/client";
+import { MapPin } from "lucide-react";
 
 // Method 1: Popup Window Approach
 function ChapaPopup({
@@ -26,6 +28,8 @@ function ChapaPopup({
 }) {
   const [popupWindow, setPopupWindow] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('waiting'); // 'waiting', 'processing', 'verifying', 'success'
   const [timeoutId, setTimeoutId] = useState(null);
 
   useEffect(() => {
@@ -72,6 +76,7 @@ function ChapaPopup({
         if (popup.closed) {
           clearInterval(checkInterval);
           setIsProcessing(true);
+          setProcessingStatus('processing');
 
           // Give some time for the payment to process
           setTimeout(() => {
@@ -97,13 +102,21 @@ function ChapaPopup({
 
   const checkPaymentStatus = async () => {
     try {
+      setIsVerifying(true);
+      setProcessingStatus('verifying');
+      
       // Poll backend to check payment status
       const response = await apiRequest(`/api/payments/status/${txRef}`, {
         method: "GET",
       });
 
       if (response.success && response.data.status === "success") {
-        onSuccess(response.data);
+        setProcessingStatus('success');
+        
+        // Show success message briefly before calling onSuccess
+        setTimeout(() => {
+          onSuccess(response.data);
+        }, 1500);
       } else if (response.data.status === "failed") {
         onError({ message: "Payment failed or was cancelled." });
       } else {
@@ -119,8 +132,45 @@ function ChapaPopup({
       });
     } finally {
       setIsProcessing(false);
+      setIsVerifying(false);
     }
   };
+
+  const getStatusContent = () => {
+    switch (processingStatus) {
+      case 'processing':
+        return {
+          icon: "⏳",
+          title: "Processing Payment...",
+          message: "Please wait while we process your payment.",
+          showSpinner: true
+        };
+      case 'verifying':
+        return {
+          icon: "🔍",
+          title: "Verifying Payment...",
+          message: "We're verifying your payment with the bank. This may take a moment.",
+          showSpinner: true
+        };
+      case 'success':
+        return {
+          icon: "✅",
+          title: "Payment Successful!",
+          message: "Your payment has been verified and processed successfully.",
+          showSpinner: false
+        };
+      default:
+        return {
+          icon: "💳",
+          title: "Payment Window Opened",
+          message: "Complete your payment in the popup window. This dialog will close automatically when payment is complete.",
+          showSpinner: false
+        };
+    }
+  };
+
+  const statusContent = getStatusContent();
+  const isInProgress = isProcessing || isVerifying || processingStatus === 'success';
 
   return (
     <div
@@ -147,88 +197,87 @@ function ChapaPopup({
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
         }}
       >
-        {isProcessing ? (
-          <>
-            <div
-              style={{
-                width: "50px",
-                height: "50px",
-                border: "4px solid #f3f3f3",
-                borderTop: "4px solid #14b8a6",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-                margin: "0 auto 20px",
-              }}
-            ></div>
-            <h3 style={{ margin: "0 0 15px 0", color: "#1f2937" }}>
-              Processing Payment...
-            </h3>
-            <p style={{ color: "#6b7280", margin: "0 0 20px 0" }}>
-              Please wait while we verify your payment.
-            </p>
-          </>
-        ) : (
-          <>
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                backgroundColor: "#14b8a6",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 20px",
-                color: "white",
-                fontSize: "24px",
-              }}
-            >
-              💳
-            </div>
-            <h3 style={{ margin: "0 0 15px 0", color: "#1f2937" }}>
-              Payment Window Opened
-            </h3>
-            <p style={{ color: "#6b7280", margin: "0 0 20px 0" }}>
-              Complete your payment in the popup window. This dialog will close
-              automatically when payment is complete.
-            </p>
-            <div
-              style={{
-                backgroundColor: "#f9fafb",
-                padding: "15px",
-                borderRadius: "8px",
-                marginBottom: "20px",
-                fontSize: "14px",
-              }}
-            >
-              <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Order:</strong> #{orderInfo?.orderNumber}
-              </p>
-              <p style={{ margin: "0 0 5px 0" }}>
-                <strong>Seller:</strong> {orderInfo?.sellerName}
-              </p>
-              <p style={{ margin: "0" }}>
-                <strong>Amount:</strong> {orderInfo?.totalCost?.toFixed(2)} ETB
-              </p>
-            </div>
-          </>
+        {statusContent.showSpinner && (
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "4px solid #f3f3f3",
+              borderTop: "4px solid #14b8a6",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 20px",
+            }}
+          />
+        )}
+        
+        {!statusContent.showSpinner && (
+          <div
+            style={{
+              width: "60px",
+              height: "60px",
+              backgroundColor: processingStatus === 'success' ? "#10b981" : "#14b8a6",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 20px",
+              color: "white",
+              fontSize: "24px",
+            }}
+          >
+            {statusContent.icon}
+          </div>
         )}
 
-        <button
-          onClick={onClose}
-          style={{
-            backgroundColor: "#6b7280",
-            color: "white",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-          disabled={isProcessing}
-        >
-          {isProcessing ? "Please Wait..." : "Cancel"}
-        </button>
+        <h3 style={{ margin: "0 0 15px 0", color: "#1f2937" }}>
+          {statusContent.title}
+        </h3>
+        
+        <p style={{ color: "#6b7280", margin: "0 0 20px 0" }}>
+          {statusContent.message}
+        </p>
+
+        {processingStatus === 'waiting' && (
+          <div
+            style={{
+              backgroundColor: "#f9fafb",
+              padding: "15px",
+              borderRadius: "8px",
+              marginBottom: "20px",
+              fontSize: "14px",
+            }}
+          >
+            <p style={{ margin: "0 0 5px 0" }}>
+              <strong>Order:</strong> #{orderInfo?.orderNumber}
+            </p>
+            <p style={{ margin: "0 0 5px 0" }}>
+              <strong>Seller:</strong> {orderInfo?.sellerName}
+            </p>
+            <p style={{ margin: "0" }}>
+              <strong>Amount:</strong> {orderInfo?.totalCost?.toFixed(2)} ETB
+            </p>
+          </div>
+        )}
+
+        {processingStatus !== 'success' && (
+          <button
+            onClick={onClose}
+            style={{
+              backgroundColor: "#6b7280",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "6px",
+              cursor: isInProgress ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              opacity: isInProgress ? 0.6 : 1,
+            }}
+            disabled={isInProgress}
+          >
+            {isInProgress ? "Please Wait..." : "Cancel"}
+          </button>
+        )}
       </div>
 
       <style jsx>{`
@@ -391,6 +440,7 @@ function StepProgress({ currentStep }) {
   );
 }
 // Step 1: Order Summary Component
+
 function OrderSummaryStep({
   orders,
   currentOrderIndex,
@@ -399,7 +449,23 @@ function OrderSummaryStep({
   setPickupDates,
   onNext,
 }) {
+  const { user, loading: userLoading } = useMSAuth();
+  const [showMapModal, setShowMapModal] = useState(false);
+
   const currentOrder = orders[currentOrderIndex];
+
+  const { data: sellerData, loading: otherUserLoading } = useQuery(
+    GET_MS_USER_BY_ID,
+    {
+      variables: {
+        userId: currentOrder?.sellerId,
+      },
+      skip: !currentOrder || !user || !user.userId,
+      fetchPolicy: "network-only",
+    }
+  );
+
+  const seller = sellerData?.msUserById;
 
   const handleDateChange = (e) => {
     const newDates = { ...pickupDates };
@@ -407,154 +473,310 @@ function OrderSummaryStep({
     setPickupDates(newDates);
   };
 
+  const handleNext = () => {
+    // Check if there are more orders to process
+    if (currentOrderIndex < orders.length - 1) {
+      // Move to next order
+      setCurrentOrderIndex(currentOrderIndex + 1);
+    } else {
+      // All orders processed, proceed to next step
+      onNext();
+    }
+  };
+
+  const handleShowMap = () => {
+    setShowMapModal(true);
+  };
+
+  // Check if current order has pickup date selected
   const canProceed = pickupDates[currentOrder.orderId];
 
-  return (
-    <div className="flex gap-6 ">
-      {/* Left Panel - Order Details */}
-      <div className="flex-1 bg-white rounded-lg p-6 ">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">
-            Order #{currentOrder.orderNumber}
-          </h2>
-          {orders.length > 1 && (
-            <div className="flex gap-2">
-              {orders.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentOrderIndex(index)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
-                    index === currentOrderIndex
-                      ? "bg-teal-500 text-white shadow-lg scale-110"
-                      : "bg-primary/20 text-secondary/60 hover:bg-gray-300"
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="h-[40vh] overflow-y-auto">
-          <div className="mb-6">
-            <h3 className="font-medium text-secondary/80 mb-4">
+  // Check if all orders have pickup dates (for validation)
+  const allOrdersHavePickupDates = orders.every(
+    (order) => pickupDates[order.orderId]
+  );
+
+  // Map Modal Component
+  const MapModal = () => {
+    if (!showMapModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Pickup Location</h3>
+            <button
+              onClick={() => setShowMapModal(false)}
+              className="text-gray-500 hover:text-gray-700 text-xl"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Seller Info */}
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-800 mb-2">
               {currentOrder.sellerName}
-            </h3>
+            </h4>
+            <div className="space-y-1 text-sm text-gray-600">
+              <p>
+                <span className="font-medium">Street:</span>{" "}
+                {seller?.address?.street || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium">City:</span>{" "}
+                {seller?.address?.city || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium">State:</span>{" "}
+                {seller?.address?.state || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium">Country:</span>{" "}
+                {seller?.address?.country || "N/A"}
+              </p>
+              <p>
+                <span className="font-medium">Postal Code:</span>{" "}
+                {seller?.address?.postalCode || "N/A"}
+              </p>
+              {seller?.address?.geoLocation && (
+                <p>
+                  <span className="font-medium">Coordinates:</span>{" "}
+                  {seller.address.geoLocationText}
+                </p>
+              )}
+            </div>
+          </div>
 
-            <div className="bg-white rounded-lg border border-primary/10 overflow-hidden">
-              {/* Table Header */}
-              <div className="bg-primary/10 border-b border-primary/10">
-                <div className="grid grid-cols-12 gap-4 px-4 py-3 text-sm font-medium text-secondary/60">
-                  <span className="col-span-5">Item</span>
-                  <span className="col-span-2 text-center">Quantity</span>
-                  <span className="col-span-2 text-center">Unit Price</span>
-                  <span className="col-span-3 text-right">Total</span>
-                </div>
-              </div>
+          {/* Map Placeholder */}
+          <div className="bg-gray-100 rounded-lg h-60 flex items-center justify-center mb-4">
+            <div className="text-center text-gray-500">
+              <div className="text-4xl mb-2">🗺️</div>
+              <p className="text-sm">Google Maps will be displayed here</p>
+              <p className="text-xs mt-1">Integration pending</p>
+            </div>
+          </div>
 
-              {/* Table Body */}
-              <div className="divide-y divide-gray-100">
-                {currentOrder.items.map((item) => (
-                  <div key={item.orderItemId}>
-                    {item.batchItems.map((batchItem, index) => (
-                      <div
-                        key={batchItem.orderBatchItemId}
-                        className="grid grid-cols-12 gap-4 px-4 py-3 text-sm hover:bg-gray-50 transition-colors"
-                      >
-                        <span className="col-span-5 text-secondary/90 font-medium">
-                          {item.productName}
-                        </span>
-                        <span className="col-span-2 text-center text-secondary/60">
-                          × {batchItem.quantity}
-                        </span>
-                        <span className="col-span-2 text-center text-secondary/60">
-                          ${batchItem.unitPrice}
-                        </span>
-                        <span className="col-span-3 text-right text-gray-900 font-medium">
-                          ${batchItem.subtotal.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                if (seller?.address?.geoLocation) {
+                  const { latitude, longitude } = seller.address.geoLocation;
+                  window.open(
+                    `https://www.google.com/maps?q=${latitude},${longitude}`,
+                    "_blank"
+                  );
+                }
+              }}
+              disabled={!seller?.address?.geoLocation}
+              className="flex-1 bg-primary/70 text-white py-2 px-4 rounded-lg hover:bg-primary disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+            >
+              Open in Google Maps
+            </button>
+            <button
+              onClick={() => setShowMapModal(false)}
+              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-white hover:border-error hover:border hover:text-error text-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="flex gap-6">
+        {/* Left Panel - Order Details */}
+        <div className="flex-1 bg-white rounded-lg p-4">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold">
+              Order #{currentOrder.orderNumber}
+            </h2>
+            {orders.length > 1 && (
+              <div className="flex gap-2">
+                {orders.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentOrderIndex(index)}
+                    className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
+                      index === currentOrderIndex
+                        ? "bg-teal-500 text-white shadow-lg scale-110"
+                        : pickupDates[orders[index].orderId]
+                        ? "bg-green-500 text-white" // Completed orders
+                        : "bg-primary/20 text-secondary/60 hover:bg-gray-300"
+                    }`}
+                  >
+                    {index + 1}
+                  </button>
                 ))}
               </div>
+            )}
+          </div>
 
-              {/* Subtotal Footer */}
-              <div className="bg-primary/10 border-t border-primary/10">
-                <div className="grid grid-cols-12 gap-4 px-4 py-3">
-                  <div className="col-span-9"></div>
-                  <div className="col-span-3">
-                    <div className="flex justify-between text-base font-semibold text-gray-900">
-                      <span>Subtotal</span>
-                      <span>${currentOrder.totalCost.toFixed(2)}</span>
+          <div className="h-[35vh] overflow-y-auto">
+            <div className="mb-6">
+              <h3 className="font-medium text-secondary/80 mb-2">
+                {currentOrder.sellerName}
+              </h3>
+
+              <div className="bg-white rounded-lg border border-primary/10 overflow-hidden">
+                {/* Table Header */}
+                <div className="bg-primary/10 border-b border-primary/10">
+                  <div className="grid grid-cols-12 gap-4 px-4 py-3 text-sm font-medium text-secondary/60">
+                    <span className="col-span-5">Item</span>
+                    <span className="col-span-2 text-center">Quantity</span>
+                    <span className="col-span-2 text-center">Unit Price</span>
+                    <span className="col-span-3 text-right">Total</span>
+                  </div>
+                </div>
+
+                {/* Table Body */}
+                <div className="divide-y divide-gray-100">
+                  {currentOrder.items.map((item) => (
+                    <div key={item.orderItemId}>
+                      {item.batchItems.map((batchItem, index) => (
+                        <div
+                          key={batchItem.orderBatchItemId}
+                          className="grid grid-cols-12 gap-4 px-4 py-3 text-sm hover:bg-gray-50 transition-colors"
+                        >
+                          <span className="col-span-5 text-secondary/90 font-medium">
+                            {item.productName}
+                          </span>
+                          <span className="col-span-2 text-center text-secondary/60">
+                            × {batchItem.quantity}
+                          </span>
+                          <span className="col-span-2 text-center text-secondary/60">
+                            ${batchItem.unitPrice}
+                          </span>
+                          <span className="col-span-3 text-right text-gray-900 font-medium">
+                            ${batchItem.subtotal.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Subtotal Footer */}
+                <div className="bg-primary/10 border-t border-primary/10">
+                  <div className="grid grid-cols-12 gap-4 px-4 py-3">
+                    <div className="col-span-9"></div>
+                    <div className="col-span-3">
+                      <div className="flex justify-between text-base font-semibold text-gray-900">
+                        <span>Subtotal</span>
+                        <span>${currentOrder.totalCost.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Pickup Section */}
-        <div className="bg-primary/4 rounded-xl p-4 space-y-4">
-          <div className="flex gap-6 items-start">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
-              <span className="font-medium text-gray-800">Pick up</span>
+          {/* Pickup Section */}
+          <div className="bg-primary/4 rounded-xl p-4 space-">
+            <div className="flex gap-6 items-start">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
+                <span className="font-medium text-gray-800">Pick up</span>
+              </div>
+              <DateInput
+                label="Select Pickup Date"
+                name={`pickupDate_${currentOrder.orderId}`}
+                value={pickupDates[currentOrder.orderId] || ""}
+                onChange={handleDateChange}
+                min={new Date().toISOString().split("T")[0]}
+                required
+                className="flex-1 max-w-xs"
+              />
             </div>
-            <DateInput
-              label="Select Pickup Date"
-              name={`pickupDate_${currentOrder.orderId}`}
-              value={pickupDates[currentOrder.orderId] || ""}
-              onChange={handleDateChange}
-              min={new Date().toISOString().split("T")[0]}
-              required
-              className="flex-1 max-w-xs"
-            />
+
+            {/* Seller Location Details */}
+            <div className="pl-6 ">
+              <div className="flex justify-between items-start">
+                <h4 className="text-sm font-medium text-gray-700">
+                  Pickup Location
+                </h4>
+                <button
+                  onClick={handleShowMap}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/30 transition-colors text-sm"
+                >
+                  <MapPin size={16} />
+                  View Map
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500 block">Street Address</span>
+                  <p className="text-gray-800 font-medium">
+                    {seller?.address?.street || "Not provided"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">City</span>
+                  <p className="text-gray-800 font-medium">
+                    {seller?.address?.city || "Not provided"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">State</span>
+                  <p className="text-gray-800 font-medium">
+                    {seller?.address?.state || "Not provided"}
+                  </p>
+                </div>
+               
+                {seller?.address?.geoLocation && (
+                  <div>
+                    <span className="text-gray-500 block">Coordinates</span>
+                    <p className="text-gray-800 font-medium text-xs">
+                      {seller.address.geoLocationText}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="pl-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div>
-              <span className="text-gray-500 block">Address</span>
-              <p className="text-gray-800 font-medium">
-                {currentOrder.buyerContactInfo.address?.street ||
-                  "No. 93 Skyfield Apartments"}
-              </p>
+          {/* Show progress indicator for multiple orders */}
+          {orders.length > 1 && (
+            <div className="mt-4 text-center text-sm text-gray-600">
+              Order {currentOrderIndex + 1} of {orders.length}
+              {!allOrdersHavePickupDates && (
+                <span className="block text-amber-600 mt-1">
+                  Complete all orders before proceeding to next step
+                </span>
+              )}
             </div>
-            <div>
-              <span className="text-gray-500 block">State</span>
-              <p className="text-gray-800 font-medium">
-                {currentOrder.buyerContactInfo.address?.state || "Addis Ababa"}
-              </p>
-            </div>
-            <div>
-              <span className="text-gray-500 block">City</span>
-              <p className="text-gray-800 font-medium">
-                {currentOrder.buyerContactInfo.address?.city || "Addis Ababa"}
-              </p>
-            </div>
-          </div>
+          )}
+
+          <StepButtons
+            onPrevious={() => {
+              /* Back to cart */
+            }}
+            onNext={handleNext}
+            previousLabel="Back to Cart"
+            nextLabel={
+              orders.length > 1 && currentOrderIndex < orders.length - 1
+                ? "Next Order"
+                : orders.length > 1 && !allOrdersHavePickupDates
+                ? "Complete All Orders"
+                : "Next Step"
+            }
+            showPrevious={true}
+            showNext={canProceed}
+          />
         </div>
 
-        <StepButtons
-          onPrevious={() => {
-            /* Back to cart */
-          }}
-          onNext={onNext}
-          previousLabel="Back to Cart"
-          nextLabel={
-            orders.length > 1 && currentOrderIndex < orders.length - 1
-              ? "Next Order"
-              : "Next Step"
-          }
-          showPrevious={true}
-          showNext={canProceed}
-        />
+        <StepProgress currentStep={1} />
       </div>
 
-      {/* Right Panel - Progress */}
-      <StepProgress currentStep={1} />
-    </div>
+      {/* Map Modal */}
+      <MapModal />
+    </>
   );
 }
 // Step 2: Payment Component
@@ -767,7 +989,7 @@ function FinishedStep({ onNext }) {
 }
 
 // Helper function to categorize cart items by seller
-const categorizeCartBySeller = (cart, user) => {
+const categorizeCartBySeller = (cart, user, seller) => {
   if (!cart?.items || !user) return [];
 
   const sellerGroups = {};
@@ -882,6 +1104,7 @@ export default function CheckoutPage() {
   const [updateEquipmentBatch] = useMutation(UPDATE_EQUIPMENT_BATCH_QUANTITY);
   const [getBatchQuantity] = useLazyQuery(GET_BATCH_CURRENT_QUANTITY);
 
+  // console.log("CheckoutPage - cart", cart);
   // Categorize cart items by seller
   const ordersBySeller = useMemo(
     () => categorizeCartBySeller(cart, user),
@@ -1091,16 +1314,21 @@ export default function CheckoutPage() {
       });
 
       if (!verificationResponse.success) {
-        throw new Error(verificationResponse.message || "Payment verification failed");
+        throw new Error(
+          verificationResponse.message || "Payment verification failed"
+        );
       }
 
       // Step 2: Update batch quantities (with rollback capability)
-      rollbackData = await updateBatchQuantitiesOptimistic(currentPayment.order);
-      
+      rollbackData = await updateBatchQuantitiesOptimistic(
+        currentPayment.order
+      );
+
       // Step 3: Create order in database
       const createdOrder = await createOrderInDatabase(currentPayment.order, {
         ...verificationResponse.data,
-        transactionId: verificationResponse.data.transactionId || currentPayment.txRef,
+        transactionId:
+          verificationResponse.data.transactionId || currentPayment.txRef,
       });
 
       // Step 4: Remove items from cart
@@ -1121,16 +1349,15 @@ export default function CheckoutPage() {
       if (allPaid) {
         setTimeout(() => setCurrentStep(3), 1500);
       }
-
     } catch (error) {
       console.error("Payment success handling failed:", error);
-      
+
       // Rollback batch quantities if we updated them
       if (rollbackData?.rollbackOperations) {
         console.log("Rolling back batch quantities due to error...");
         await rollbackBatchQuantities(rollbackData.rollbackOperations);
       }
-      
+
       setPaymentError(`Payment processing failed: ${error.message}`);
     } finally {
       setPaymentLoading(null);
@@ -1311,21 +1538,25 @@ export default function CheckoutPage() {
           });
           const currentBatch = data?.batchById;
           if (!currentBatch) {
-            throw new Error(`Batch ${batchItem.batchId} not found during update`);
+            throw new Error(
+              `Batch ${batchItem.batchId} not found during update`
+            );
           }
           const newQuantity = currentBatch.quantity - batchItem.quantity;
           if (newQuantity < 0) {
-            throw new Error(`Insufficient stock for batch ${batchItem.batchId}`);
+            throw new Error(
+              `Insufficient stock for batch ${batchItem.batchId}`
+            );
           }
-  
+
           // Prepare update operation
           const productType = item.productType || "DRUG";
           let updateOperation;
-  
+
           if (productType === "DRUG") {
-            console.log('Update Operation:', {
+            console.log("Update Operation:", {
               batchId: batchItem.batchId,
-              input: { quantity: newQuantity }
+              input: { quantity: newQuantity },
             });
             updateOperation = {
               mutation: UPDATE_DRUG_BATCH_QUANTITY,
@@ -1335,9 +1566,9 @@ export default function CheckoutPage() {
               },
             };
           } else if (productType === "EQUIPMENT") {
-            console.log('Update Operation:', {
+            console.log("Update Operation:", {
               batchId: batchItem.batchId,
-              input: { quantity: newQuantity }
+              input: { quantity: newQuantity },
             });
             updateOperation = {
               mutation: UPDATE_EQUIPMENT_BATCH_QUANTITY,
@@ -1347,7 +1578,7 @@ export default function CheckoutPage() {
               },
             };
           }
-  
+
           if (updateOperation) {
             updateOperations.push(updateOperation);
             rollbackOperations.push({
@@ -1358,13 +1589,13 @@ export default function CheckoutPage() {
           }
         }
       }
-  
+
       // Execute all updates using Apollo Client's mutate
-      const updatePromises = updateOperations.map((op) =>
-        client.mutate(op)  // Use client.mutate instead of directly calling the mutation
+      const updatePromises = updateOperations.map(
+        (op) => client.mutate(op) // Use client.mutate instead of directly calling the mutation
       );
       await Promise.all(updatePromises);
-      
+
       console.log("All batch quantities updated successfully");
       return { success: true, rollbackOperations };
     } catch (error) {
@@ -1472,7 +1703,7 @@ export default function CheckoutPage() {
       </div>
     );
   }
-  console.log("Orders by seller:", ordersBySeller);
+  // console.log("Orders by seller:", ordersBySeller);
 
   return (
     <div className="container mx-auto bg-white rounded-lg shadow-sm">

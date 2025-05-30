@@ -25,6 +25,9 @@ export default function BatchSummaryEquipment({
     userManuals: batch?.userManuals || null,
     license: batch?.license || null,
     serialNumbers: batch?.serialNumbers || [],
+    manufacturerCountry: batch?.manufacturerCountry || "",
+    manufacturer: batch?.manufacturer || "",
+    manufacturedDate: batch?.manufactureredDate || "",
   };
 
   // Calculate profit margin
@@ -97,7 +100,6 @@ export default function BatchSummaryEquipment({
         </div>
       </div>
 
- 
       {/* Inventory Details Section */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold text-secondary/80 mb-4 border-b border-gray-200 pb-2">
@@ -206,6 +208,42 @@ export default function BatchSummaryEquipment({
             </div>
           </div>
         )}
+      </div>
+
+      {/* manufacturere details */}
+      <div className="grid md:grid-cols-3 gap-6">
+        <div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Manufacturered By
+            </label>
+            <div className="text-base border border-gray-300 rounded-md p-2 bg-gray-50 min-h-20">
+              {formData.manufacturer ||
+                "No manufacturered information provided"}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Manufactured Date
+            </label>
+            <div className="text-base border border-gray-300 rounded-md p-2 bg-gray-50 min-h-20">
+              {formData.manufacturedDate || "No manufactured date provided"}
+            </div>
+          </div>
+        </div>
+        <div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Manufactured Country
+            </label>
+            <div className="text-base border border-gray-300 rounded-md p-2 bg-gray-50 min-h-20">
+              {formData.manufacturerCountry || "No manufactured date provided"}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Documentation Section */}

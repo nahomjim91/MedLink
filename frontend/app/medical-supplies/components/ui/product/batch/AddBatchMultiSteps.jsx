@@ -16,6 +16,7 @@ import ProductEquipmentInventory from "./ProductEquipmentInventory";
 import BatchSummaryDrug from "./BatchSummaryDrug";
 import BatchSummaryEquipment from "./BatchSummaryEquipment";
 import SuccessUpload from "../SuccessUpload";
+import { ProductAndBatchModel } from "../../../modal/Modal";
 
 // Initial batch data state schema
 const initialBatchData = {
@@ -28,6 +29,7 @@ const initialBatchData = {
   sizePerPackage: 0,
   manufacturer: "",
   manufacturerCountry: "",
+  manufactureredDate: "",
   
   // EquipmentBatch-specific
   serialNumbers: [],
@@ -147,6 +149,7 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
           sizePerPackage: parseFloat(batchData.sizePerPackage) || 0,
           manufacturer: batchData.manufacturer,
           manufacturerCountry: batchData.manufacturerCountry,
+          manufactureredDate: batchData.manufactureredDate,
         };
 console.log("DRUG BATCH INPUT:", drugBatchInput);
         createdBatchResponse = await createDrugBatch({
@@ -163,6 +166,9 @@ console.log("DRUG BATCH INPUT:", drugBatchInput);
           costPrice: parseFloat(batchData.costPrice),
           sellingPrice: parseFloat(batchData.sellingPrice),
           serialNumbers: batchData.serialNumbers,
+          manufacturer: batchData.manufacturer,
+          manufacturerCountry: batchData.manufacturerCountry,
+          manufactureredDate: batchData.manufactureredDate,
         };
 
         createdBatchResponse = await createEquipmentBatch({
@@ -250,36 +256,15 @@ console.log("DRUG BATCH INPUT:", drugBatchInput);
   }, [submissionComplete, productData.name]);
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-      <div className="w-full max-w-md md:max-w-5xl mx-auto bg-white rounded-2xl shadow-md p-6 md:py-6 md:px-12">
-        <h1 className="text-2xl font-bold text-secondary mb-6">
-          {getFormTitle()}
-        </h1>
-        
-        {/* Error message display */}
-        {error && (
-          <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
-            role="alert"
-          >
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-        
-        {/* Progress indicator - Hide on success page */}
-        {currentStep < getTotalSteps() && (
-          <StepProgressIndicator
-            currentStep={currentStep}
-            totalSteps={getTotalSteps() - 1}
-            className="mb-8"
-          />
-        )}
-        
-        {/* Current step content */}
-        <div className="overflow-y-auto max-h-[60vh] pr-2">
-          {stepComponents[currentStep]}
-        </div>
-      </div>
-    </div>
+    <ProductAndBatchModel
+      onClose={onClose}
+      currentStep={currentStep}
+      getTotalSteps={getTotalSteps}
+      getFormTitle={getFormTitle}
+      isLoading={isLoading}
+      error={error}
+      stepComponents={stepComponents}
+    />  
+  
   );
 }

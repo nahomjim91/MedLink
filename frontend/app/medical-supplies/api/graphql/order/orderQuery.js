@@ -9,6 +9,7 @@ export const GET_MY_ORDERS = gql`
       orderNumber
       buyerName
       buyerCompanyName
+      sellerId
       sellerName
       sellerCompanyName
       totalItems
@@ -35,6 +36,7 @@ export const GET_ORDERS_TO_FULFILL = gql`
       orderNumber
       buyerName
       buyerCompanyName
+      sellerId
       sellerName
       sellerCompanyName
       totalItems

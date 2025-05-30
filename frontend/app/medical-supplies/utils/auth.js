@@ -11,7 +11,7 @@ export const getAuthToken = async () => {
     
     // Fallback to localStorage if user not immediately available
     if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('token');
+      const storedToken = localStorage.getItem('ms_token');
       return storedToken;
     }
     

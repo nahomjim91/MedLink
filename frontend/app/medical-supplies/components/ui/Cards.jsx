@@ -8,13 +8,18 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
+  Edit,
+  Check,
 } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
-import { Button, TablePageButtons } from "./Button";
+import { Button, IconButton, TablePageButtons } from "./Button";
 import { OrderRowActions } from "./order/OrderRowActions";
 import { OrderSelectInput } from "./Input";
-import { getAvailableStatusTransitions, getStatusColor } from "../../utils/orderUtils";
+import {
+  getAvailableStatusTransitions,
+  getStatusColor,
+} from "../../utils/orderUtils";
 
 // Define types for our props
 export const MetricCard = ({
@@ -325,6 +330,11 @@ export function TableCard({
   isAddButton = true,
   isOrderButton = true,
   isFilterButton = true,
+  isEditable = false, // NEW: Enable editing mode
+  editableColumns = [], // NEW: Which columns are editable
+  onUpdateItem, // NEW: Callback for updating items
+  onEditToggle, // NEW: Callback for edit mode toggle
+  editingRowId = null,
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [currentTab, setCurrentTab] = useState(activeTab);
@@ -370,6 +380,23 @@ export function TableCard({
 
   const renderCell = (item, column) => {
     const value = item[column.key];
+
+    if (
+      isEditable &&
+      editingRowId === (item.id || item.BatchID) &&
+      editableColumns.includes(column.key)
+    ) {
+      return (
+        <input
+          type="number"
+          defaultValue={value}
+          className="w-full px-2 py- border border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary rounded-md"
+          onBlur={(e) =>
+            onUpdateItem && onUpdateItem(item, column.key, e.target.value)
+          }
+        />
+      );
+    }
 
     if (column.key === "status" || column.key === "availability") {
       const statusClass = getStatusColor(value);
@@ -425,7 +452,9 @@ export function TableCard({
             variant="outline"
             color="primary"
             onClick={onFilter}
-            className={` ${!isFilterButton ? "hidden" : "flex"} gap-3 items-center px-5`}
+            className={` ${
+              !isFilterButton ? "hidden" : "flex"
+            } gap-3 items-center px-5`}
           >
             <Filter size={16} />
             Filter
@@ -509,6 +538,24 @@ export function TableCard({
                         {renderCell(item, column)}
                       </td>
                     ))}
+                    {isEditable && (
+                      <td className="px-4 py-2 border-b border-gray-200">
+                        <IconButton
+                          icon={
+                            editingRowId === (item.id || item.BatchID) ? (
+                              <Check size={24} />
+                            ) : (
+                              <Edit size={24} />
+                            )
+                          }
+                          onClick={() =>
+                            onEditToggle &&
+                            onEditToggle(item.id || item.BatchID)
+                          }
+                          isActive={editingRowId === (item.id || item.BatchID)}
+                        />
+                      </td>
+                    )}
                   </tr>
                   {expandedRows[item.id || item.orderNo] && item.rawOrder && (
                     <tr className="bg-gray-50">
@@ -564,8 +611,6 @@ export function TableCard({
   );
 }
 
-
-
 export function OrderTableCard({
   title,
   data, // This should be the paginated data from parent
@@ -610,28 +655,30 @@ export function OrderTableCard({
 
   const handleStatusChange = async (order, newStatus) => {
     const orderId = order.orderId || order.id;
-    
+
     if (!newStatus || newStatus === order.status) {
       return;
     }
 
-    setStatusUpdating(prev => ({ ...prev, [orderId]: true }));
+    setStatusUpdating((prev) => ({ ...prev, [orderId]: true }));
 
     try {
       await onStatusUpdate(orderId, newStatus);
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error("Error updating status:", error);
     } finally {
-      setStatusUpdating(prev => ({ ...prev, [orderId]: false }));
+      setStatusUpdating((prev) => ({ ...prev, [orderId]: false }));
     }
   };
 
   const getStatusOptions = (order) => {
     if (!order || !order.rawOrder) return [];
 
-    const userPerspective = getUserPerspective 
+    const userPerspective = getUserPerspective
       ? getUserPerspective(order.rawOrder)
-      : order.rawOrder.buyerId === user?.id ? "buyer" : "seller";
+      : order.rawOrder.buyerId === user?.id
+      ? "buyer"
+      : "seller";
 
     const transitions = getAvailableStatusTransitions(
       order.rawOrder.status,
@@ -642,13 +689,13 @@ export function OrderTableCard({
     // Add current status as first option
     const currentStatusOption = {
       value: order.rawOrder.status,
-      label: order.status || order.rawOrder.status
+      label: order.status || order.rawOrder.status,
     };
 
     // Add available transitions
-    const transitionOptions = transitions.map(transition => ({
+    const transitionOptions = transitions.map((transition) => ({
       value: transition.value,
-      label: transition.label
+      label: transition.label,
     }));
 
     return [currentStatusOption, ...transitionOptions];
@@ -656,10 +703,12 @@ export function OrderTableCard({
 
   const canUpdateStatus = (order) => {
     if (!order || !order.rawOrder) return false;
-    
-    const userPerspective = getUserPerspective 
+
+    const userPerspective = getUserPerspective
       ? getUserPerspective(order.rawOrder)
-      : order.rawOrder.buyerId === user?.id ? "buyer" : "seller";
+      : order.rawOrder.buyerId === user?.id
+      ? "buyer"
+      : "seller";
 
     const transitions = getAvailableStatusTransitions(
       order.rawOrder.status,
@@ -703,7 +752,9 @@ export function OrderTableCard({
     if (column.key === "status" || column.key === "availability") {
       const statusColorClass = getStatusColor(value);
       return (
-        <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColorClass}`}>
+        <div
+          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusColorClass}`}
+        >
           {value}
         </div>
       );
@@ -715,37 +766,44 @@ export function OrderTableCard({
   const renderRowActions = (item) => {
     if (!item.rawOrder) return null;
 
-    const userPerspective = getUserPerspective 
+    const userPerspective = getUserPerspective
       ? getUserPerspective(item.rawOrder)
-      : item.rawOrder.buyerId === user?.id ? "buyer" : "seller";
+      : item.rawOrder.buyerId === user?.id
+      ? "buyer"
+      : "seller";
 
     return (
       <div className="flex items-center gap-1">
         {/* Schedule Pickup Button */}
-        {(item.rawOrder.status === 'READY_FOR_PICKUP' && userPerspective === 'seller') && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              const dateInput = prompt('Enter pickup date (YYYY-MM-DD):');
-              if (dateInput) {
-                const pickupDate = new Date(dateInput);
-                if (!isNaN(pickupDate.getTime())) {
-                  onSchedulePickup(item.rawOrder.orderId, pickupDate);
+        {item.rawOrder.status === "READY_FOR_PICKUP" &&
+          userPerspective === "seller" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const dateInput = prompt("Enter pickup date (YYYY-MM-DD):");
+                if (dateInput) {
+                  const pickupDate = new Date(dateInput);
+                  if (!isNaN(pickupDate.getTime())) {
+                    onSchedulePickup(item.rawOrder.orderId, pickupDate);
+                  }
                 }
-              }
-            }}
-            className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-          >
-            Schedule
-          </button>
-        )}
+              }}
+              className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            >
+              Schedule
+            </button>
+          )}
 
         {/* Cancel Order Button */}
-        {(['PENDING_CONFIRMATION', 'CONFIRMED'].includes(item.rawOrder.status)) && (
+        {["PENDING_CONFIRMATION", "CONFIRMED"].includes(
+          item.rawOrder.status
+        ) && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const reason = prompt('Please provide a reason for cancellation:');
+              const reason = prompt(
+                "Please provide a reason for cancellation:"
+              );
               if (reason) {
                 onCancelOrder(item.rawOrder.orderId, reason);
               }
@@ -861,9 +919,9 @@ export function OrderTableCard({
               {displayData.map((item, index) => (
                 <tr
                   key={item.id || item.orderNo || `row-${index}`}
-                  className={`${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                  } ${isClickable ? "cursor-pointer hover:bg-gray-100" : ""}`}
+                  className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} ${
+                    isClickable ? "cursor-pointer hover:bg-gray-100" : ""
+                  }`}
                   onClick={isClickable ? () => onClickRow(item) : undefined}
                 >
                   {columns.map((column) => (

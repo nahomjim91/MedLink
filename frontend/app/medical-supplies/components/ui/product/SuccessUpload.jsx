@@ -5,7 +5,7 @@ import Image from "next/image";
 export default function SuccessUpload({ onComplete }) {
   return (
     <div className="px-6">
-      <div className="flex flex-col items-center justify-center space-y-4 py-10">
+      <div className="flex flex-col items-center justify-center py-10">
         <Image
           src={`/Image/certificate-success-filled.svg`} // Assuming you have a 'No data-cuate.svg' for rejected
           alt={`success`}

@@ -1,7 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { StepButtons } from "../../Button";
-import { TextInput, NumberInput, TextAreaInput, SelectInput } from "../../Input";
+import {
+  TextInput,
+  NumberInput,
+  TextAreaInput,
+  SelectInput,
+  DateInput,
+} from "../../Input";
 import { FileUploader } from "../../FileUploader";
 
 export default function ProductEquipmentInventory({
@@ -20,6 +26,9 @@ export default function ProductEquipmentInventory({
     warrantyInfo: batchData?.warrantyInfo || "",
     serviceSchedule: batchData?.serviceSchedule || "",
     serialNumbers: batchData?.serialNumbers || [],
+    manufacturer: batchData?.manufacturer || "",
+    manufacturerCountry: batchData?.manufacturerCountry || "country1",
+    manufactureredDate: batchData?.manufactureredDate || "",
     // Documentation files
     certification: batchData?.certification || null,
     technicalSpecifications: batchData?.technicalSpecifications || "",
@@ -40,6 +49,10 @@ export default function ProductEquipmentInventory({
         warrantyInfo: batchData.warrantyInfo || "",
         serviceSchedule: batchData.serviceSchedule || "",
         serialNumbers: batchData.serialNumbers || [],
+        manufacturer: batchData.manufacturer || "",
+        manufacturerCountry: batchData.manufacturerCountry || "country1",
+        manufactureredDate: batchData.manufactureredDate || "",
+        // Documentation files
         certification: batchData.certification || null,
         technicalSpecifications: batchData.technicalSpecifications || "",
         userManuals: batchData.userManuals || null,
@@ -48,10 +61,17 @@ export default function ProductEquipmentInventory({
     }
   }, [batchData]);
 
+    // Country options - could be fetched from an API
+  const countryOptions = [
+    { label: "Country 1", value: "country1" },
+    { label: "Country 2", value: "country2" },
+    { label: "Country 3", value: "country3" },
+  ];
+
+
   // Handle input field changes - memoized to prevent unnecessary re-renders
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-
     // Clear the error for this field when the user is typing
     setErrors((prev) => ({ ...prev, [name]: null }));
 
@@ -221,6 +241,42 @@ export default function ProductEquipmentInventory({
                 // helpText={`Profit margin: ${profitMargin}%`}
               />
             </div>
+          </div>
+
+          {/* Manufacturer Information */}
+          <div className="grid md:grid-cols-2 md:gap-4">
+            <TextInput
+              name="manufacturer"
+              label="Manufacturer"
+              placeholder="Manufacturer name"
+              value={localBatchData.manufacturer}
+              onChange={handleChange}
+              required={true}
+              className="w-full"
+            />
+
+            <SelectInput
+              name="manufacturerCountry"
+              label="Manufacturer Country"
+              placeholder="Select country"
+              value={localBatchData.manufacturerCountry}
+              onChange={handleChange}
+              required={true}
+              options={countryOptions}
+            />
+          </div>
+          <div className="grid md:grid-cols-2 md:gap-4">
+            <DateInput
+              name="manufactureredDate"
+              label="Manufactured Date"
+              placeholder="mm/dd/yyyy"
+              value={localBatchData.manufactureredDate}
+              onChange={handleChange}
+              required={true}
+              className="w-full"
+              max={new Date().toISOString().split("T")[0]} 
+              // helpText="Short expiry products will be visually flagged"
+            />
           </div>
 
           <div className="mb-6">

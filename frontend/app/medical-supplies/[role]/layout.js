@@ -10,28 +10,10 @@ import { SocketProvider } from "../context/SocketContext";
 
 export default function RoleLayout({ children }) {
   const { user, loading } = useMSAuth();
-  const [authToken, setAuthToken] = useState(null);
   const router = useRouter();
   const params = useParams();
   const { role } = params;
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const token = await firebaseUser.getIdToken();
-          setAuthToken(token);
-        } catch (error) {
-          console.error("Error getting ID token:", error);
-          setAuthToken(null);
-        }
-      } else {
-        setAuthToken(null);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
   // Check if user is accessing the correct role-based route
   useEffect(() => {
     if (loading) return;

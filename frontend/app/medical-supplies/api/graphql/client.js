@@ -34,7 +34,7 @@ const authLink = setContext(async (_, { headers }) => {
       localStorage.setItem('token', token);
     } else if (typeof window !== 'undefined') {
       // Fallback to localStorage
-      const storedToken = localStorage.getItem('token');
+      const storedToken = localStorage.getItem('ms_token');
       if (storedToken) {
         token = storedToken;
       }

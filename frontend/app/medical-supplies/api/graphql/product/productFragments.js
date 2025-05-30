@@ -1,5 +1,5 @@
 // src/lib/graphql/productFragments.js
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 // Product Fragments
 export const PRODUCT_CORE_FIELDS = gql`
@@ -55,6 +55,9 @@ export const BATCH_CORE_FIELDS = gql`
     addedAt
     lastUpdatedAt
     sourceOriginalBatchId
+    manufacturer
+    manufacturerCountry
+    manufactureredDate
     product {
       productId
       name
@@ -68,8 +71,6 @@ export const DRUG_BATCH_FIELDS = gql`
     ...BatchCoreFields
     expiryDate
     sizePerPackage
-    manufacturer
-    manufacturerCountry
   }
   ${BATCH_CORE_FIELDS}
 `;

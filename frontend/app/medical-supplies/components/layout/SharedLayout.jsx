@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,14 +27,18 @@ import {
 import { SearchBar } from "../ui/Input";
 import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaQuestion } from "react-icons/fa";
+// import { useNotifications } from "../../hooks/useNotifications";
+// import { NotificationDropdown } from "../ui/notificationUI/NotificationDropdown";
 
 export default function SharedLayout({ children, allowedRoles = [] }) {
-  const { user, logout , cart} = useMSAuth();
+  const { user, logout, cart } = useMSAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userType, setUserType] = useState("healthFacility"); // Default to patient
   const [unseenChats, setUnseenChats] = useState(2);
-  const [unseenNotifications, setUnseenNotifications] = useState(0);
+  // const { getUnreadCount } = useNotifications();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const triggerRef = useRef(null);
 
   // Set user type based on user info
   useEffect(() => {
@@ -78,127 +82,139 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   // Navigation items based on user type
   const navigationItems = {
     importer: [
-      { name: "Home", path: "/medical-supplies/" + user.role + "/", icon: <Home /> },
+      {
+        name: "Home",
+        path: "/medical-supplies/" + user.role + "/",
+        icon: <Home />,
+      },
       {
         name: "Inventory",
-        path: "/medical-supplies/" +user.role+"/inventory",
+        path: "/medical-supplies/" + user.role + "/inventory",
         icon: <Package />,
       },
       {
         name: "Analytics",
-        path: "/medical-supplies/" +user.role+"/analytics",
+        path: "/medical-supplies/" + user.role + "/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Orders",
-        path: "/medical-supplies/" +user.role+"/orders",
+        path: "/medical-supplies/" + user.role + "/orders",
         icon: <ClipboardList />,
       },
       {
         name: "History",
-        path: "/medical-supplies/" +user.role+"/history",
+        path: "/medical-supplies/" + user.role + "/history",
         icon: <HistoryIcon />,
       },
 
       {
         name: "Chats",
-        path: "/medical-supplies/" +user.role+"/chats",
+        path: "/medical-supplies/" + user.role + "/chats",
         icon: <MessageCircle />,
       },
 
       {
         name: "Settings",
-        path: "/medical-supplies/" +user.role+"/settings",
+        path: "/medical-supplies/" + user.role + "/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/medical-supplies/" +user.role+"/helps",
+        path: "/medical-supplies/" + user.role + "/helps",
         icon: <FaQuestion />,
       },
     ],
     supplier: [
-      { name: "Home", path: "/medical-supplies/" + user.role + "/", icon: <Home /> },
+      {
+        name: "Home",
+        path: "/medical-supplies/" + user.role + "/",
+        icon: <Home />,
+      },
       {
         name: "Inventory",
-        path: "/medical-supplies/" +user.role+"/inventory",
+        path: "/medical-supplies/" + user.role + "/inventory",
         icon: <Package />,
       },
       {
         name: "Analytics",
-        path: "/medical-supplies/" +user.role+"/analytics",
+        path: "/medical-supplies/" + user.role + "/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Marketplace",
-        path: "/medical-supplies/" +user.role+"/marketplace",
+        path: "/medical-supplies/" + user.role + "/marketplace",
         icon: <ShoppingBag />,
       },
       {
         name: "Orders",
-        path: "/medical-supplies/" +user.role+"/orders",
+        path: "/medical-supplies/" + user.role + "/orders",
         icon: <ClipboardList />,
       },
       {
         name: "History",
-        path: "/medical-supplies/" +user.role+"/history",
+        path: "/medical-supplies/" + user.role + "/history",
         icon: <HistoryIcon />,
       },
 
       {
         name: "Chats",
-        path: "/medical-supplies/" +user.role+"/chats",
+        path: "/medical-supplies/" + user.role + "/chats",
         icon: <MessageCircle />,
       },
 
       {
         name: "Settings",
-        path: "/medical-supplies/" +user.role+"/settings",
+        path: "/medical-supplies/" + user.role + "/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/medical-supplies/" +user.role+"/helps",
+        path: "/medical-supplies/" + user.role + "/helps",
         icon: <FaQuestion />,
       },
     ],
     healthFacility: [
-      { name: "Home", path: "/medical-supplies/" + user.role + "/", icon: <Home /> },
+      {
+        name: "Home",
+        path: "/medical-supplies/" + user.role + "/",
+        icon: <Home />,
+      },
 
       {
         name: "Analytics",
-        path: "/medical-supplies/" +user.role+"/analytics",
+        path: "/medical-supplies/" + user.role + "/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Marketplace",
-        path: "/medical-supplies/" +user.role+"/marketplace",
+        path: "/medical-supplies/" + user.role + "/marketplace",
         icon: <ShoppingBag />,
       },
       {
         name: "Orders",
-        path: "/medical-supplies/" +user.role+"/orders",
+        path: "/medical-supplies/" + user.role + "/orders",
         icon: <ClipboardList />,
       },
       {
         name: "History",
-        path: "/medical-supplies/" +user.role+"/history",
+        path: "/medical-supplies/" + user.role + "/history",
         icon: <HistoryIcon />,
       },
       {
         name: "Chats",
-        path: "/medical-supplies/" +user.role+"/chats",
+        path: "/medical-supplies/" + user.role + "/chats",
         icon: <MessageCircle />,
       },
 
       {
         name: "Settings",
-        path: "/medical-supplies/" +user.role+"/settings",
+        path: "/medical-supplies/" + user.role + "/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/medical-supplies/" +user.role+"/helps",
+        path: "/medical-supplies/" + user.role + "/helps",
         icon: <FaQuestion />,
       },
     ],
@@ -206,33 +222,33 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       { name: "Home", path: "/medical-supplies/admin", icon: <Home /> },
       {
         name: "Analytics",
-        path: "/medical-supplies/" +user.role+"/analytics",
+        path: "/medical-supplies/" + user.role + "/analytics",
         icon: <BarChart2 />,
       },
       {
         name: "Pending Users",
-        path: "/medical-supplies/" +user.role+"/pending-users",
+        path: "/medical-supplies/" + user.role + "/pending-users",
         icon: <ClipboardList />,
       },
 
       {
         name: "History",
-        path: "/medical-supplies/" +user.role+"/history",
+        path: "/medical-supplies/" + user.role + "/history",
         icon: <HistoryIcon />,
       },
       {
         name: "Users",
-        path: "/medical-supplies/" +user.role+"/users",
+        path: "/medical-supplies/" + user.role + "/users",
         icon: <Users />,
       },
       {
         name: "Settings",
-        path: "/medical-supplies/" +user.role+"/settings",
+        path: "/medical-supplies/" + user.role + "/settings",
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/medical-supplies/" +user.role+"/helps",
+        path: "/medical-supplies/" + user.role + "/helps",
         icon: <FaQuestion />,
       },
     ],
@@ -411,25 +427,27 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                 </Link>
 
                 {/* Notification Icon */}
-                <Link href={`/medical-supplies/${userType}/notifications`} className="relative">
-                  <IconButton
-                    icon={<Bell />}
-                    isActive={false}
-                    badge={unseenNotifications}
-                  />
-                </Link>
-
-                {/* Profile Icon - Mobile Only
-                <div className="md:hidden">
-                  <Link href={`/${userType}/profile`} className="block">
-                    <ImageIconButton
-                      imageUrl={user.image || "/image/trees.jpg"}
-                      isActive={false}
-                      alt="Profile"
+                <div className="relative">
+                  <div
+                    ref={triggerRef}
+                    onClick={() => setShowDropdown(!showDropdown)}
+                    className="relative"
+                  >
+                    <IconButton
+                      icon={<Bell />}
+                      isActive={showDropdown}
+                      badge= {0}//{getUnreadCount()}
                     />
-                  </Link>
-                </div> */}
-                {/* Mobile menu button */}
+                  </div>
+
+                  {/* <NotificationDropdown
+                    isOpen={showDropdown}
+                    onClose={() => setShowDropdown(false)}
+                    triggerRef={triggerRef}
+                    userType={userType}
+                  /> */}
+                </div>
+
                 <motion.button
                   className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-secondary hover:text-secondary hover:bg-gray-100 z-50"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -549,9 +567,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         </AnimatePresence>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto px-2">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto px-2">{children}</main>
       </div>
     </div>
   );
