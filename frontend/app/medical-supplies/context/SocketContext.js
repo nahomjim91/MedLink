@@ -98,7 +98,7 @@ export const SocketProvider = ({ children }) => {
   }, [socket.socket]);
 
   // API calls for chat functionality
-  const sendMessage = async (chatId, textContent , messageProductId) => {
+  const sendMessage = async (chatId, textContent , messageProductId, messageOrderId) => {
     try {
       const response = await fetch(`${chatBackendUrl}/api/chat/send`, {
         method: 'POST',
@@ -106,7 +106,7 @@ export const SocketProvider = ({ children }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ textContent , messageProductId, to: chatId }),
+        body: JSON.stringify({ textContent , messageProductId, messageOrderId, to: chatId }),
       });
 
       if (!response.ok) {

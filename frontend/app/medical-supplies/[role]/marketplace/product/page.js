@@ -745,7 +745,7 @@ export default function ProductDetails() {
                   onClick={() => {
                     const params = new URLSearchParams({
                       productId: processedData?.productId || "",
-                      sellerId: processedData?.ownerId || "",
+                      userId: processedData?.ownerId || "",
                     });
 
                     router.push(

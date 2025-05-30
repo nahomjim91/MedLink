@@ -10,6 +10,7 @@ import Image from "next/image";
 import { MessageCircleIcon, UserRound, Download } from "lucide-react";
 import { Button, TablePageButtons } from "../../../components/ui/Button";
 import { downloadOrderReceipt } from "../../../components/ui/downloadReceipt/downloadOrderReceipt";
+import { useRouter } from "next/navigation";
 
 const StatusBadge = ({ status }) => {
   const getStatusColor = (status) => {
@@ -67,6 +68,7 @@ const StarRating = ({ rating }) => {
 export default function OrderDetailsPage({ params }) {
   const resolvedParams = use(params);
   const { user } = useMSAuth();
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
@@ -223,7 +225,19 @@ export default function OrderDetailsPage({ params }) {
                 ? "Supplier Information"
                 : "Buyer Information"}
             </h2>
-            <Button className="flex gap-1.5 items-center">
+            <Button
+              className="flex gap-1.5 items-center"
+              onClick={() => {
+                const params = new URLSearchParams({
+                  orderId: order.orderId || "",
+                  userId:  user.userId === order?.sellerId ? order.buyerId : order.sellerId || "",
+                });
+
+                router.push(
+                  `/medical-supplies/${user.role}/chats?${params.toString()}`
+                );
+              }}
+            >
               <MessageCircleIcon className="h-5 w-5" /> Message{" "}
             </Button>
           </div>

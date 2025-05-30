@@ -224,4 +224,4 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
   );
 };
 
-export default MiniProductDetail;
+export default MiniProductDetail; 

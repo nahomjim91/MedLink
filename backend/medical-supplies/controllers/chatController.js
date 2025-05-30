@@ -424,7 +424,7 @@ module.exports = {
   sendChatMessage: async (req, res) => {
     try {
       const userId = req.user.uid;
-      const { textContent, to , messageProductId } = req.body;
+      const { textContent, to , messageProductId , messageOrderId } = req.body;
 
       if (!textContent || !textContent.trim()) {
         return res.status(400).json({ error: "Message cannot be empty" });
@@ -456,6 +456,7 @@ module.exports = {
       const messageData = {
         textContent: textContent.trim(),
         messageProductId: messageProductId,
+        messageOrderId: messageOrderId,
         from: userId,
         to: to,
         participants: [userId, to],

@@ -1,14 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  Search,
-  MessageCircle,
-  ChevronRight,
-  Send,
-  Check,
-  Plus,
-} from "lucide-react";
+import { Search, MessageCircle, Send, Check, Plus } from "lucide-react";
 import Image from "next/image";
 import { Button } from "../../components/ui/Button";
 import { useSocketContext } from "../../context/SocketContext";
@@ -16,19 +9,31 @@ import { useMSAuth } from "../../hooks/useMSAuth";
 import { NewConversationModal } from "../../components/modal/NewConversationModal";
 import { ProductContextCard } from "../../components/ui/product/ProductContextCard";
 import useProductContext from "../../hooks/useProduct";
+import { OrderContextCard } from "../../components/ui/order/OrderContextCard";
+import useOrderContext from "../../hooks/useOrderById";
 
-const MessageWithProduct = ({ msg, isCurrentUser, user, formatTime , onclikeProduct }) => {
+const MessageWithProduct = ({ msg, isCurrentUser, formatTime  }) => {
   const { productData } = useProductContext(msg.messageProductId);
-// console.log("MessageWithProduct",productData);
+  const { orderData } = useOrderContext(msg.messageOrderId);
+  // console.log("MessageWithProduct",productData);
   return (
     <div
       className={`mb-4 flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
     >
-      <div className={`max-w-xs ${isCurrentUser ? "ml-auto" : "mr-auto"} flex flex-col` }>
+      <div
+        className={`max-w-xs ${
+          isCurrentUser ? "ml-auto" : "mr-auto"
+        } flex flex-col`}
+      >
         {/* Product Context Card (if message has productId) */}
         {msg.messageProductId && productData && (
           <div className="">
-            <ProductContextCard productData={productData} onclick={onclikeProduct} />
+            <ProductContextCard productData={productData} />
+          </div>
+        )}
+        {msg.messageOrderId && orderData && (
+          <div className="">
+            <OrderContextCard orderData={orderData}  />
           </div>
         )}
 
@@ -72,12 +77,15 @@ export default function ChatsPage() {
   const { user } = useMSAuth();
   const searchParams = useSearchParams();
   const productId = searchParams.get("productId");
-  const sellerId = searchParams.get("sellerId");
+  const userId = searchParams.get("userId");
+  const orderId = searchParams.get("orderId");
   const [pendingProductId, setPendingProductId] = useState(null);
+  const [pendingOrderId, setPendingOrderId] = useState(null);
   const [processedParams, setProcessedParams] = useState(new Set());
 
   const { productData: pendingProductData } =
     useProductContext(pendingProductId);
+  const { orderData: pendingOrderData } = useOrderContext(pendingOrderId);
   const {
     // Socket state
     isConnected,
@@ -118,69 +126,70 @@ export default function ChatsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-useEffect(() => {
-  const initiateChatWithSeller = async () => {
-    if (!sellerId || !user?.userId) return;
+  useEffect(() => {
+    const initiateChatWithSeller = async () => {
+      if (!userId || !user?.userId) return;
 
-    // Create unique key for this sellerId + productId combination
-    const paramKey = `${sellerId}`;
+      // Create unique key for this userId + productId combination
+      const paramKey = `${userId}`;
 
-    // Skip if we've already processed these params
-    if (processedParams.has(paramKey)) return;
+      // Skip if we've already processed these params
+      if (processedParams.has(paramKey)) return;
 
-    // Mark params as being processed
-    setProcessedParams((prev) => new Set([...prev, paramKey]));
+      // Mark params as being processed
+      setProcessedParams((prev) => new Set([...prev, paramKey]));
 
-    try {
-      console.log("Processing chat initiation for:", paramKey);
+      try {
+        console.log("Processing chat initiation for:", paramKey);
 
-      // Wait a bit for chats to load if they're empty
-      if (chats.length === 0) {
-        await refreshChats();
+        // Wait a bit for chats to load if they're empty
+        if (chats.length === 0) {
+          await refreshChats();
+        }
+
+        const existingConversation = filteredChats.find((chat) =>
+          chat.participants?.some((p) => p.id === userId || p.userId === userId)
+        );
+
+        let conversation;
+        let isNewConversation = false;
+
+        if (existingConversation) {
+          console.log("Using existing conversation:", existingConversation);
+          conversation = existingConversation;
+          isNewConversation = false;
+        } else {
+          console.log("Creating new conversation with seller:", userId);
+          const newConversation = await createConversation([userId]);
+          await refreshChats();
+          conversation =
+            chats.find((chat) => chat.id === newConversation.id) ||
+            newConversation;
+          isNewConversation = true;
+        }
+
+        await handleConversationSelect(conversation);
+
+        // Only set pending product for NEW conversations
+        if (productId) {
+          setPendingProductId(productId);
+        }
+        if (orderId) {
+          setPendingOrderId(orderId);
+        }
+      } catch (error) {
+        console.error("Error initiating chat with seller:", error);
+        // Remove from processed params on error so it can be retried
+        setProcessedParams((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(paramKey);
+          return newSet;
+        });
       }
+    };
 
-      const existingConversation = filteredChats.find((chat) =>
-        chat.participants?.some(
-          (p) =>p.id === sellerId || p.userId === sellerId
-        )
-      );
-
-      let conversation;
-      let isNewConversation = false;
-
-      if (existingConversation) {
-        console.log("Using existing conversation:", existingConversation);
-        conversation = existingConversation;
-        isNewConversation = false;
-      } else {
-        console.log("Creating new conversation with seller:", sellerId);
-        const newConversation = await createConversation([sellerId]);
-        await refreshChats();
-        conversation =
-          chats.find((chat) => chat.id === newConversation.id) ||
-          newConversation;
-        isNewConversation = true;
-      }
-
-      await handleConversationSelect(conversation);
-      
-      // Only set pending product for NEW conversations
-      if (productId) {
-        setPendingProductId(productId);
-      }
-    } catch (error) {
-      console.error("Error initiating chat with seller:", error);
-      // Remove from processed params on error so it can be retried
-      setProcessedParams((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(paramKey);
-        return newSet;
-      });
-    }
-  };
-
-  initiateChatWithSeller();
-}, [sellerId, productId, user?.userId, chats.length]);
+    initiateChatWithSeller();
+  }, [userId, productId, orderId, user?.userId, chats.length]);
   // Handle conversation selection
   const handleConversationSelect = async (conversation) => {
     console.log("Selected conversation:", conversation);
@@ -205,19 +214,26 @@ useEffect(() => {
 
     const messageText = message.trim();
     const messageProductId = pendingProductId;
-
+    const messageOrderId = pendingOrderId;
     setMessage("");
     setPendingProductId(null); // Clear pending product
+    setPendingOrderId(null); // Clear pending order
 
     try {
       // Send message with product context
-      await sendMessage(activeConversation.id, messageText, messageProductId);
+      await sendMessage(
+        activeConversation.id,
+        messageText,
+        messageProductId,
+        messageOrderId
+      );
       stopTyping(activeConversation.id);
       setIsTyping(false);
     } catch (error) {
       console.error("Failed to send message:", error);
       setMessage(messageText);
-      setPendingProductId(messageProductId); // Restore on error
+      setPendingProductId(messageProductId);
+      setPendingOrderId(messageOrderId);
     }
   };
 
@@ -415,8 +431,8 @@ useEffect(() => {
               key={msg.id}
               msg={msg}
               isCurrentUser={isCurrentUser}
-              user={user}
               formatTime={formatTime}
+              
             />
           );
         })}
@@ -619,6 +635,13 @@ useEffect(() => {
                 <ProductContextCard
                   productData={pendingProductData}
                   onRemove={removePendingProduct}
+                  isPreview={true}
+                />
+              )}
+              {pendingOrderId && pendingOrderData && (
+                <OrderContextCard
+                  orderData={pendingOrderData}
+                  onRemove={() => setPendingOrderId(null)}
                   isPreview={true}
                 />
               )}

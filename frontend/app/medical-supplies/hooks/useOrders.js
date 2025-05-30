@@ -2,8 +2,7 @@
 import { useQuery, useMutation } from "@apollo/client";
 import {
   GET_MY_ORDERS,
-  GET_ORDERS_TO_FULFILL,
-  GET_ORDER_SUMMARIES,
+  GET_ORDERS_TO_FULFILL
 } from "../api/graphql/order/orderQuery";
 import {
   UPDATE_ORDER_STATUS,
