@@ -95,8 +95,7 @@ class NotificationService {
         status,
         orderDetails,
         actionUrl: `/orders/${orderId}`,
-        trackingNumber: orderDetails.trackingNumber,
-        estimatedDelivery: orderDetails.estimatedDelivery,
+        estimatedDelivery: orderDetails.estimatedDelivery || "",
       },
       statusPriority[status] || "normal"
     );

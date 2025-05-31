@@ -143,18 +143,60 @@ const OrderModel = {
           }
         }
       }
+      // console.log("order befor notificion " , order);
 
       // Commit all changes
       await batch.commit();
 
       // Send notifications after successful order creation
-      await this.sendOrderNotifications("create", order, items);
+      await this.sendOrderCreationNotifications(order, items);
 
       // Return complete order with items
       return await this.getById(orderId);
     } catch (error) {
       console.error("Error creating order:", error);
       throw error;
+    }
+  },
+
+  async sendOrderCreationNotifications(order, items) {
+    if (!this.notificationService) return;
+
+    try {
+      // Notify seller about new order
+      await this.notificationService.notifyNewOrder(
+        order.sellerId,
+        order.orderId,
+        {
+          customerName: order.buyerName || order.buyerCompanyName,
+          customerId: order.buyerId,
+        },
+        {
+          items: items.map((item) => ({
+            name: item.productName,
+            quantity: item.totalQuantity,
+            price: item.totalPrice,
+          })),
+          totalAmount: order.totalCost,
+          urgentOrder: order.totalCost > 10000, // Mark as urgent if high value
+        }
+      );
+
+      // Notify buyer about order confirmation
+      await this.notificationService.notifyOrderStatus(
+        order.buyerId,
+        order.orderId,
+        "pending",
+        {
+          orderNumber: order.orderNumber,
+          sellerName: order.sellerName || order.sellerCompanyName,
+          totalAmount: order.totalCost,
+          estimatedDelivery: order.pickupScheduledDate,
+        }
+      );
+    } catch (error) {
+      console.error("Error sending order creation notifications:", error);
+      // Don't throw error as this shouldn't fail the order creation
     }
   },
 
@@ -169,9 +211,9 @@ const OrderModel = {
     const batch = db.batch();
 
     try {
-      console.log(
-        `Starting product transfer for order ${orderId} to buyer ${buyerId} via ${transferType}`
-      );
+      // console.log(
+      //   `Starting product transfer for order ${orderId} to buyer ${buyerId} via ${transferType}`
+      // );
 
       // Get buyer information
       const buyer = await MSUserModel.getById(buyerId);
@@ -269,6 +311,14 @@ const OrderModel = {
       // Commit all batch operations
       await batch.commit();
 
+      // Send product transfer notifications
+      await this.sendProductTransferNotifications(
+        order,
+        buyer,
+        transferResults,
+        transferType
+      );
+
       console.log(
         `Product transfer completed for order ${orderId} via ${transferType}`
       );
@@ -282,6 +332,84 @@ const OrderModel = {
     } catch (error) {
       console.error("Error transferring products to buyer:", error);
       throw error;
+    }
+  },
+
+  /**
+   * Send notifications when products are transferred
+   * @param {Object} order - Order data
+   * @param {Object} buyer - Buyer data
+   * @param {Array} transferResults - Transfer results
+   * @param {String} transferType - Type of transfer
+   */
+  async sendProductTransferNotifications(
+    order,
+    buyer,
+    transferResults,
+    transferType
+  ) {
+    if (!this.notificationService) return;
+
+    try {
+      // Notify buyer about successful product transfer
+      await this.notificationService.createNotification(
+        buyer.id,
+        "product_transfer",
+        `Products from order ${order.orderNumber} have been transferred to your inventory`,
+        {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          transferType: transferType,
+          transferredItemsCount: transferResults.length,
+          sellerName: order.sellerName || order.sellerCompanyName,
+          actionUrl: `/inventory`,
+          message: `${transferResults.length} product(s) have been added to your inventory via ${transferType}.`,
+        },
+        "high"
+      );
+
+      // Notify seller about completed transfer
+      await this.notificationService.createNotification(
+        order.sellerId,
+        "order_completed",
+        `Order ${order.orderNumber} has been completed - products transferred`,
+        {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          transferType: transferType,
+          buyerName: order.buyerName || order.buyerCompanyName,
+          totalAmount: order.totalCost,
+          actionUrl: `/orders/${order.orderId}`,
+          message: `Products have been successfully transferred to ${
+            buyer.companyName || buyer.name
+          } via ${transferType}.`,
+        },
+        "normal"
+      );
+
+      // Send inventory updates for health facilities
+      if (
+        buyer.role === "HEALTH_FACILITY" ||
+        buyer.userType === "HEALTH_FACILITY" ||
+        buyer.type === "HEALTH_FACILITY"
+      ) {
+        await this.notificationService.createNotification(
+          buyer.id,
+          "inventory_update",
+          "New medical supplies added to your inventory",
+          {
+            orderId: order.orderId,
+            source: "purchase",
+            transferType: transferType,
+            actionUrl: `/inventory`,
+            message:
+              "Please review and organize the new supplies in your medical inventory system.",
+          },
+          "high"
+        );
+      }
+    } catch (error) {
+      console.error("Error sending product transfer notifications:", error);
     }
   },
 
@@ -965,11 +1093,145 @@ const OrderModel = {
       // Update the order
       await orderRef.update(updateData);
 
+      // Send status update notifications
+      await this.sendStatusUpdateNotifications(
+        orderId,
+        status,
+        order,
+        newPaymentStatus
+      );
+
       // Return updated order with full details
       return await this.getById(orderId);
     } catch (error) {
       console.error("Error updating order status:", error);
       throw error;
+    }
+  },
+
+  /**
+   * Send notifications when order status is updated
+   * @param {String} orderId - Order ID
+   * @param {String} newStatus - New order status
+   * @param {Object} order - Original order data
+   * @param {String} newPaymentStatus - New payment status (if changed)
+   */
+  async sendStatusUpdateNotifications(
+    orderId,
+    newStatus,
+    order,
+    newPaymentStatus = null
+  ) {
+    if (!this.notificationService) return;
+
+    try {
+      // Map internal status to user-friendly status
+      const statusMapping = {
+        "pending-confirmation": "pending",
+        confirmed: "confirmed",
+        preparing: "processing",
+        "ready-for-pickup": "ready_for_pickup",
+        "pickup-scheduled": "pickup_scheduled",
+        "pickup-confirmed": "delivered",
+        delivered: "delivered",
+        completed: "completed",
+        cancelled: "cancelled",
+        "rejected-by-seller": "cancelled",
+      };
+
+      const mappedStatus = statusMapping[newStatus] || newStatus;
+
+      // Notify buyer about status change
+      await this.notificationService.notifyOrderStatus(
+        order.buyerId,
+        orderId,
+        mappedStatus,
+        {
+          orderNumber: order.orderNumber,
+          sellerName: order.sellerName || order.sellerCompanyName,
+          totalAmount: order.totalCost,
+          ...(newStatus === "pickup-scheduled" &&
+            order.pickupScheduledDate && {
+              estimatedDelivery: order.pickupScheduledDate,
+            }),
+          ...(newStatus === "ready-for-pickup" && {
+            message:
+              "Your order is ready for pickup. Please contact the seller to arrange collection.",
+          }),
+          ...(newStatus === "rejected-by-seller" && {
+            message:
+              "Your order has been declined by the seller. Please contact them for more information.",
+          }),
+        }
+      );
+
+      // Notify seller about relevant status changes
+      if (["pickup-confirmed", "delivered", "completed"].includes(newStatus)) {
+        await this.notificationService.createNotification(
+          order.sellerId,
+          "order_status",
+          `Order ${order.orderNumber} has been ${newStatus.replace("-", " ")}`,
+          {
+            orderId,
+            status: newStatus,
+            buyerName: order.buyerName || order.buyerCompanyName,
+            totalAmount: order.totalCost,
+            actionUrl: `/orders/${orderId}`,
+          },
+          "normal"
+        );
+      }
+
+      // Send payment status notifications if payment status changed
+      if (newPaymentStatus && newPaymentStatus !== order.paymentStatus) {
+        await this.sendPaymentStatusNotifications(order, newPaymentStatus);
+      }
+    } catch (error) {
+      console.error("Error sending status update notifications:", error);
+      // Don't throw error as this shouldn't fail the status update
+    }
+  },
+
+  /**
+   * Send payment status notifications
+   * @param {Object} order - Order data
+   * @param {String} paymentStatus - Payment status
+   */
+  async sendPaymentStatusNotifications(order, paymentStatus) {
+    if (!this.notificationService) return;
+
+    try {
+      const paymentStatusMapping = {
+        "paid-held-by-system": "success",
+        "released-to-seller": "success",
+        refunded: "refunded",
+        failed: "failed",
+        pending: "pending",
+      };
+
+      const mappedStatus = paymentStatusMapping[paymentStatus] || paymentStatus;
+
+      // Notify buyer about payment status
+      await this.notificationService.notifyPaymentStatus(
+        order.buyerId,
+        order.transactionId || order.orderId,
+        mappedStatus,
+        order.totalCost,
+        order.orderId
+      );
+
+      // Notify seller when payment is released
+      if (paymentStatus === "released-to-seller") {
+        await this.notificationService.notifyPaymentStatus(
+          order.sellerId,
+          order.transactionId || order.orderId,
+          "success",
+          order.totalCost,
+          order.orderId
+        );
+      }
+    } catch (error) {
+      console.error("Error sending payment status notifications:", error);
     }
   },
 
@@ -1086,11 +1348,71 @@ const OrderModel = {
       }
 
       await orderRef.update(updateData);
+      await this.sendPickupSchedulingNotifications(order, pickupDate, userId);
 
       return await this.getById(orderId);
     } catch (error) {
       console.error("Error scheduling pickup:", error);
       throw error;
+    }
+  },
+
+  /**
+   * Send notifications when pickup is scheduled
+   * @param {Object} order - Order data
+   * @param {Date} pickupDate - Scheduled pickup date
+   * @param {String} scheduledBy - User who scheduled the pickup
+   */
+  async sendPickupSchedulingNotifications(order, pickupDate, scheduledBy) {
+    if (!this.notificationService) return;
+
+    try {
+      const formattedDate = new Date(pickupDate).toLocaleDateString();
+      const schedulerName =
+        scheduledBy === order.buyerId
+          ? order.buyerName || order.buyerCompanyName
+          : order.sellerName || order.sellerCompanyName;
+
+      // Notify the other party about pickup scheduling
+      const recipientId =
+        scheduledBy === order.buyerId ? order.sellerId : order.buyerId;
+      const recipientType = scheduledBy === order.buyerId ? "seller" : "buyer";
+
+      await this.notificationService.createNotification(
+        recipientId,
+        "pickup_scheduled",
+        `Pickup scheduled for order ${order.orderNumber} on ${formattedDate}`,
+        {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          pickupDate: pickupDate,
+          scheduledBy: schedulerName,
+          schedulerType: scheduledBy === order.buyerId ? "buyer" : "seller",
+          actionUrl: `/orders/${order.orderId}`,
+          message: `The ${
+            recipientType === "seller" ? "buyer" : "seller"
+          } has scheduled pickup for ${formattedDate}. Please confirm availability.`,
+        },
+        "high"
+      );
+
+      // Send reminder to scheduler
+      await this.notificationService.createNotification(
+        scheduledBy,
+        "pickup_confirmation",
+        `Pickup scheduled for ${formattedDate} - Order ${order.orderNumber}`,
+        {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          pickupDate: pickupDate,
+          actionUrl: `/orders/${order.orderId}`,
+          message:
+            "Pickup has been scheduled. You will be notified when it's confirmed.",
+        },
+        "normal"
+      );
+    } catch (error) {
+      console.error("Error sending pickup scheduling notifications:", error);
     }
   },
 
@@ -1153,10 +1475,96 @@ const OrderModel = {
 
       await orderRef.update(updateData);
 
+      // Send cancellation notifications
+      await this.sendCancellationNotifications(
+        order,
+        userId,
+        reason,
+        newPaymentStatus
+      );
+
       return await this.getById(orderId);
     } catch (error) {
       console.error("Error cancelling order:", error);
       throw error;
+    }
+  },
+
+  /**
+   * Send notifications when order is cancelled
+   * @param {Object} order - Order data
+   * @param {String} cancelledBy - User who cancelled the order
+   * @param {String} reason - Cancellation reason
+   * @param {String} paymentStatus - New payment status
+   */
+  async sendCancellationNotifications(
+    order,
+    cancelledBy,
+    reason,
+    paymentStatus
+  ) {
+    if (!this.notificationService) return;
+
+    try {
+      const cancellerName =
+        cancelledBy === order.buyerId
+          ? order.buyerName || order.buyerCompanyName
+          : order.sellerName || order.sellerCompanyName;
+
+      const cancellerType = cancelledBy === order.buyerId ? "buyer" : "seller";
+      const otherPartyId =
+        cancelledBy === order.buyerId ? order.sellerId : order.buyerId;
+
+      // Notify the other party about cancellation
+      await this.notificationService.createNotification(
+        otherPartyId,
+        "order_cancelled",
+        `Order ${order.orderNumber} has been cancelled by ${cancellerType}`,
+        {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          cancelledBy: cancellerName,
+          cancellerType: cancellerType,
+          reason: reason,
+          totalAmount: order.totalCost,
+          actionUrl: `/orders/${order.orderId}`,
+          ...(paymentStatus === "refunded" && {
+            refundMessage: "Refund will be processed within 3-5 business days.",
+          }),
+        },
+        "urgent"
+      );
+
+      // Confirm cancellation to the person who cancelled
+      await this.notificationService.createNotification(
+        cancelledBy,
+        "order_cancellation_confirmed",
+        `Order ${order.orderNumber} has been successfully cancelled`,
+        {
+          orderId: order.orderId,
+          orderNumber: order.orderNumber,
+          reason: reason,
+          totalAmount: order.totalCost,
+          actionUrl: `/orders/${order.orderId}`,
+          ...(paymentStatus === "refunded" && {
+            refundMessage: "Refund will be processed within 3-5 business days.",
+          }),
+        },
+        "high"
+      );
+
+      // Send payment refund notification if applicable
+      if (paymentStatus === "refunded") {
+        await this.notificationService.notifyPaymentStatus(
+          order.buyerId,
+          order.transactionId || order.orderId,
+          "refunded",
+          order.totalCost,
+          order.orderId
+        );
+      }
+    } catch (error) {
+      console.error("Error sending cancellation notifications:", error);
     }
   },
 
@@ -1195,6 +1603,7 @@ const OrderModel = {
       }
 
       await orderRef.update(updateData);
+      await this.sendPaymentStatusNotifications(order, paymentStatus);
 
       return await this.getById(orderId);
     } catch (error) {

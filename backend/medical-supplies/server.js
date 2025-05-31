@@ -368,7 +368,9 @@ app.get("/api/chat/chats", chatController.getChatsWithCounts);
 
 // Notification API Routes
 app.get("/api/notifications", notificationController.getNotifications);
-app.post("/api/notifications", notificationController.createNotification);
+app.post("/api/notifications", (req, res) => {
+  notificationController.createNotification(req, res);
+});
 app.post("/api/notifications/mark-read", notificationController.markAsRead);
 app.post(
   "/api/notifications/mark-all-read",
@@ -569,6 +571,10 @@ const initializeMedicalSuppliesServer = async (parentApp = null) => {
 // crone job to clean up old notifications
 cron.schedule("0 0 * * *", () => {
   BatchModel.notifyAllExpiringBatches();
+});
+
+cron.schedule("0 0 1 * *", async () => {
+  await notificationController.cleanupExpiredNotifications();
 });
 
 // Graceful shutdown handling

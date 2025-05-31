@@ -297,7 +297,7 @@ const orderResolvers = {
           throw new ForbiddenError("You can only create orders as yourself");
         }
 
-        console.log('Input received:', input);
+        // console.log('Input received:', input);
 
         // Convert frontend data structure to match model expectations
         const orderData = {
@@ -322,11 +322,11 @@ const orderResolvers = {
           }))
         };
 
-        console.log('Converted order data for database:', {
-          ...orderData,
-          status: orderData.status,
-          paymentStatus: orderData.paymentStatus
-        });
+        // console.log('Converted order data for database:', {
+        //   ...orderData,
+        //   status: orderData.status,
+        //   paymentStatus: orderData.paymentStatus
+        // });
 
         const createdOrder = await OrderModel.createOrder(orderData);
         

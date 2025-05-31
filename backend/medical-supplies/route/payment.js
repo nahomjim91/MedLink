@@ -40,7 +40,7 @@ router.post('/initialize', async (req, res) => {
 
     // Generate unique transaction reference
     const txRef = `tx_${orderId}_${Date.now()}`;
-    console.log('orderDetails:', orderDetails);
+    // console.log('orderDetails:', orderDetails);
 
     const paymentData = {
       amount: parseFloat(amount),
@@ -64,14 +64,8 @@ router.post('/initialize', async (req, res) => {
         orderNumber: orderDetails.orderNumber
       }
     };
-    // console.log('Payment initialization data:', paymentData);
 
-    // console.log('Initializing payment with Chapa:', { 
-    //   ...paymentData, 
-    //   testMode: process.env.NODE_ENV !== 'production'
-    // });
-
-    console.error('Chapa initialization getChapaHeaders:', getChapaHeaders());
+    // console.error('Chapa initialization getChapaHeaders:', getChapaHeaders());
     const response = await axios.post(
       `${CHAPA_BASE_URL}/transaction/initialize`,
       paymentData,
@@ -81,17 +75,7 @@ router.post('/initialize', async (req, res) => {
     // console.log('Chapa initialization response:', response.data);
 
     if (response.data.status === 'success') {
-      // Store payment info in database (optional)
-      // await PaymentModel.create({
-      //   txRef,
-      //   orderId,
-      //   userId: req.user?.uid,
-      //   amount,
-      //   status: 'PENDING',
-      //   createdAt: new Date()
-      // });
-
-      res.json({
+          res.json({
         success: true,
         data: {
           checkoutUrl: response.data.data.checkout_url,
@@ -100,7 +84,7 @@ router.post('/initialize', async (req, res) => {
         }
       });
     } else {
-      console.error('Chapa initialization failed:', response.data);
+      // console.error('Chapa initialization failed:', response.data);
       res.status(400).json({
         success: false,
         message: response.data.message || 'Payment initialization failed',
@@ -149,7 +133,7 @@ router.post('/verify', async (req, res) => {
       getChapaHeaders()
     );
 
-    console.log('Chapa verification response:', response.data);
+    // console.log('Chapa verification response:', response.data);
 
     if (response.data.status === 'success') {
       const paymentData = response.data.data;

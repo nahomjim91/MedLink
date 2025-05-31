@@ -90,6 +90,8 @@ module.exports = {
           if (priority === PRIORITY_LEVELS.URGENT) {
             req.io.to(`user_${userId}`).emit("urgent_notification", savedNotification);
           }
+            console.log(`user_${userId}`,"urgent_notification", savedNotification);
+
         } catch (socketError) {
           console.error("Socket emission error:", socketError);
         }
