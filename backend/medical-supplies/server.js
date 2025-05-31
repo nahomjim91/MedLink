@@ -1,17 +1,26 @@
+// /medical-supplies/server.js
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const { Server } = require('socket.io');
+const { Server } = require("socket.io");
 const setupApolloServer = require("./graphql");
 const { authMiddleware } = require("../middleware/auth");
 const paymentRoutes = require("./route/payment");
 const chatController = require("./controllers/chatController");
 const notificationController = require("./controllers/notificationController");
+const cron = require("node-cron");
 
-const { auth, db } = require("../config/firebase");
+// models
+const OrderModel = require("./models/orderModel");
+const MSUserModel = require("./models/msUser");
+const ProductModel = require("./models/productModel");
+const BatchModel = require("./models/batchModel");
+const CartModel = require("./models/cartModel");
+
+const { auth, db, FieldValue } = require("../config/firebase");
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -39,7 +48,6 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(authMiddleware);
 
 // Create HTTP server
 const httpServer = http.createServer(app);
@@ -53,6 +61,293 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api/", limiter);
+
+// Store user connections for chat and notifications
+const userConnections = new Map();
+
+// Socket.IO Setup
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || "*",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["authorization"],
+    credentials: true,
+  },
+});
+
+// Socket.IO Authentication Middleware
+io.use(async (socket, next) => {
+  try {
+    const token =
+      socket.handshake.auth.token ||
+      socket.handshake.headers.authorization?.replace("Bearer ", "");
+
+    if (!token) {
+      return next(new Error("Authentication token required"));
+    }
+
+    // Verify Firebase token
+    const decodedToken = await auth.verifyIdToken(token);
+    socket.userId = decodedToken.uid;
+    socket.user = decodedToken;
+
+    next();
+  } catch (error) {
+    console.error("Socket authentication error:", error);
+    next(new Error("Authentication failed"));
+  }
+});
+
+// Initialize notification service in models (add this after io setup)
+OrderModel.setNotificationService(io);
+MSUserModel.setNotificationService(io);
+ProductModel.setNotificationService(io);
+BatchModel.setNotificationService(io);
+CartModel.setNotificationService(io);
+
+// Helper function to get consistent chat room name
+const getChatRoomName = (userId1, userId2) => {
+  return `chat_${[userId1, userId2].sort().join("_")}`;
+};
+
+// Notification helper functions
+const notificationHelpers = {
+  async getUnreadCount(userId) {
+    try {
+      const snapshot = await db
+        .collection("notifications")
+        .where("userId", "==", userId)
+        .where("isRead", "==", false)
+        .get();
+      return snapshot.size;
+    } catch (error) {
+      console.error("Error getting unread notification count:", error);
+      return 0;
+    }
+  },
+
+  async createSystemNotification(userId, type, message, metadata = {}) {
+    try {
+      const notification = {
+        userId,
+        type,
+        message,
+        metadata,
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
+        source: "system",
+      };
+
+      const docRef = await db.collection("notifications").add(notification);
+      const savedDoc = await docRef.get();
+
+      const savedNotification = {
+        id: docRef.id,
+        ...savedDoc.data(),
+        createdAt:
+          savedDoc.data().createdAt?.toDate?.()?.toISOString() ||
+          new Date().toISOString(),
+      };
+
+      // Emit to user
+      io.to(`user_${userId}`).emit("notification", savedNotification);
+
+      // Update count
+      const unreadCount = await this.getUnreadCount(userId);
+      io.to(`user_${userId}`).emit("notification_count_update", {
+        count: unreadCount,
+      });
+
+      return savedNotification;
+    } catch (error) {
+      console.error("Error creating system notification:", error);
+      throw error;
+    }
+  },
+};
+
+// Socket.IO Connection Handling
+io.on("connection", (socket) => {
+  const userId = socket.userId;
+
+  console.log(`💬 User connected: ${userId} (socket: ${socket.id})`);
+
+  // Store user connection
+  if (!userConnections.has(userId)) {
+    userConnections.set(userId, new Set());
+  }
+  userConnections.get(userId).add(socket.id);
+
+  // Join user to their personal room (for both chat and notifications)
+  socket.join(`user_${userId}`);
+
+  // Broadcast user online status
+  socket.broadcast.emit("user_online", { userId });
+
+  // Send current online users to this socket
+  socket.emit("online_users", Array.from(userConnections.keys()));
+
+  // Send current notification count on connect
+  notificationHelpers.getUnreadCount(userId).then((count) => {
+    socket.emit("notification_count_update", { count });
+  });
+
+  // CHAT HANDLERS
+  socket.on("join_chat", (data) => {
+    const { chatId } = data;
+    const roomName = getChatRoomName(userId, chatId);
+    socket.join(roomName);
+    console.log(`📱 User ${userId} joined chat room: ${roomName}`);
+  });
+
+  socket.on("leave_chat", (data) => {
+    const { chatId } = data;
+    const roomName = getChatRoomName(userId, chatId);
+    socket.leave(roomName);
+    console.log(`📱 User ${userId} left chat room: ${roomName}`);
+  });
+
+  socket.on("message_sent", (data) => {
+    const { chatId, message } = data;
+    const roomName = getChatRoomName(userId, chatId);
+
+    socket.to(roomName).emit("new_message", {
+      message,
+      from: userId,
+    });
+
+    io.to(`user_${chatId}`).emit("message_notification", {
+      message,
+      from: userId,
+      chatId: userId,
+    });
+  });
+
+  socket.on("message_seen", (data) => {
+    const { chatId, messageIds } = data;
+    const roomName = getChatRoomName(userId, chatId);
+
+    socket.to(roomName).emit("messages_seen", {
+      messageIds,
+      seenBy: userId,
+    });
+  });
+
+  socket.on("typing_start", (data) => {
+    const { chatId } = data;
+    const roomName = getChatRoomName(userId, chatId);
+
+    socket.to(roomName).emit("user_typing", {
+      userId,
+      isTyping: true,
+    });
+  });
+
+  socket.on("typing_stop", (data) => {
+    const { chatId } = data;
+    const roomName = getChatRoomName(userId, chatId);
+
+    socket.to(roomName).emit("user_typing", {
+      userId,
+      isTyping: false,
+    });
+  });
+
+  // NOTIFICATION HANDLERS
+  socket.on("subscribe_notifications", () => {
+    console.log(`🔔 User ${userId} subscribed to notifications`);
+    // User is already in user_${userId} room, so they'll receive notifications
+  });
+
+  socket.on("get_notification_count", async () => {
+    try {
+      const count = await notificationHelpers.getUnreadCount(userId);
+      socket.emit("notification_count_update", { count });
+    } catch (error) {
+      console.error("Error getting notification count:", error);
+      socket.emit("notification_error", {
+        message: "Failed to get notification count",
+      });
+    }
+  });
+
+  socket.on("mark_notifications_read", async (data) => {
+    try {
+      const { notificationIds } = data;
+
+      if (!notificationIds || !Array.isArray(notificationIds)) {
+        socket.emit("notification_error", {
+          message: "Invalid notification IDs",
+        });
+        return;
+      }
+
+      const batch = db.batch();
+      notificationIds.forEach((id) => {
+        const ref = db.collection("notifications").doc(id);
+        batch.update(ref, {
+          isRead: true,
+          readAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+
+      const unreadCount = await notificationHelpers.getUnreadCount(userId);
+      socket.emit("notification_count_update", { count: unreadCount });
+      socket.emit("notifications_marked_read", { notificationIds });
+    } catch (error) {
+      console.error("Error marking notifications as read:", error);
+      socket.emit("notification_error", {
+        message: "Failed to mark notifications as read",
+      });
+    }
+  });
+
+  socket.on("notification_interacted", async (data) => {
+    const { notificationId, action } = data;
+
+    try {
+      await db
+        .collection("notifications")
+        .doc(notificationId)
+        .update({
+          [`interactions.${action}`]: FieldValue.serverTimestamp(),
+          lastInteracted: FieldValue.serverTimestamp(),
+        });
+
+      console.log(
+        `🔔 Notification ${notificationId} ${action} by user ${userId}`
+      );
+    } catch (error) {
+      console.error("Error tracking notification interaction:", error);
+    }
+  });
+
+  // Handle disconnect
+  socket.on("disconnect", () => {
+    console.log(`💬 User disconnected: ${userId} (socket: ${socket.id})`);
+
+    if (userConnections.has(userId)) {
+      userConnections.get(userId).delete(socket.id);
+
+      if (userConnections.get(userId).size === 0) {
+        userConnections.delete(userId);
+        socket.broadcast.emit("user_offline", { userId });
+      }
+    }
+  });
+});
+
+// Middleware to attach io to requests for controllers
+app.use((req, res, next) => {
+  req.io = io;
+  req.notificationHelpers = notificationHelpers;
+  next();
+});
+
+// Apply auth middleware after io attachment
+app.use(authMiddleware);
 
 // Routes
 app.use("/api/payments", paymentRoutes);
@@ -72,10 +367,99 @@ app.get("/api/chat/unread-count", chatController.getTotalUnreadMessageCount);
 app.get("/api/chat/chats", chatController.getChatsWithCounts);
 
 // Notification API Routes
-app.get("/api/notification/", notificationController.getNotifications);
-app.post("/api/notification/create", notificationController.createNotification);
-app.post("/api/notification/mark-read", notificationController.markAsRead);
+app.get("/api/notifications", notificationController.getNotifications);
+app.post("/api/notifications", notificationController.createNotification);
+app.post("/api/notifications/mark-read", notificationController.markAsRead);
+app.post(
+  "/api/notifications/mark-all-read",
+  notificationController.markAllAsRead
+);
+app.get("/api/notifications/count", notificationController.getUnreadCount);
+app.delete(
+  "/api/notifications/:notificationId",
+  notificationController.deleteNotification
+);
 
+// System notification endpoints (for internal use)
+app.post("/api/system/notifications/order-status", async (req, res) => {
+  try {
+    const { userId, orderId, status, orderDetails } = req.body;
+
+    const statusMessages = {
+      pending: "Your order has been received and is being processed",
+      confirmed: "Your order has been confirmed by the supplier",
+      shipped: "Your order has been shipped and is on the way",
+      delivered: "Your order has been delivered successfully",
+      cancelled: "Your order has been cancelled",
+    };
+
+    const notification = await notificationHelpers.createSystemNotification(
+      userId,
+      "order_status",
+      statusMessages[status] || `Order status updated to ${status}`,
+      {
+        orderId,
+        status,
+        orderDetails,
+        actionUrl: `/orders/${orderId}`,
+      }
+    );
+
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error("Error creating order status notification:", error);
+    res.status(500).json({ error: "Failed to create notification" });
+  }
+});
+
+app.post("/api/system/notifications/new-order", async (req, res) => {
+  try {
+    const { supplierId, orderId, customerName, orderAmount } = req.body;
+
+    const notification = await notificationHelpers.createSystemNotification(
+      supplierId,
+      "new_order",
+      `New order received from ${customerName}`,
+      {
+        orderId,
+        customerName,
+        orderAmount,
+        actionUrl: `/orders/${orderId}`,
+        urgent: orderAmount > 1000,
+      }
+    );
+
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error("Error creating new order notification:", error);
+    res.status(500).json({ error: "Failed to create notification" });
+  }
+});
+
+app.post("/api/system/notifications/review", async (req, res) => {
+  try {
+    const { supplierId, customerId, customerName, rating, productName } =
+      req.body;
+
+    const notification = await notificationHelpers.createSystemNotification(
+      supplierId,
+      "review",
+      `New ${rating}-star review from ${customerName} for ${productName}`,
+      {
+        customerId,
+        customerName,
+        rating,
+        productName,
+        actionUrl: `/reviews`,
+      }
+    );
+
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error("Error creating review notification:", error);
+    res.status(500).json({ error: "Failed to create notification" });
+  }
+});
 
 // Basic health check endpoint
 app.get("/medical-supplies/health", (req, res) => {
@@ -87,204 +471,41 @@ app.get("/medical-supplies/health", (req, res) => {
   });
 });
 
-// Store user connections for chat
-const userConnections = new Map();
-
-// Socket.IO Chat Setup
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || "*",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["authorization"],
-    credentials: true
-  }
-});
-
-// Socket.IO Authentication Middleware
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth.token || 
-                 socket.handshake.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return next(new Error('Authentication token required'));
-    }
-
-    // Verify Firebase token
-    const decodedToken = await auth.verifyIdToken(token);
-    socket.userId = decodedToken.uid;
-    socket.user = decodedToken;
-
-    next();
-  } catch (error) {
-    console.error('Socket authentication error:', error);
-    next(new Error('Authentication failed'));
-  }
-});
-
-// Helper function to get consistent chat room name
-const getChatRoomName = (userId1, userId2) => {
-  return `chat_${[userId1, userId2].sort().join('_')}`;
-};
-
-// Socket.IO Connection Handling
-io.on('connection', (socket) => {
-  const userId = socket.userId;
-  
-  console.log(`💬 User connected to chat: ${userId} (socket: ${socket.id})`);
-
-  // Store user connection
-  if (!userConnections.has(userId)) {
-    userConnections.set(userId, new Set());
-  }
-  userConnections.get(userId).add(socket.id);
-
-  // Join user to their personal room
-  socket.join(`user_${userId}`);
-
-  // Broadcast user online status
-  socket.broadcast.emit('user_online', { userId });
-
-  // Send current online users to this socket
-  socket.emit('online_users', Array.from(userConnections.keys()));
-
-  // Handle joining chat rooms
-  socket.on('join_chat', (data) => {
-    const { chatId } = data;
-    const roomName = getChatRoomName(userId, chatId);
-    socket.join(roomName);
-    console.log(`📱 User ${userId} joined chat room: ${roomName}`);
-  });
-
-  // Handle leaving chat rooms
-  socket.on('leave_chat', (data) => {
-    const { chatId } = data;
-    const roomName = getChatRoomName(userId, chatId);
-    socket.leave(roomName);
-    console.log(`📱 User ${userId} left chat room: ${roomName}`);
-  });
-
-  // Handle message sent (triggered after database save)
-  socket.on('message_sent', (data) => {
-    const { chatId, message } = data;
-    const roomName = getChatRoomName(userId, chatId);
-    
-    // Broadcast to chat room
-    socket.to(roomName).emit('new_message', {
-      message,
-      from: userId
-    });
-
-    // Also send to recipient's personal room for notifications
-    io.to(`user_${chatId}`).emit('message_notification', {
-      message,
-      from: userId,
-      chatId: userId
-    });
-  });
-
-  // Handle message seen
-  socket.on('message_seen', (data) => {
-    const { chatId, messageIds } = data;
-    const roomName = getChatRoomName(userId, chatId);
-    
-    socket.to(roomName).emit('messages_seen', {
-      messageIds,
-      seenBy: userId
-    });
-  });
-
-  // Handle typing indicators
-  socket.on('typing_start', (data) => {
-    const { chatId } = data;
-    const roomName = getChatRoomName(userId, chatId);
-    
-    socket.to(roomName).emit('user_typing', {
-      userId,
-      isTyping: true
-    });
-  });
-
-  socket.on('typing_stop', (data) => {
-    const { chatId } = data;
-    const roomName = getChatRoomName(userId, chatId);
-    
-    socket.to(roomName).emit('user_typing', {
-      userId,
-      isTyping: false
-    });
-  });
-
-  /////////////////////////////////////////////
-  // Notification Handling
-  socket.on('send_notification', async (data) => {
-  const { userId, type, message, metadata } = data;
-  if (!userId || !type || !message) return;
-
-  const notification = {
-    userId,
-    type,
-    message,
-    metadata: metadata || {},
-    isRead: false,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Save to Firestore
-  await db.collection('notifications').add({
-    ...notification,
-    createdAt: FieldValue.serverTimestamp()
-  });
-
-  // Emit to user's room
-  io.to(`user_${userId}`).emit('notification', notification);
-});
-
-  // Handle disconnect
-  socket.on('disconnect', () => {
-    console.log(`💬 User disconnected from chat: ${userId} (socket: ${socket.id})`);
-    
-    if (userConnections.has(userId)) {
-      userConnections.get(userId).delete(socket.id);
-      
-      // If no more connections, user is offline
-      if (userConnections.get(userId).size === 0) {
-        userConnections.delete(userId);
-        socket.broadcast.emit('user_offline', { userId });
-      }
-    }
-  });
-});
-
-// Chat utility functions for external use
-const getChatSocketUtils = () => {
+// Utility functions for external use
+const getSocketUtils = () => {
   return {
     isUserOnline: (userId) => {
-      return userConnections.has(userId) && userConnections.get(userId).size > 0;
+      return (
+        userConnections.has(userId) && userConnections.get(userId).size > 0
+      );
     },
-    
+
     sendToUser: (userId, event, data) => {
       io.to(`user_${userId}`).emit(event, data);
     },
-    
+
     sendToChat: (userId1, userId2, event, data) => {
       const roomName = getChatRoomName(userId1, userId2);
       io.to(roomName).emit(event, data);
     },
-    
+
     getOnlineUsers: () => {
       return Array.from(userConnections.keys());
     },
-    
+
     getOnlineUserCount: () => {
       return userConnections.size;
-    }
+    },
+
+    // Notification utilities
+    createNotification: notificationHelpers.createSystemNotification,
+    getUnreadCount: notificationHelpers.getUnreadCount,
   };
 };
 
 // Socket.IO status endpoint (for monitoring)
 app.get("/medical-supplies/socket-status", (req, res) => {
-  const utils = getChatSocketUtils();
+  const utils = getSocketUtils();
 
   res.status(200).json({
     status: "ok",
@@ -293,31 +514,24 @@ app.get("/medical-supplies/socket-status", (req, res) => {
   });
 });
 
-/**
- * Initialize the medical supplies server with chat functionality
- * @param {Object} parentApp - Optional parent Express app to attach as middleware
- * @returns {Object} Server instance with Socket.IO
- */
 const initializeMedicalSuppliesServer = async (parentApp = null) => {
   try {
-    // Set up Apollo Server with Express
     const apolloServer = await setupApolloServer(app);
 
     if (parentApp) {
-      // If parent app is provided, mount as middleware
       parentApp.use("/medical-supplies", app);
       console.log("✅ Medical supplies server initialized as middleware");
       console.log("💬 Chat Socket.IO enabled for real-time messaging");
+      console.log("🔔 Notification system enabled");
 
       return {
         app,
         httpServer,
         apolloServer,
         io,
-        socketUtils: getChatSocketUtils(),
+        socketUtils: getSocketUtils(),
       };
     } else {
-      // Otherwise start as standalone server
       const PORT = process.env.MEDICAL_SUPPLIES_SERVER_PORT || 4001;
 
       await new Promise((resolve) => {
@@ -326,10 +540,12 @@ const initializeMedicalSuppliesServer = async (parentApp = null) => {
 =======================================================
 🚀 MedLink Medical Supplies Server running on port ${PORT}
 💬 Chat Socket.IO enabled for real-time messaging
+🔔 Notification system enabled with real-time updates
 🔗 GraphQL Playground: http://localhost:${PORT}/graphql
 📊 Health Check: http://localhost:${PORT}/medical-supplies/health
 🔌 Socket Status: http://localhost:${PORT}/medical-supplies/socket-status
 💬 Chat API: http://localhost:${PORT}/api/chat/*
+🔔 Notification API: http://localhost:${PORT}/api/notifications/*
 =======================================================
           `);
           resolve();
@@ -341,7 +557,7 @@ const initializeMedicalSuppliesServer = async (parentApp = null) => {
         httpServer,
         apolloServer,
         io,
-        socketUtils: getChatSocketUtils(),
+        socketUtils: getSocketUtils(),
       };
     }
   } catch (error) {
@@ -349,6 +565,11 @@ const initializeMedicalSuppliesServer = async (parentApp = null) => {
     throw error;
   }
 };
+
+// crone job to clean up old notifications
+cron.schedule("0 0 * * *", () => {
+  BatchModel.notifyAllExpiringBatches();
+});
 
 // Graceful shutdown handling
 process.on("SIGTERM", () => {
@@ -371,7 +592,6 @@ process.on("SIGINT", () => {
   });
 });
 
-// Handle uncaught exceptions
 process.on("uncaughtException", (error) => {
   console.error("❌ Uncaught Exception:", error);
   process.exit(1);
@@ -382,7 +602,6 @@ process.on("unhandledRejection", (reason, promise) => {
   process.exit(1);
 });
 
-// If this file is run directly (not imported)
 if (require.main === module) {
   initializeMedicalSuppliesServer().catch((err) => {
     console.error(
@@ -393,9 +612,5 @@ if (require.main === module) {
   });
 }
 
-// Export for importing in other files
 module.exports = initializeMedicalSuppliesServer;
-
-// Export chat utilities for external use
-module.exports.getChatSocketUtils = getChatSocketUtils;
-
+module.exports.getSocketUtils = getSocketUtils;

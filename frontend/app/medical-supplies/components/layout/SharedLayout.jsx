@@ -27,18 +27,18 @@ import {
 import { SearchBar } from "../ui/Input";
 import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaQuestion } from "react-icons/fa";
-// import { useNotifications } from "../../hooks/useNotifications";
-// import { NotificationDropdown } from "../ui/notificationUI/NotificationDropdown";
-
+import { NotificationDropdown } from "../ui/notificationUI/NotificationDropdown";
+import { useSocketContext } from "../../context/SocketContext";
 export default function SharedLayout({ children, allowedRoles = [] }) {
   const { user, logout, cart } = useMSAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userType, setUserType] = useState("healthFacility"); // Default to patient
   const [unseenChats, setUnseenChats] = useState(2);
-  // const { getUnreadCount } = useNotifications();
+  const { notificationCount} = useSocketContext();
   const [showDropdown, setShowDropdown] = useState(false);
   const triggerRef = useRef(null);
+
 
   // Set user type based on user info
   useEffect(() => {
@@ -401,7 +401,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               </div>
 
               {/* Icons Section */}
-              <div className="flex items-center gap-2 md:gap-4 ">
+              <div className="flex items-center gap-2 md:gap-4 pr-2 ">
                 {/* Chat Icon */}
                 <Link
                   href={`/medical-supplies/${userType}/chats`}
@@ -436,16 +436,16 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                     <IconButton
                       icon={<Bell />}
                       isActive={showDropdown}
-                      badge= {0}//{getUnreadCount()}
+                      badge= {notificationCount}
                     />
                   </div>
 
-                  {/* <NotificationDropdown
+                  <NotificationDropdown
                     isOpen={showDropdown}
                     onClose={() => setShowDropdown(false)}
                     triggerRef={triggerRef}
                     userType={userType}
-                  /> */}
+                  />
                 </div>
 
                 <motion.button

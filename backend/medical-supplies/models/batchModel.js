@@ -7,11 +7,19 @@ const {
   timestamp,
   paginationParams,
 } = require("../../utils/helpers");
+const { createNotificationService } = require("../service/notificationService");
 
 const batchesRef = db.collection("batches");
-const productsRef = db.collection("products"); // To verify product exists and get its type
+const productsRef = db.collection("products");
+const usersRef = db.collection("msUsers");
 
 const BatchModel = {
+  notificationService: null,
+
+  setNotificationService(io) {
+    this.notificationService = createNotificationService(io);
+  },
+
   async getById(batchId) {
     try {
       const doc = await batchesRef.doc(batchId).get();
@@ -23,7 +31,6 @@ const BatchModel = {
           batch.productType = productDoc.data().productType;
         }
       }
-      // console.log("Batch retrieved by ID:", batchId, batch);
       return batch;
     } catch (error) {
       console.error("Error getting batch by ID:", error);
@@ -36,67 +43,41 @@ const BatchModel = {
     { limit, offset, sortBy = "addedAt", sortOrder = "desc" }
   ) {
     try {
-      // console.log("BATCH MODEL: getByProductId called with:", {
-      //   productId,
-      //   limit,
-      //   offset,
-      //   sortBy,
-      //   sortOrder
-      // });
-
       // Guard against invalid productId
       if (!productId) {
         console.warn("getByProductId called with invalid productId");
-        return []; // Return empty array, not null
+        return [];
       }
 
       const { limit: limitVal, offset: offsetVal } = paginationParams(
         limit,
         offset
       );
-      
-      console.log("After pagination params:", {
-        limitVal,
-        offsetVal
-      });
 
       let query = batchesRef
         .where("productId", "==", productId)
         .orderBy(sortBy, sortOrder);
 
-      console.log("Query constructed with productId filter and sorting");
-
       if (offsetVal > 0) {
-        console.log("Applying offset pagination:", offsetVal);
         const offsetSnapshot = await query.limit(offsetVal).get();
-        console.log("Offset snapshot empty?", offsetSnapshot.empty);
         
         if (!offsetSnapshot.empty) {
           const lastVisible =
             offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
           query = query.startAfter(lastVisible);
-          console.log("Applied startAfter for pagination");
         }
       }
 
-      console.log("Executing main query with limit:", limitVal);
       const snapshot = await query.limit(limitVal).get();
-      console.log("Main query executed. Empty?", snapshot.empty);
-
-      // Ensure we always return an array, even if empty
       const results = snapshot.empty ? [] : formatDocs(snapshot.docs);
-      console.log(`Query returned ${results.length} results`);
 
       // Get product type to add to each batch
       let productType = null;
       try {
-        console.log("Fetching product details for type:", productId);
         const productDoc = await productsRef.doc(productId).get();
-        console.log("Product exists?", productDoc.exists);
         
         if (productDoc.exists) {
           productType = productDoc.data().productType;
-          console.log("Product type:", productType);
         }
       } catch (err) {
         console.error("Error fetching product type:", err);
@@ -105,17 +86,16 @@ const BatchModel = {
       // Add productType to each batch if available
       const enrichedResults = results.map((batch) => ({
         ...batch,
-        productType: productType || batch.productType, // Use existing or new
+        productType: productType || batch.productType,
       }));
       
-      console.log("Returning enriched batches:", enrichedResults.length);
       return enrichedResults;
     } catch (error) {
       console.error("Error getting batches by product ID:", error);
-      // Always return empty array on error, never null
       return [];
     }
   },
+
   async getAll({ limit, offset, sortBy = "addedAt", sortOrder = "desc" }) {
     try {
       const { limit: limitVal, offset: offsetVal } = paginationParams(
@@ -137,12 +117,11 @@ const BatchModel = {
       return snapshot.empty ? [] : formatDocs(snapshot.docs);
     } catch (error) {
       console.error("Error getting all batches:", error);
-      return []; // Return empty array on error
+      return [];
     }
   },
 
   async create(batchData, productType) {
-    // productType helps to validate specific fields
     try {
       // Verify product exists
       const productDoc = await productsRef.doc(batchData.productId).get();
@@ -161,17 +140,16 @@ const BatchModel = {
       const sanitizedData = sanitizeInput(batchData);
       const now = timestamp();
 
-      const newBatchRef = batchesRef.doc(); // Auto-generate ID
+      const newBatchRef = batchesRef.doc();
       const newBatch = {
-        batchId: newBatchRef.id, // Store the ID within the document
+        batchId: newBatchRef.id,
         ...sanitizedData,
-        // Add the productType directly to the batch document for easier type resolution
         productType: productType,
         addedAt: now,
         lastUpdatedAt: now,
       };
 
-      // Ensure expiryDate is a Firestore Timestamp if provided
+      // Handle expiryDate conversion
       if (
         newBatch.expiryDate &&
         !(newBatch.expiryDate instanceof admin.firestore.Timestamp) &&
@@ -192,17 +170,14 @@ const BatchModel = {
       const doc = await newBatchRef.get();
       const formattedDoc = formatDoc(doc);
 
-      // Always include the productType in the returned document
       if (formattedDoc) {
         formattedDoc.productType = productType;
 
-        // For better GraphQL resolver handling, also include basic product info
         const productData = productDoc.data();
         formattedDoc.product = {
           productId: batchData.productId,
           productType: productType,
           name: productData.name,
-          // Include other required Product fields as needed
           originalListerId: productData.originalListerId,
           originalListerName: productData.originalListerName,
           isActive: productData.isActive,
@@ -211,6 +186,16 @@ const BatchModel = {
           ownerId: productData.ownerId || productData.originalListerId,
           ownerName: productData.ownerName || productData.originalListerName,
         };
+
+        // Send notification to product owner about new batch
+        await this.notifyBatchCreated(
+          productData.ownerId || productData.originalListerId,
+          formattedDoc,
+          productData
+        );
+
+        // Check if batch is expiring soon and notify
+        await this.checkAndNotifyExpiringBatch(formattedDoc, productData);
       }
 
       return formattedDoc;
@@ -228,13 +213,14 @@ const BatchModel = {
         throw new Error("Batch not found");
       }
 
+      const oldBatchData = doc.data();
       const sanitizedData = sanitizeInput(updateData);
       const updatedBatch = {
         ...sanitizedData,
-        // lastUpdatedAt: timestamp(), // Batches table doesn't have lastUpdatedAt, but could be added
+        lastUpdatedAt: timestamp(),
       };
 
-      // Ensure expiryDate is a Firestore Timestamp if provided and being updated
+      // Handle expiryDate conversion for updates
       if (
         updatedBatch.expiryDate &&
         !(updatedBatch.expiryDate instanceof admin.firestore.Timestamp) &&
@@ -254,13 +240,28 @@ const BatchModel = {
       await batchRef.update(updatedBatch);
       const updatedDoc = await batchRef.get();
       const formattedDoc = formatDoc(updatedDoc);
+      
       if (formattedDoc) {
-        // Add productType hint if possible by fetching product
+        // Add productType hint
         const productDoc = await productsRef.doc(formattedDoc.productId).get();
         if (productDoc.exists) {
           formattedDoc.productType = productDoc.data().productType;
+          const productData = productDoc.data();
+
+          // Send notification about batch update
+          await this.notifyBatchUpdated(
+            productData.ownerId || productData.originalListerId,
+            formattedDoc,
+            oldBatchData,
+            updateData,
+            productData
+          );
+
+          // Check if updated batch is now expiring soon
+          await this.checkAndNotifyExpiringBatch(formattedDoc, productData);
         }
       }
+      
       return formattedDoc;
     } catch (error) {
       console.error("Error updating batch:", error);
@@ -275,14 +276,271 @@ const BatchModel = {
       if (!doc.exists) {
         throw new Error("Batch not found for deletion");
       }
+
+      const batchData = doc.data();
+      
+      // Get product info for notification
+      const productDoc = await productsRef.doc(batchData.productId).get();
+      let productData = null;
+      if (productDoc.exists) {
+        productData = productDoc.data();
+      }
+
       await batchRef.delete();
+
+      // Send notification about batch deletion
+      if (productData) {
+        await this.notifyBatchDeleted(
+          productData.ownerId || productData.originalListerId,
+          batchData,
+          productData
+        );
+      }
+
       return true;
     } catch (error) {
       console.error("Error deleting batch:", error);
       throw error;
     }
   },
+
+  // Notification methods
+  async notifyBatchCreated(userId, batchData, productData) {
+    if (!this.notificationService || !userId) return;
+
+    try {
+      const message = `New batch added for ${productData.name}`;
+      const metadata = {
+        batchId: batchData.batchId,
+        productId: batchData.productId,
+        productName: productData.name,
+        quantity: batchData.quantity,
+        actionUrl: `/products/${batchData.productId}/batches`,
+        batchNumber: batchData.batchNumber || batchData.batchId,
+      };
+
+      await this.notificationService.createNotification(
+        userId,
+        "batch_created",
+        message,
+        metadata,
+        "normal"
+      );
+    } catch (error) {
+      console.error("Error sending batch created notification:", error);
+    }
+  },
+
+  async notifyBatchUpdated(userId, newBatchData, oldBatchData, updateData, productData) {
+    if (!this.notificationService || !userId) return;
+
+    try {
+      // Determine what was updated
+      const changes = [];
+      if (updateData.quantity && updateData.quantity !== oldBatchData.quantity) {
+        changes.push(`quantity: ${oldBatchData.quantity} → ${updateData.quantity}`);
+      }
+      if (updateData.expiryDate) {
+        changes.push('expiry date updated');
+      }
+      if (updateData.location && updateData.location !== oldBatchData.location) {
+        changes.push(`location: ${updateData.location}`);
+      }
+
+      const changeText = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+      const message = `Batch updated for ${productData.name}${changeText}`;
+
+      const metadata = {
+        batchId: newBatchData.batchId,
+        productId: newBatchData.productId,
+        productName: productData.name,
+        changes: updateData,
+        actionUrl: `/products/${newBatchData.productId}/batches`,
+        batchNumber: newBatchData.batchNumber || newBatchData.batchId,
+      };
+
+      // Use higher priority if quantity significantly changed
+      const priority = updateData.quantity && 
+        Math.abs(updateData.quantity - oldBatchData.quantity) > (oldBatchData.quantity * 0.5) 
+        ? "high" : "normal";
+
+      await this.notificationService.createNotification(
+        userId,
+        "batch_updated",
+        message,
+        metadata,
+        priority
+      );
+    } catch (error) {
+      console.error("Error sending batch updated notification:", error);
+    }
+  },
+
+  async notifyBatchDeleted(userId, batchData, productData) {
+    if (!this.notificationService || !userId) return;
+
+    try {
+      const message = `Batch removed from ${productData.name}`;
+      const metadata = {
+        batchId: batchData.batchId,
+        productId: batchData.productId,
+        productName: productData.name,
+        quantity: batchData.quantity,
+        actionUrl: `/products/${batchData.productId}/batches`,
+        batchNumber: batchData.batchNumber || batchData.batchId,
+      };
+
+      await this.notificationService.createNotification(
+        userId,
+        "batch_deleted",
+        message,
+        metadata,
+        "normal"
+      );
+    } catch (error) {
+      console.error("Error sending batch deleted notification:", error);
+    }
+  },
+
+  async checkAndNotifyExpiringBatch(batchData, productData) {
+    if (!this.notificationService || !batchData.expiryDate) return;
+
+    try {
+      const now = new Date();
+      const expiryDate = batchData.expiryDate.toDate ? batchData.expiryDate.toDate() : new Date(batchData.expiryDate);
+      const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+      // Notify if expiring within 7 days
+      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
+        const message = daysUntilExpiry === 1 
+          ? `Batch for ${productData.name} expires tomorrow!`
+          : `Batch for ${productData.name} expires in ${daysUntilExpiry} days`;
+
+        const priority = daysUntilExpiry <= 2 ? "urgent" : daysUntilExpiry <= 5 ? "high" : "normal";
+
+        const metadata = {
+          batchId: batchData.batchId,
+          productId: batchData.productId,
+          productName: productData.name,
+          expiryDate: expiryDate.toISOString(),
+          daysUntilExpiry,
+          actionUrl: `/products/${batchData.productId}/batches`,
+          batchNumber: batchData.batchNumber || batchData.batchId,
+        };
+
+        await this.notificationService.createNotification(
+          productData.ownerId || productData.originalListerId,
+          "batch_expiring",
+          message,
+          metadata,
+          priority
+        );
+      }
+      // Notify if already expired
+      else if (daysUntilExpiry <= 0) {
+        const message = `Batch for ${productData.name} has expired!`;
+        
+        const metadata = {
+          batchId: batchData.batchId,
+          productId: batchData.productId,
+          productName: productData.name,
+          expiryDate: expiryDate.toISOString(),
+          daysOverdue: Math.abs(daysUntilExpiry),
+          actionUrl: `/products/${batchData.productId}/batches`,
+          batchNumber: batchData.batchNumber || batchData.batchId,
+        };
+
+        await this.notificationService.createNotification(
+          productData.ownerId || productData.originalListerId,
+          "batch_expired",
+          message,
+          metadata,
+          "urgent"
+        );
+      }
+    } catch (error) {
+      console.error("Error checking batch expiry:", error);
+    }
+  },
+
+  // Method to notify low stock based on batch quantities
+  async checkAndNotifyLowStock(productId) {
+    if (!this.notificationService) return;
+
+    try {
+      // Get all batches for this product
+      const batchesSnapshot = await batchesRef
+        .where("productId", "==", productId)
+        .get();
+
+      if (batchesSnapshot.empty) return;
+
+      // Calculate total available quantity
+      let totalQuantity = 0;
+      batchesSnapshot.docs.forEach(doc => {
+        const batch = doc.data();
+        if (batch.quantity && batch.quantity > 0) {
+          totalQuantity += batch.quantity;
+        }
+      });
+
+      // Get product details
+      const productDoc = await productsRef.doc(productId).get();
+      if (!productDoc.exists) return;
+
+      const productData = productDoc.data();
+      const minimumStock = productData.minimumStock || 10; // Default minimum stock
+
+      // Check if stock is low
+      if (totalQuantity <= minimumStock) {
+        await this.notificationService.notifyLowInventory(
+          productData.ownerId || productData.originalListerId,
+          {
+            productId,
+            productName: productData.name,
+            currentStock: totalQuantity,
+            minimumStock,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error checking low stock:", error);
+    }
+  },
+
+  // Method to send bulk notifications for expiring batches (can be called by a cron job)
+  async notifyAllExpiringBatches() {
+    if (!this.notificationService) return;
+
+    try {
+      const now = new Date();
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      // Get batches expiring within 7 days
+      const expiringBatchesSnapshot = await batchesRef
+        .where("expiryDate", "<=", admin.firestore.Timestamp.fromDate(sevenDaysFromNow))
+        .where("expiryDate", ">", admin.firestore.Timestamp.fromDate(now))
+        .get();
+
+      const notificationPromises = expiringBatchesSnapshot.docs.map(async (doc) => {
+        const batchData = { ...doc.data(), batchId: doc.id };
+        
+        try {
+          const productDoc = await productsRef.doc(batchData.productId).get();
+          if (productDoc.exists) {
+            await this.checkAndNotifyExpiringBatch(batchData, productDoc.data());
+          }
+        } catch (error) {
+          console.error(`Error processing expiring batch ${doc.id}:`, error);
+        }
+      });
+
+      await Promise.allSettled(notificationPromises);
+      console.log(`Processed ${expiringBatchesSnapshot.size} expiring batches`);
+    } catch (error) {
+      console.error("Error notifying expiring batches:", error);
+    }
+  },
 };
 
 module.exports = BatchModel;
-

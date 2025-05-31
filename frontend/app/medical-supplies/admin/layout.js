@@ -4,6 +4,7 @@ import { useMSAuth } from "../hooks/useMSAuth";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SharedLayout from "../components/layout/SharedLayout";
+import { SocketProvider } from "../context/SocketContext";
 
 export default function AdminLayout({ children }) {
   const { user, loading } = useMSAuth();
@@ -46,11 +47,11 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="min-h-screen ">
-      <SharedLayout>
-        <main className="pl-2">
-          {children}
-        </main>
-      </SharedLayout>
+      <SocketProvider>
+        <SharedLayout>
+          <main className="">{children}</main>
+        </SharedLayout>
+      </SocketProvider>
     </div>
   );
 }

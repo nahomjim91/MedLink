@@ -449,7 +449,7 @@ const productResolvers = {
           );
 
         // Check if user is the original lister or admin
-        if (user.role !== "admin" && product.originalListerId !== user.uid) {
+        if (user.role !== "admin" && product.ownerId !== user.uid) {
           throw new ForbiddenError(
             "You do not have permission to add batches to this product."
           );
@@ -493,8 +493,8 @@ const productResolvers = {
         if (product.productType !== "EQUIPMENT")
           throw new UserInputError("Product is not an equipment product.");
 
-        // Check if user is the original lister or admin
-        if (user.role !== "admin" && product.originalListerId !== user.uid) {
+        // Check if user is the owner lister or admin
+        if (user.role !== "admin" && product.ownerId !== user.uid) {
           throw new ForbiddenError(
             "You do not have permission to add batches to this product."
           );

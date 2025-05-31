@@ -3,6 +3,7 @@ const { db, FieldValue } = require("../../config/firebase");
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers");
 const ProductModel = require("./productModel");
 const BatchModel = require("./batchModel");
+const { createNotificationService } = require("../service/notificationService");
 
 // Collection references
 const cartsRef = db.collection("carts");
@@ -13,12 +14,17 @@ const cartBatchItemsRef = db.collection("cartBatchItems");
  * Cart Model
  */
 const CartModel = {
+  notificationService: null,
+
+  setNotificationService(io) {
+    this.notificationService = createNotificationService(io);
+  },
+
   /**
    * Get user's cart
    * @param {String} userId - User ID
    * @returns {Object} Cart data
    */
-
   async getByUserId(userId) {
     try {
       // Get cart document
@@ -31,7 +37,7 @@ const CartModel = {
           totalItems: 0,
           totalPrice: 0,
           items: [],
-          lastUpdated: new Date(), // Use Date object instead of timestamp()
+          lastUpdated: new Date(),
         };
 
         // Optionally create the empty cart document
@@ -45,8 +51,6 @@ const CartModel = {
 
       // Return cart with items
       const cart = formatDoc(cartDoc);
-      // console.log("Cart found:", cart);
-      // console.log("Cart items:", cartItems);
       return { ...cart, items: cartItems };
     } catch (error) {
       console.error("Error getting cart:", error);
@@ -151,8 +155,6 @@ const CartModel = {
       }
 
       // Get available batches for the product, sorted by priority
-      // For drugs, sort by expiry date (closest first)
-      // For equipment, sort by added date (oldest first)
       const sortBy = product.productType === "DRUG" ? "expiryDate" : "addedAt";
       const sortOrder = product.productType === "DRUG" ? "asc" : "asc";
 
@@ -167,6 +169,14 @@ const CartModel = {
         0
       );
       if (totalAvailable < quantity) {
+        // Send low stock warning notification
+        if (this.notificationService && totalAvailable > 0) {
+          await this.notificationService.notifyLowStockWarning(
+            userId,
+            product.name,
+            totalAvailable
+          );
+        }
         throw new Error(
           `Not enough quantity available. Requested: ${quantity}, Available: ${totalAvailable}`
         );
@@ -196,7 +206,7 @@ const CartModel = {
       }
 
       // Add batches to cart
-      return await this.addBatchAllocationsToCart(
+      const updatedCart = await this.addBatchAllocationsToCart(
         userId,
         productId,
         product.name,
@@ -207,6 +217,24 @@ const CartModel = {
           : null,
         batchAllocations
       );
+
+      // Send success notification
+      if (this.notificationService) {
+        await this.notificationService.notifyCartUpdate(
+          userId,
+          "added",
+          product.name,
+          {
+            productId,
+            quantity,
+            totalPrice: batchAllocations.reduce((sum, batch) => 
+              sum + (batch.quantity * batch.unitPrice), 0
+            )
+          }
+        );
+      }
+
+      return updatedCart;
     } catch (error) {
       console.error("Error adding to cart:", error);
       throw error;
@@ -242,6 +270,14 @@ const CartModel = {
 
       // Check if enough quantity is available
       if (batch.quantity < quantity) {
+        // Send low stock warning notification
+        if (this.notificationService && batch.quantity > 0) {
+          await this.notificationService.notifyLowStockWarning(
+            userId,
+            product.name,
+            batch.quantity
+          );
+        }
         throw new Error(
           `Not enough quantity available. Requested: ${quantity}, Available: ${batch.quantity}`
         );
@@ -259,7 +295,7 @@ const CartModel = {
       };
 
       // Add batch to cart
-      return await this.addBatchAllocationsToCart(
+      const updatedCart = await this.addBatchAllocationsToCart(
         userId,
         productId,
         product.name,
@@ -270,6 +306,23 @@ const CartModel = {
           : null,
         [batchAllocation]
       );
+
+      // Send success notification
+      if (this.notificationService) {
+        await this.notificationService.notifyCartUpdate(
+          userId,
+          "added",
+          product.name,
+          {
+            productId,
+            batchId,
+            quantity,
+            totalPrice: quantity * batch.sellingPrice
+          }
+        );
+      }
+
+      return updatedCart;
     } catch (error) {
       console.error("Error adding specific batch to cart:", error);
       throw error;
@@ -282,6 +335,7 @@ const CartModel = {
    * @param {String} productId - Product ID
    * @param {String} productName - Product name
    * @param {String} productType - Product type
+   * @param {String} productCategory - Product category
    * @param {String} productImage - Product image URL
    * @param {Array} batchAllocations - Batch allocations
    * @returns {Object} Updated cart
@@ -441,6 +495,10 @@ const CartModel = {
         throw new Error("Batch item not found in cart");
       }
 
+      // Get product name for notification
+      const product = await ProductModel.getById(productId);
+      const productName = product ? product.name : "Product";
+
       // Check if quantity is valid
       if (quantity <= 0) {
         // Remove batch item if quantity is 0 or negative
@@ -453,6 +511,7 @@ const CartModel = {
       // Get existing batch data
       const batchData = cartBatchDoc.data();
       const unitPrice = batchData.unitPrice;
+      const oldQuantity = batchData.quantity;
 
       // Update batch item
       batch.update(cartBatchItemsRef.doc(cartBatchId), {
@@ -518,6 +577,23 @@ const CartModel = {
       // Commit all changes
       await batch.commit();
 
+      // Send notification
+      if (this.notificationService) {
+        const action = quantity > oldQuantity ? "increased" : "decreased";
+        await this.notificationService.notifyCartUpdate(
+          userId,
+          "updated",
+          productName,
+          {
+            productId,
+            batchId,
+            oldQuantity,
+            newQuantity: quantity,
+            action
+          }
+        );
+      }
+
       // Return updated cart
       return await this.getByUserId(userId);
     } catch (error) {
@@ -542,6 +618,10 @@ const CartModel = {
         throw new Error("Product not found in cart");
       }
 
+      // Get product name for notification
+      const cartData = cartItemDoc.data();
+      const productName = cartData.productName || "Product";
+
       // Start a Firestore batch operation
       const batch = db.batch();
 
@@ -558,7 +638,6 @@ const CartModel = {
       batch.delete(cartItemsRef.doc(cartItemId));
 
       // Update cart totals
-      const cartData = cartItemDoc.data();
       const itemQuantity = cartData.totalQuantity || 0;
       const itemPrice = cartData.totalPrice || 0;
 
@@ -570,6 +649,19 @@ const CartModel = {
 
       // Commit all changes
       await batch.commit();
+
+      // Send notification
+      if (this.notificationService) {
+        await this.notificationService.notifyCartUpdate(
+          userId,
+          "removed",
+          productName,
+          {
+            productId,
+            quantity: itemQuantity
+          }
+        );
+      }
 
       // Return updated cart
       return await this.getByUserId(userId);
@@ -596,6 +688,11 @@ const CartModel = {
       if (!cartBatchDoc.exists) {
         throw new Error("Batch item not found in cart");
       }
+
+      // Get product name for notification
+      const cartItemDoc = await cartItemsRef.doc(cartItemId).get();
+      const productName = cartItemDoc.exists ? 
+        cartItemDoc.data().productName : "Product";
 
       // Start a Firestore batch operation
       const batch = db.batch();
@@ -645,6 +742,20 @@ const CartModel = {
       // Commit all changes
       await batch.commit();
 
+      // Send notification
+      if (this.notificationService) {
+        await this.notificationService.notifyCartUpdate(
+          userId,
+          "removed",
+          productName,
+          {
+            productId,
+            batchId,
+            quantity: batchQuantity
+          }
+        );
+      }
+
       // Return updated cart
       return await this.getByUserId(userId);
     } catch (error) {
@@ -691,6 +802,16 @@ const CartModel = {
 
       // Commit all changes
       await batch.commit();
+
+      // Send notification
+      if (this.notificationService) {
+        await this.notificationService.notifyCartUpdate(
+          userId,
+          "cleared",
+          "cart",
+          {}
+        );
+      }
 
       // Return empty cart
       return {

@@ -1,37 +1,54 @@
-'use client';
-import {
-  Bell,
-  X,
-  CheckCheck,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  Package,
-  UserPlus,
-  Calendar,
-  Settings,
-} from "lucide-react";
+import { useEffect, useRef } from "react";
+import { useSocketContext } from "../../../context/SocketContext";
 import Link from "next/link";
-
-const { useNotifications } = require("../../../hooks/useNotifications");
-const { useRef, useEffect  } = require("react");
+import { AlertCircle, Bell, Check, CheckCheck, X, UserPlus, Calendar, Settings, Info, CheckCircle, Package } from "lucide-react";
 
 // Mini Notification Dropdown Component
 export const NotificationDropdown = ({
   isOpen,
   onClose,
   triggerRef,
-  userType,
+  userType = 'user',
 }) => {
   const {
     notifications,
-    getUnreadCount,
-    markAsRead,
-    markAllAsRead,
-    removeNotification,
-  } = useNotifications();
+    notificationCount,
+    markNotificationsAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification,
+    isConnected
+  } = useSocketContext();
+  
   const dropdownRef = useRef(null);
   const recentNotifications = notifications.slice(0, 5);
+
+  const getUnreadCount = () => {
+    return notifications.filter(n => !n.isRead).length;
+  };
+
+  const handleMarkAsRead = async (notificationIds) => {
+    try {
+      await markNotificationsAsRead(notificationIds);
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
+  };
+
+  const handleRemoveNotification = async (notificationId) => {
+    try {
+      await deleteNotification(notificationId);
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -63,11 +80,16 @@ export const NotificationDropdown = ({
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">Notifications</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-gray-900">Notifications</h3>
+          {!isConnected && (
+            <span className="w-2 h-2 bg-red-500 rounded-full" title="Disconnected"></span>
+          )}
+        </div>
         {getUnreadCount() > 0 && (
           <button
-            onClick={markAllAsRead}
-            className="text-sm text-primary/70 hover:text-primary flex items-center gap-1"
+            onClick={handleMarkAllAsRead}
+            className="text-sm text-gray-600 hover:text-primary flex items-center gap-1"
           >
             <CheckCheck className="w-4 h-4" />
             Mark all read
@@ -76,13 +98,15 @@ export const NotificationDropdown = ({
       </div>
 
       {/* Notification List */}
-      <div className="max-h-64  overflow-y-auto">
+      <div className="max-h-64 overflow-y-auto">
         {recentNotifications.length > 0 ? (
           recentNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+              className={`px-3 py-1.5 border-b border-primary/10 hover:bg-primary/10 transition-colors ${
                 !notification.isRead ? "bg-blue-50/30" : ""
+              } ${notification.isUrgent ? 'bg-orange-50/50' : ''} ${
+                notification.isEmergency ? 'bg-red-50/50' : ''
               }`}
             >
               <div className="flex items-start gap-3">
@@ -95,7 +119,11 @@ export const NotificationDropdown = ({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-900 mb-1">
+                  <div className="flex items-center gap-1 mb-1">
+                    {notification.isUrgent && <span className="text-xs">🚨</span>}
+                    {notification.isEmergency && <span className="text-xs">🆘</span>}
+                  </div>
+                  <p className="text-sm text-gray-900 mb-1 line-clamp-2">
                     {notification.message}
                   </p>
                   <div className="flex items-center justify-between">
@@ -105,53 +133,55 @@ export const NotificationDropdown = ({
                     <div className="flex items-center gap-1">
                       {!notification.isRead && (
                         <button
-                          onClick={() => markAsRead([notification.id])}
-                          className="text-blue-600 hover:text-blue-700 p-1"
+                          onClick={() => handleMarkAsRead([notification.id])}
+                          className="text-gray-400 hover:text-primary p-1"
                           title="Mark as read"
                         >
-                          <ChecK className="w-3 h-3" />
+                          <Check className="w-4 h-4" />
                         </button>
                       )}
                       <button
-                        onClick={() => removeNotification(notification.id)}
+                        onClick={() => handleRemoveNotification(notification.id)}
                         className="text-gray-400 hover:text-red-500 p-1"
                         title="Remove"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 </div>
 
                 {!notification.isRead && (
-                  <div className="w-2 h-2 bg-primary/25 rounded-full flex-shrink-0 mt-2"></div>
+                  <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"></div>
                 )}
               </div>
             </div>
           ))
         ) : (
-          <Link
-            href={`/medical-supplies/${userType}/user-notifications`}
-            className="p-2 text-center text-gray-500"
-          >
-            <Bell className="w-8 h-8 mx-auto mb-2 text-primary" />
+          <div className="p-6 text-center text-gray-500">
+            <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p className="text-sm">No notifications yet</p>
-          </Link>
+          </div>
         )}
       </div>
 
       {/* Footer */}
       {recentNotifications.length > 0 && (
         <div className="p-3 border-t border-gray-100 text-center">
-          <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+          <Link
+            href={`/medical-supplies/${userType}/user-notifications`}
+            className="text-sm text-primary/70 hover:text-primary font-medium"
+            onClick={onClose}
+          >
             View all notifications
-          </button>
+          </Link>
         </div>
       )}
     </div>
   );
 };
 
+// Utility Functions
 export const formatRelativeTime = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -160,8 +190,7 @@ export const formatRelativeTime = (dateString) => {
   if (diffInSeconds < 60) return "Just now";
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-  if (diffInSeconds < 604800)
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
   return date.toLocaleDateString();
 };
 

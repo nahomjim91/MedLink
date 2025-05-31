@@ -1,10 +1,10 @@
 // /models/orderModel.js
 const { db, FieldValue } = require("../../config/firebase");
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers");
-const CartModel = require("./cartModel");
 const MSUserModel = require("./msUser");
 const ProductModel = require("./productModel");
 const BatchModel = require("./batchModel");
+const { createNotificationService } = require("../service/notificationService");
 
 // Collection references
 const ordersRef = db.collection("orders");
@@ -17,6 +17,11 @@ const batchesRef = db.collection("batches");
  * Order Model
  */
 const OrderModel = {
+  notificationService: null,
+
+  setNotificationService(io) {
+    this.notificationService = createNotificationService(io);
+  },
   /**
    * Create order directly (for frontend data)
    * @param {Object} orderData - Complete order data from frontend
@@ -54,7 +59,7 @@ const OrderModel = {
         throw new Error("Missing required order fields");
       }
 
-      // Create main order
+      // Create main order (existing logic)
       const order = {
         orderId,
         orderNumber: orderNumber || (await this.getNextOrderNumber()),
@@ -87,7 +92,7 @@ const OrderModel = {
 
       batch.set(ordersRef.doc(orderId), order);
 
-      // Process items
+      // Process items (existing logic)
       for (const item of items) {
         const orderItem = {
           orderItemId: item.orderItemId,
@@ -104,7 +109,7 @@ const OrderModel = {
 
         batch.set(orderItemsRef.doc(item.orderItemId), orderItem);
 
-        // Process batch items
+        // Process batch items (existing logic)
         if (item.batchItems && item.batchItems.length > 0) {
           for (const batchItem of item.batchItems) {
             const orderBatchItem = {
@@ -142,10 +147,13 @@ const OrderModel = {
       // Commit all changes
       await batch.commit();
 
+      // Send notifications after successful order creation
+      await this.sendOrderNotifications("create", order, items);
+
       // Return complete order with items
       return await this.getById(orderId);
     } catch (error) {
-      console.error("Error creating order direct:", error);
+      console.error("Error creating order:", error);
       throw error;
     }
   },
@@ -754,9 +762,7 @@ const OrderModel = {
         query = query.where("status", "==", status);
       }
 
-      const ordersSnapshot = await query
-        .orderBy("createdAt", "desc")
-        .get();
+      const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
 
       return await Promise.all(
         formatDocs(ordersSnapshot.docs).map(async (order) => {
@@ -777,7 +783,7 @@ const OrderModel = {
    */
   async getBySellerId(sellerId, options = {}) {
     try {
-      const {status } = options;
+      const { status } = options;
 
       let query = ordersRef.where("sellerId", "==", sellerId);
 
@@ -785,9 +791,7 @@ const OrderModel = {
         query = query.where("status", "==", status);
       }
 
-      const ordersSnapshot = await query
-        .orderBy("createdAt", "desc")
-        .get();
+      const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
 
       return await Promise.all(
         formatDocs(ordersSnapshot.docs).map(async (order) => {
@@ -877,7 +881,7 @@ const OrderModel = {
 
       // Check permissions
       if (status === "confirmed" || status === "rejected-by-seller") {
-        console.log("userId: " , userId, "order: " , order )
+        console.log("userId: ", userId, "order: ", order);
         if (userId !== order.sellerId) {
           throw new Error("Only seller can confirm or reject orders");
         }

@@ -249,6 +249,7 @@ export default function ProductPage() {
   if (error) return <p>Error loading product: {error.message}</p>;
   if (!productData) return <p>No product found</p>;
 
+
   const batchesColumns = (productType) => {
     console.log("productType", productType);
     return productType === "DRUG"
@@ -310,6 +311,7 @@ export default function ProductPage() {
     : [];
   const totalCount = productData.batches?.length || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+  // console.log("prodcut details" , productData)
 
   return (
     <div className="relative bg-white rounded-lg py-1.5 shadow-sm h-full">

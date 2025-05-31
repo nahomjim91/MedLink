@@ -61,11 +61,11 @@ export default function RoleLayout({ children }) {
 
   return (
     <div className="min-h-screen ">
-      <SharedLayout>
-        <SocketProvider>
+      <SocketProvider>
+        <SharedLayout>
           <main className="">{children}</main>
-        </SocketProvider>
-      </SharedLayout>
+        </SharedLayout>
+      </SocketProvider>
     </div>
   );
 }

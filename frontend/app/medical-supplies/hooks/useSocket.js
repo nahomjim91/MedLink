@@ -4,17 +4,22 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { io } from "socket.io-client";
 import { auth } from "../api/firebase/config";
-import { useMSAuth } from "./useMSAuth";
+
 export const useSocket = () => {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Map());
+  
+  // Notification states
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
+  
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const [token, setToken] = useState(null);
+
   // Get the current user token
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -33,7 +38,7 @@ export const useSocket = () => {
       }
     });
     return () => unsubscribe();
-  });
+  }, []);
 
   // Initialize socket connection
   const initSocket = useCallback(() => {
@@ -67,6 +72,10 @@ export const useSocket = () => {
       console.log("✅ Connected to socket server");
       setIsConnected(true);
       reconnectAttempts.current = 0;
+      
+      // Subscribe to notifications on connect
+      newSocket.emit("subscribe_notifications");
+      newSocket.emit("get_notification_count");
     });
 
     newSocket.on("disconnect", (reason) => {
@@ -113,7 +122,7 @@ export const useSocket = () => {
       });
     });
 
-      // Notification handlers
+    // Enhanced notification handlers
     newSocket.on("notification", (notification) => {
       console.log("📩 New notification received:", notification);
       setNotifications((prev) => [notification, ...prev]);
@@ -128,6 +137,67 @@ export const useSocket = () => {
       }
     });
 
+    newSocket.on("notification_count_update", ({ count }) => {
+      console.log("📊 Notification count updated:", count);
+      setNotificationCount(count);
+      setUnreadCount(count);
+    });
+
+    newSocket.on("urgent_notification", (notification) => {
+      console.log("🚨 Urgent notification received:", notification);
+      setNotifications((prev) => [{ ...notification, isUrgent: true }, ...prev]);
+      
+      // Show urgent browser notification
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(`🚨 URGENT: ${notification.message}`, {
+          icon: '/urgent-icon.png',
+          requireInteraction: true,
+          tag: `urgent-${notification.id}`
+        });
+      }
+    });
+
+    newSocket.on("emergency_notification", (notification) => {
+      console.log("🆘 Emergency notification received:", notification);
+      setNotifications((prev) => [{ ...notification, isEmergency: true }, ...prev]);
+      
+      // Show emergency alert
+      if (typeof window !== 'undefined') {
+        alert(`EMERGENCY: ${notification.message}`);
+      }
+    });
+
+    newSocket.on("notifications_marked_read", ({ notificationIds }) => {
+      console.log("✅ Notifications marked as read:", notificationIds);
+      setNotifications((prev) => prev.map(notif => 
+        notificationIds.includes(notif.id) 
+          ? { ...notif, isRead: true, readAt: new Date().toISOString() }
+          : notif
+      ));
+    });
+
+    newSocket.on("all_notifications_marked_read", ({ type }) => {
+      console.log("✅ All notifications marked as read:", type);
+      setNotifications((prev) => prev.map(notif => 
+        !type || notif.type === type
+          ? { ...notif, isRead: true, readAt: new Date().toISOString() }
+          : notif
+      ));
+    });
+
+    newSocket.on("notification_deleted", ({ notificationId }) => {
+      console.log("🗑️ Notification deleted:", notificationId);
+      setNotifications((prev) => prev.filter(notif => notif.id !== notificationId));
+    });
+
+    newSocket.on("notifications_bulk_deleted", (data) => {
+      console.log("🗑️ Notifications bulk deleted:", data);
+      // You might want to refetch notifications here or update based on the data
+    });
+
+    newSocket.on("notification_error", ({ message }) => {
+      console.error("❌ Notification error:", message);
+    });
 
     setSocket(newSocket);
     return newSocket;
@@ -145,6 +215,9 @@ export const useSocket = () => {
         setIsConnected(false);
         setOnlineUsers([]);
         setTypingUsers(new Map());
+        setNotifications([]);
+        setUnreadCount(0);
+        setNotificationCount(0);
       }
     }
 
@@ -175,7 +248,7 @@ export const useSocket = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Socket utility functions
+  // Chat utility functions
   const joinChat = useCallback(
     (chatId) => {
       if (socket && isConnected) {
@@ -230,8 +303,47 @@ export const useSocket = () => {
     [socket, isConnected]
   );
 
-  // notification functions
-   const sendNotification = useCallback(
+  // Enhanced notification functions
+  const subscribeNotifications = useCallback(() => {
+    if (socket && isConnected) {
+      socket.emit("subscribe_notifications");
+    }
+  }, [socket, isConnected]);
+
+  const getNotificationCount = useCallback(() => {
+    if (socket && isConnected) {
+      socket.emit("get_notification_count");
+    }
+  }, [socket, isConnected]);
+
+  const markNotificationsRead = useCallback(
+    (notificationIds) => {
+      if (socket && isConnected) {
+        socket.emit("mark_notifications_read", { notificationIds });
+      }
+    },
+    [socket, isConnected]
+  );
+
+  const markAllNotificationsRead = useCallback(
+    (type = null) => {
+      if (socket && isConnected) {
+        socket.emit("mark_all_notifications_read", { type });
+      }
+    },
+    [socket, isConnected]
+  );
+
+  const notificationInteracted = useCallback(
+    (notificationId, action) => {
+      if (socket && isConnected) {
+        socket.emit("notification_interacted", { notificationId, action });
+      }
+    },
+    [socket, isConnected]
+  );
+
+  const sendNotification = useCallback(
     (userId, type, message, metadata = {}) => {
       if (socket && isConnected) {
         socket.emit("send_notification", {
@@ -248,6 +360,7 @@ export const useSocket = () => {
   const clearNotifications = useCallback(() => {
     setNotifications([]);
     setUnreadCount(0);
+    setNotificationCount(0);
   }, []);
 
   const markNotificationAsRead = useCallback((notificationId) => {
@@ -257,6 +370,7 @@ export const useSocket = () => {
       )
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
+    setNotificationCount((prev) => Math.max(0, prev - 1));
   }, []);
 
   const disconnect = useCallback(() => {
@@ -266,6 +380,9 @@ export const useSocket = () => {
       setIsConnected(false);
       setOnlineUsers([]);
       setTypingUsers(new Map());
+      setNotifications([]);
+      setUnreadCount(0);
+      setNotificationCount(0);
     }
   }, [socket]);
 
@@ -276,7 +393,7 @@ export const useSocket = () => {
     }
   }, [token, initSocket]);
 
-  // Subscribe to specific events
+  // Chat event subscriptions
   const onNewMessage = useCallback(
     (callback) => {
       if (socket) {
@@ -307,8 +424,8 @@ export const useSocket = () => {
     [socket]
   );
 
-  // notification functions
-   const onNotification = useCallback(
+  // Enhanced notification event subscriptions
+  const onNotification = useCallback(
     (callback) => {
       if (socket) {
         socket.on("notification", callback);
@@ -318,6 +435,87 @@ export const useSocket = () => {
     [socket]
   );
 
+  const onNotificationCountUpdate = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("notification_count_update", callback);
+        return () => socket.off("notification_count_update", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onUrgentNotification = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("urgent_notification", callback);
+        return () => socket.off("urgent_notification", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onEmergencyNotification = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("emergency_notification", callback);
+        return () => socket.off("emergency_notification", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onNotificationsMarkedRead = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("notifications_marked_read", callback);
+        return () => socket.off("notifications_marked_read", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onAllNotificationsMarkedRead = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("all_notifications_marked_read", callback);
+        return () => socket.off("all_notifications_marked_read", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onNotificationDeleted = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("notification_deleted", callback);
+        return () => socket.off("notification_deleted", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onNotificationsBulkDeleted = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("notifications_bulk_deleted", callback);
+        return () => socket.off("notifications_bulk_deleted", callback);
+      }
+    },
+    [socket]
+  );
+
+  const onNotificationError = useCallback(
+    (callback) => {
+      if (socket) {
+        socket.on("notification_error", callback);
+        return () => socket.off("notification_error", callback);
+      }
+    },
+    [socket]
+  );
+
+  // Utility functions
   const isUserOnline = useCallback(
     (userId) => {
       return onlineUsers.includes(userId);
@@ -351,21 +549,38 @@ export const useSocket = () => {
     // Status functions
     isUserOnline,
 
-     // Notification functions
+    // Enhanced notification functions and state
     notifications,
     unreadCount,
+    notificationCount,
+    subscribeNotifications,
+    getNotificationCount,
+    markNotificationsRead,
+    markAllNotificationsRead,
+    notificationInteracted,
     sendNotification,
     clearNotifications,
     markNotificationAsRead,
-
 
     // Connection functions
     disconnect,
     reconnect,
 
-    // Event subscriptions
+    // Chat event subscriptions
     onNewMessage,
     onMessagesSeen,
     onMessageNotification,
+
+    // Enhanced notification event subscriptions
+    onNotification,
+    onNotificationCountUpdate,
+    onUrgentNotification,
+    onEmergencyNotification,
+    onNotificationsMarkedRead,
+    onAllNotificationsMarkedRead,
+    onNotificationDeleted,
+    onNotificationsBulkDeleted,
+    onNotificationError,
   };
 };
+
