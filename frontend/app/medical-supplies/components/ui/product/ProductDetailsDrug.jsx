@@ -103,11 +103,7 @@ export default function ProductDetailsDrug({
   // Submit form data and proceed
   const handleSubmit = useCallback((e) => {
     if (e) e.preventDefault();
-    
-    // Update parent component with form data
     onUpdate(formData);
-    
-    // Proceed to next step
     onNext();
   }, [formData, onUpdate, onNext]);
 
@@ -124,6 +120,7 @@ export default function ProductDetailsDrug({
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextInput
             name="name"
+            validation="name"
             label="Product Name"
             className="mb-4"
             placeholder="Enter your product name"
@@ -194,7 +191,7 @@ export default function ProductDetailsDrug({
         </div>
 
         <StepButtons
-          onNext={handleSubmit}
+          onNext={isFormValid  && handleSubmit}
           onPrevious={onPrevious}
           nextDisabled={!isFormValid}
           isLoading={isLoading}

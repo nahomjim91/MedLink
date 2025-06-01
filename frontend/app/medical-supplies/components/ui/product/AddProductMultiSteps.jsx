@@ -131,60 +131,9 @@ export default function AddProductMultiSteps({ onClose }) {
     }));
   }, []);
 
-  // Validation logic
-  const validateCurrentStep = useCallback(() => {
-    setError(null);
-
-    const validators = {
-      1: () => {
-        if (!productData.productType) {
-          setError("Please select a product type to continue.");
-          return false;
-        }
-        return true;
-      },
-      2: () => {
-        if (!productData.name) {
-          setError("Product name is required.");
-          return false;
-        }
-
-        if (
-          productData.productType === "DRUG" &&
-          productData.requiresPrescription === undefined
-        ) {
-          setError("Please specify if prescription is required.");
-          return false;
-        }
-        return true;
-      },
-      3: () => true, // No validation for image upload step
-      4: () => {
-        if (productData.batch.quantity <= 0) {
-          setError("Quantity must be greater than zero.");
-          return false;
-        }
-
-        if (
-          productData.productType === "DRUG" &&
-          !productData.batch.expiryDate
-        ) {
-          setError("Expiry date is required for drugs.");
-          return false;
-        }
-        return true;
-      },
-      5: () => true, // No validation for summary step
-    };
-
-    return validators[currentStep] ? validators[currentStep]() : true;
-  }, [currentStep, productData]);
-
   // Navigation handlers
   const handleNext = useCallback(async () => {
-    if (!validateCurrentStep()) {
-      return;
-    }
+  
 
     if (currentStep === getTotalSteps() - 1) {
       await handleSubmitProduct();
@@ -192,7 +141,7 @@ export default function AddProductMultiSteps({ onClose }) {
     }
 
     setCurrentStep((prev) => Math.min(prev + 1, getTotalSteps()));
-  }, [currentStep, getTotalSteps, validateCurrentStep]);
+  }, [currentStep, getTotalSteps, ]);
 
   const handlePrevious = useCallback(() => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));

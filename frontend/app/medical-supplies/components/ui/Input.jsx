@@ -26,8 +26,99 @@ export function TextInput({
   required = false,
   className = "",
   isDesabled = false,
+  validation = "default",
+  name,
   ...props
 }) {
+  // Validation patterns
+  const validationPatterns = {
+    name: /^[a-zA-Z\s]*$/, // Only letters and spaces
+    phone: /^[0-9+\-\s()]*$/, // Numbers, +, -, spaces, parentheses
+    phoneEthiopia: /^[0-9]*$/, // Ethiopian phone - only numbers
+    batch: /^[a-zA-Z0-9#\-\s]*$/, // Letters, numbers, #, -, spaces
+    email: /^[a-zA-Z0-9@._\-]*$/, // Email characters
+    alphanumeric: /^[a-zA-Z0-9\s]*$/, // Letters, numbers, spaces
+    numeric: /^[0-9]*$/, // Numbers only
+    default: /.*/, // Allow everything (no restriction)
+  };
+
+  // Get validation pattern based on validation prop
+  const getValidationPattern = (validationType) => {
+    return validationPatterns[validationType] || validationPatterns.default;
+  };
+
+  // Ethiopian phone validation function
+  const validateEthiopianPhone = (inputValue) => {
+    // Only allow numbers
+    if (!/^[0-9]*$/.test(inputValue)) return false;
+
+    // Allow empty input (for when user is still typing)
+    if (inputValue === "") return true;
+
+    // Must be 10 digits total
+    if (inputValue.length > 10) return false;
+
+    // First digit must be 0
+    if (inputValue.length >= 1 && inputValue[0] !== "0") return false;
+
+    // Second digit must be 9 or 7
+    if (
+      inputValue.length >= 2 &&
+      inputValue[1] !== "9" &&
+      inputValue[1] !== "7"
+    )
+      return false;
+
+    return true;
+  };
+
+  // Handle input change with validation
+  const handleChange = (e) => {
+    const inputValue = e.target.value;
+
+    // Special handling for Ethiopian phone
+    if (validation === "phoneEthiopia") {
+      if (validateEthiopianPhone(inputValue)) {
+        const newEvent = {
+          target: {
+            name: name,
+            value: inputValue,
+          },
+        };
+        onChange(newEvent);
+      }
+      return;
+    }
+
+    // Regular pattern validation for other types
+    const pattern = getValidationPattern(validation);
+    if (pattern.test(inputValue)) {
+      const newEvent = {
+        target: {
+          name: name,
+          value: inputValue,
+        },
+      };
+      onChange(newEvent);
+    }
+  };
+
+  // Generate error message for Ethiopian phone
+  const getPhoneErrorMessage = () => {
+    if (validation === "phoneEthiopia" && value) {
+      if (value.length > 0 && value.length < 10) {
+        return "Phone number must be 10 digits";
+      }
+      if (value.length >= 1 && value[0] !== "0") {
+        return "Phone number must start with 0";
+      }
+      if (value.length >= 2 && value[1] !== "9" && value[1] !== "7") {
+        return "Second digit must be 9 or 7 (09xxxxxxxx or 07xxxxxxxx)";
+      }
+    }
+    return errorMessage;
+  };
+
   return (
     <div className={`mb-4 ${fullWidth ? "w-full" : ""} ${className}`}>
       {label && (
@@ -37,8 +128,9 @@ export function TextInput({
       )}
       <input
         type={type}
+        name={name}
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
         placeholder={placeholder}
         disabled={isDesabled}
         className={`
@@ -52,8 +144,8 @@ export function TextInput({
         required={required}
         {...props}
       />
-      {error && errorMessage && (
-        <p className="text-error text-xs mt-1">{errorMessage}</p>
+      {error && (
+        <p className="text-error text-xs mt-1">{getPhoneErrorMessage()}</p>
       )}
     </div>
   );
@@ -192,11 +284,24 @@ export function SelectInput({
   defaultToFirstOption = true,
   ...props
 }) {
-  // Set default value to first option if defaultToFirstOption is true and options exist
+  // Auto-select first option when component mounts if no value is set
+  useEffect(() => {
+    if (!value && defaultToFirstOption && options.length > 0 && onChange) {
+      // Trigger onChange with the first option's value
+      const firstOptionValue = options[0].value;
+      onChange({
+        target: {
+          name: name,
+          value: firstOptionValue,
+        },
+      });
+    }
+  }, [value, defaultToFirstOption, options, onChange, name]);
+
+  // Set effective value for display
   const effectiveValue =
-    !value && defaultToFirstOption && options.length > 0
-      ? options[0].value
-      : value;
+    value ||
+    (defaultToFirstOption && options.length > 0 ? options[0].value : "");
 
   // Handle change with proper event structure
   const handleChange = (e) => {
@@ -238,7 +343,8 @@ export function SelectInput({
           required={required}
           {...props}
         >
-          {placeholder && (
+          {/* Only show placeholder if defaultToFirstOption is false */}
+          {placeholder && !defaultToFirstOption && (
             <option value="" disabled className="text-gray-500">
               {placeholder}
             </option>

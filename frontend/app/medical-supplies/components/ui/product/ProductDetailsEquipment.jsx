@@ -134,6 +134,7 @@ export default function ProductDetailsEquipment({
           <TextInput
             name="modelNumber"
             label="Model Number"
+            validation="batch"
             className="mb-4"
             placeholder="Enter it's model number"
             value={formData.modelNumber}
@@ -165,9 +166,8 @@ export default function ProductDetailsEquipment({
         </div>
 
         <StepButtons
-          onNext={handleSubmit}
+          onNext={ isFormValid && handleSubmit}
           onPrevious={onPrevious}
-          nextDisabled={!isFormValid}
           isLoading={isLoading}
         />
       </form>

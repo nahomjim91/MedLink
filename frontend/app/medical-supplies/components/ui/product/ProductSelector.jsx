@@ -1,12 +1,22 @@
 "use client";
-import React from "react";
+import React, { useCallback } from "react";
 import { StepButtons } from "../Button";
 import IconCard from "../Card";
 import { TextDivider } from "../Input";
-import { FaUserMd, FaUserInjured, FaUserCog } from "react-icons/fa";
-import { Hospital, Pill, Store, Syringe, Truck } from "lucide-react";
+import {  Pill,  Syringe } from "lucide-react";
 
 export default function ProductSelector({ selectedType, onTypeSelect, onNext }) {
+  const [error, setError] = React.useState(null);
+   const handleNext = useCallback(() => {
+    setError(null);
+    
+    if (!selectedType) {
+      setError("Please select a product type to continue.");
+      return;
+    }
+    
+    onNext();
+  }, [selectedType, onNext]);
   return (
     <div className="px-6">
       <div className="mb-10 md:mb-3">
@@ -15,6 +25,11 @@ export default function ProductSelector({ selectedType, onTypeSelect, onNext }) 
         </h2>
        
       </div>
+      {error && (
+        <div className="text-red-500 text-sm mb-4">
+          {error}
+        </div>
+      )}
 
       <div className="flex justify-around py-6 ">
         <IconCard
@@ -35,7 +50,7 @@ export default function ProductSelector({ selectedType, onTypeSelect, onNext }) 
       </div>
 
      
-      <StepButtons showPrevious={false} onNext={onNext} />
+      <StepButtons showPrevious={false} onNext={handleNext} />
     </div>
   );
 }

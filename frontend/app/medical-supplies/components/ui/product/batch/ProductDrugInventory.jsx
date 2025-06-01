@@ -9,12 +9,6 @@ import {
   SelectInput,
 } from "../../Input";
 
-// Validation helper
-const validateField = (value) => {
-  if (typeof value === "number") return value > 0;
-  return value !== undefined && value !== "" && value !== null;
-};
-
 export default function ProductDrugInventory({
   productData,
   onUpdate,
@@ -37,19 +31,8 @@ export default function ProductDrugInventory({
     license: productData.batch?.license || null,
   });
 
-  // Field validation state
-  const [validationState, setValidationState] = useState({
-    batchNumber: false,
-    expiryDate: false,
-    quantity: false,
-    costPrice: false,
-    sellingPrice: false,
-    sizePerPackage: false,
-    manufacturer: false,
-    manufacturerCountry: false,
-    manufactureredDate: false,
-    // Optional fields don't need validation entries
-  });
+  // Track validation errors
+  const [errors, setErrors] = useState({});
 
   // Country options - could be fetched from an API
   const countryOptions = [
@@ -77,39 +60,129 @@ export default function ProductDrugInventory({
     }
   }, [productData]);
 
+  const validateField = (value) =>
+    value !== undefined && value !== "" && value !== null;
+
+  // Validation state
+  const [validationState, setValidationState] = useState({
+    batchNumber: false,
+    expiryDate: false,
+    quantity: false,
+    costPrice: false,
+    sellingPrice: false,
+    sizePerPackage: false,
+    manufacturer: false,
+    manufacturerCountry: false,
+    manufactureredDate: false,
+  });
+
   // Update validation state when batch data changes
   useEffect(() => {
     setValidationState({
       batchNumber: validateField(batchData.batchNumber),
       expiryDate: validateField(batchData.expiryDate),
-      quantity: validateField(batchData.quantity) && batchData.quantity > 0,
-      costPrice: validateField(batchData.costPrice) && batchData.costPrice > 0,
+      quantity: batchData.quantity > 0,
+      costPrice: batchData.costPrice > 0,
       sellingPrice:
-        validateField(batchData.sellingPrice) && batchData.sellingPrice > 0,
-      sizePerPackage:
-        validateField(batchData.sizePerPackage) && batchData.sizePerPackage > 0,
+        batchData.sellingPrice > 0 &&
+        batchData.sellingPrice >= batchData.costPrice,
+      sizePerPackage: batchData.sizePerPackage > 0,
       manufacturer: validateField(batchData.manufacturer),
       manufacturerCountry: validateField(batchData.manufacturerCountry),
       manufactureredDate: validateField(batchData.manufactureredDate),
     });
   }, [batchData]);
 
+  // Validate form function
+  const validateForm = useCallback(() => {
+    const newErrors = {};
+
+    if (!validationState.batchNumber) {
+      newErrors.batchNumber = "Batch number is required";
+    }
+
+    if (!validationState.expiryDate) {
+      newErrors.expiryDate = "Expiry date is required";
+    }
+
+    if (!validationState.quantity) {
+      newErrors.quantity = "Quantity must be greater than zero";
+    }
+
+    if (!validationState.costPrice) {
+      newErrors.costPrice = "Cost price must be greater than zero";
+    }
+
+    if (!validationState.sellingPrice) {
+      if (batchData.sellingPrice <= 0) {
+        newErrors.sellingPrice = "Selling price must be greater than zero";
+      } else if (batchData.sellingPrice < batchData.costPrice) {
+        newErrors.sellingPrice =
+          "Selling price should be greater than or equal to cost price";
+      }
+    }
+
+    if (!validationState.sizePerPackage) {
+      newErrors.sizePerPackage = "Size per package must be greater than zero";
+    }
+
+    if (!validationState.manufacturer) {
+      newErrors.manufacturer = "Manufacturer is required";
+    }
+
+    if (!validationState.manufacturerCountry) {
+      newErrors.manufacturerCountry = "Manufacturer country is required";
+    }
+
+    if (!validationState.manufactureredDate) {
+      newErrors.manufactureredDate = "Manufacturing date is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [batchData, validationState]);
+
+  // Check if form is valid for button state
+  const isFormValid = Object.values(validationState).every(Boolean);
+
   // Handle input changes - memoized to prevent unnecessary re-renders
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
+
+    // Clear the error for this field when the user is typing
+    setErrors((prev) => ({ ...prev, [name]: null }));
 
     // For number inputs, convert the value to a number
     if (
       ["quantity", "costPrice", "sellingPrice", "sizePerPackage"].includes(name)
     ) {
-      setBatchData((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
+      setBatchData((prev) => ({
+        ...prev,
+        [name]: parseFloat(value) || 0,
+      }));
     } else {
       setBatchData((prev) => ({ ...prev, [name]: value }));
     }
   }, []);
 
+  // Handle number input changes specifically for better validation
+  const handleNumberChange = useCallback((name, value) => {
+    // Clear the error for this field when the user is typing
+    setErrors((prev) => ({ ...prev, [name]: null }));
+
+    // Handle the case where NumberInput component passes value directly
+    const numValue =
+      value === "" || value === null || value === undefined
+        ? 0
+        : parseFloat(value);
+    if (!isNaN(numValue)) {
+      setBatchData((prev) => ({ ...prev, [name]: numValue }));
+    }
+  }, []);
+
   // Handle file change - memoized to prevent unnecessary re-renders
   const handleFileChange = useCallback((name, file) => {
+    setErrors((prev) => ({ ...prev, [name]: null }));
     setBatchData((prev) => ({ ...prev, [name]: file }));
   }, []);
 
@@ -118,21 +191,21 @@ export default function ProductDrugInventory({
     (e) => {
       if (e) e.preventDefault();
 
-      // Pass the complete batch data to the parent component
-      onUpdate(batchData);
-      onNext();
+      if (validateForm()) {
+        // Pass the complete batch data to the parent component
+        onUpdate(batchData);
+        onNext();
+      }
     },
-    [batchData, onUpdate, onNext]
+    [batchData, onUpdate, onNext, validateForm]
   );
-
-  // Check if all required fields are valid
-  const isFormValid = Object.values(validationState).every(Boolean);
 
   return (
     <div className="px-6">
       <h2 className="text-xl font-semibold text-secondary/80 mb-6">
         Inventory Details
       </h2>
+      {errors.message && <p className="text-red-600">{errors.message}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* Batch Information Section */}
@@ -140,11 +213,13 @@ export default function ProductDrugInventory({
           <TextInput
             name="batchNumber"
             label="Batch Number"
+            validation="batch"
             placeholder="#1234567"
             value={batchData.batchNumber}
             onChange={handleChange}
             required={true}
             className="w-full"
+            error={errors.batchNumber}
           />
 
           <DateInput
@@ -156,6 +231,7 @@ export default function ProductDrugInventory({
             required={true}
             className="w-full"
             min={new Date().toISOString().split("T")[0]}
+            error={errors.expiryDate}
             // helpText="Short expiry products will be visually flagged"
           />
         </div>
@@ -166,32 +242,54 @@ export default function ProductDrugInventory({
             name="quantity"
             label="Quantity"
             value={batchData.quantity}
-            onChange={handleChange}
+            onChange={(e) => {
+              // Check if your NumberInput passes event or value directly
+              if (e.target) {
+                handleChange(e);
+              } else {
+                handleNumberChange("quantity", e);
+              }
+            }}
             required={true}
             className="w-full"
             min={0}
+            error={errors.quantity}
           />
 
           <NumberInput
             name="costPrice"
             label="Cost Price (Birr)"
             value={batchData.costPrice}
-            onChange={handleChange}
+            onChange={(e) => {
+              if (e.target) {
+                handleChange(e);
+              } else {
+                handleNumberChange("costPrice", e);
+              }
+            }}
             required={true}
             className="w-full"
             min={0}
             prefix="$"
+            error={errors.costPrice}
           />
 
           <NumberInput
             name="sellingPrice"
             label="Selling Price (Birr)"
             value={batchData.sellingPrice}
-            onChange={handleChange}
+            onChange={(e) => {
+              if (e.target) {
+                handleChange(e);
+              } else {
+                handleNumberChange("sellingPrice", e);
+              }
+            }}
             required={true}
             className="w-full"
             min={0}
             prefix="$"
+            error={errors.sellingPrice}
           />
         </div>
 
@@ -202,10 +300,17 @@ export default function ProductDrugInventory({
             label="Size Per Package"
             placeholder="100 tablets per bottle"
             value={batchData.sizePerPackage}
-            onChange={handleChange}
+            onChange={(e) => {
+              if (e.target) {
+                handleChange(e);
+              } else {
+                handleNumberChange("sizePerPackage", e);
+              }
+            }}
             required={true}
             className="w-full"
             min={0}
+            error={errors.sizePerPackage}
           />
         </div>
 
@@ -219,6 +324,7 @@ export default function ProductDrugInventory({
             onChange={handleChange}
             required={true}
             className="w-full"
+            error={errors.manufacturer}
           />
 
           <SelectInput
@@ -229,6 +335,7 @@ export default function ProductDrugInventory({
             onChange={handleChange}
             required={true}
             options={countryOptions}
+            error={errors.manufacturerCountry}
           />
         </div>
         <div className="grid md:grid-cols-2 md:gap-4">
@@ -241,6 +348,7 @@ export default function ProductDrugInventory({
             required={true}
             className="w-full"
             max={new Date().toISOString().split("T")[0]}
+            error={errors.manufactureredDate}
             // helpText="Short expiry products will be visually flagged"
           />
         </div>
@@ -266,9 +374,9 @@ export default function ProductDrugInventory({
 
         <div className="pt-4">
           <StepButtons
-            onNext={handleSubmit}
+            onNext={isFormValid && handleSubmit}
             onPrevious={onPrevious}
-            nextDisabled={!isFormValid}
+            nextDisabled={false} // We'll handle validation on submit
             isLoading={isLoading}
           />
         </div>

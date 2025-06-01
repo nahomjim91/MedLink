@@ -47,7 +47,7 @@ export default function CompanyInfoForm({
         street: userData.address?.street || "",
         city: userData.address?.city || "",
         state: userData.address?.state || "",
-        country: userData.address?.country || "",
+        country: userData.address?.country || "Ethiopia",
         postalCode: userData.address?.postalCode || "",
         geoLocation: userData.address?.geoLocation || {
           latitude: null,
@@ -81,6 +81,7 @@ export default function CompanyInfoForm({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    console.log("Field changed:", name, "Value:", value);
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -148,15 +149,25 @@ export default function CompanyInfoForm({
     onLicenseUpload(file.url);
   };
 
+  const isValidEthiopianPhone = (phone) => {
+    const digitsOnly = phone.replace(/\D/g, "");
+    return (
+      digitsOnly.length === 10 &&
+      (digitsOnly.startsWith("09") || digitsOnly.startsWith("07"))
+    );
+  };
+
   const isFormValid =
     formData.companyName &&
     formData.contactName &&
     formData.phoneNumber &&
+    isValidEthiopianPhone(formData.phoneNumber) && // Add phone validation
     formData.address.street &&
     formData.address.city &&
     formData.address.state &&
     formData.address.country &&
-    formData.address.postalCode;
+    formData.address.postalCode &&
+    formData.address.geoLocationText;
 
   return (
     <div className="px-6">
@@ -175,6 +186,7 @@ export default function CompanyInfoForm({
             name="companyName"
             label="Company Name"
             className="mb-4"
+            validation="name"
             placeholder="Enter your company name"
             value={formData.companyName}
             onChange={handleChange}
@@ -183,6 +195,7 @@ export default function CompanyInfoForm({
           <TextInput
             name="contactName"
             label="Contact Person"
+            validation="name"
             className="mb-4"
             placeholder="Enter contact person name"
             value={formData.contactName}
@@ -195,8 +208,9 @@ export default function CompanyInfoForm({
           <TextInput
             name="phoneNumber"
             type="tel"
-            label="Phone Number"
-            placeholder="Enter company phone number"
+            label="Phone Number (09/07...)"
+            validation="phoneEthiopia"
+            placeholder="0912345678"
             value={formData.phoneNumber}
             onChange={handleChange}
             required={true}
@@ -217,6 +231,7 @@ export default function CompanyInfoForm({
             />
             <TextInput
               name="city"
+              validation="name"
               label="City"
               className="mb-4"
               placeholder="Enter city"
@@ -228,6 +243,7 @@ export default function CompanyInfoForm({
           <div className="grid md:grid-cols-3 md:gap-4">
             <TextInput
               name="state"
+              validation="name"
               label="State/Province"
               className="mb-4"
               placeholder="Enter state/province"
@@ -237,16 +253,17 @@ export default function CompanyInfoForm({
             />
             <TextInput
               name="country"
-              label="Country"
+              label="Country (Ethiopia fixed)"
               className="mb-4"
               placeholder="Enter country"
               value={formData.address.country}
               onChange={handleAddressChange}
-              required={true}
+              isDesabled={true} // Assuming country is fixed to Ethiopia
             />
             <TextInput
               name="postalCode"
               label="Postal Code"
+              validation="numeric"
               className="mb-4"
               placeholder="Enter postal code"
               value={formData.address.postalCode}
@@ -258,7 +275,7 @@ export default function CompanyInfoForm({
               className="mb-4"
               placeholder="Enter geolocation"
               name="geoLocationText"
-              value={formData.address?.geoLocationText || ""}
+              value={formData.address?.geoLocationText}
               onChange={handleGeoLocationTextChange}
               onGeoLocationChange={handleGeoLocationChange}
               required={true}
@@ -297,9 +314,8 @@ export default function CompanyInfoForm({
         </div>
 
         <StepButtons
-          onNext={handleSubmit}
+          onNext={isFormValid && handleSubmit}
           onPrevious={onPrevious}
-          nextDisabled={!isFormValid}
           isLoading={isLoading}
         />
       </form>

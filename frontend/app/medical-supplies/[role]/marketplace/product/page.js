@@ -540,12 +540,25 @@ export default function ProductDetails() {
             <div className="max-w-4xl mx-auto px-6 rounded-lg">
               <div className="space-y-2">
                 <InfoRow label="Category" value={processedData.category} />
+                <InfoRow
+                  label="Product Type"
+                  value={isDrugProduct ? "Drug" : "Equipment"}
+                />
+                <InfoRow label="Owner" value={processedData.ownerName} />
 
                 {isDrugProduct ? (
                   <>
                     <InfoRow
                       label="Package Type"
                       value={processedData.packageType}
+                    />
+                    <InfoRow
+                      label="Concentration"
+                      value={processedData.concentration}
+                    />
+                    <InfoRow
+                      label="Requires Prescription"
+                      value={processedData.requiresPrescription ? "Yes" : "No"}
                     />
                     <InfoRow
                       label="Manufacturer"
@@ -559,25 +572,45 @@ export default function ProductDetails() {
                 ) : isEquipmentProduct ? (
                   <>
                     <InfoRow
-                      label="Warranty information"
+                      label="Brand Name"
+                      value={processedData.brandName}
+                    />
+                    <InfoRow
+                      label="Model Number"
+                      value={processedData.modelNumber}
+                    />
+                    <InfoRow
+                      label="Warranty Information"
                       value={processedData.warrantyInfo}
                     />
                     <InfoRow
                       label="Spare Parts"
                       value={processedData.sparePartInfo?.join(", ")}
                     />
+                    <InfoRow
+                      label="Manufacturer"
+                      value={processedData.batches?.[0]?.manufacturer}
+                    />
+                    <InfoRow
+                      label="Country"
+                      value={processedData.batches?.[0]?.manufacturerCountry}
+                    />
                   </>
                 ) : null}
 
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
+                  {" "}
+                  {/* min-w-0 allows flex item to shrink */}
                   <div>
                     <h2 className="text-lg font-bold text-secondary/80">
                       Description:
                     </h2>
                   </div>
-                  <div className="mt-2">
-                    <p className="text-secondary/60">
-                      {processedData.description}
+                  <div className="mt-2 min-w-0">
+                    {" "}
+                    {/* min-w-0 here too */}
+                    <p className="text-secondary/60 break-words overflow-hidden">
+                      {processedData.description || "No description available"}
                     </p>
                   </div>
                 </div>
@@ -642,7 +675,6 @@ export default function ProductDetails() {
                 </div>
               )}
 
-              {/* Batch selection */}
               {activeTab === "manually" &&
                 processedData.batches?.length > 0 && (
                   <div className="w-full px-4">
@@ -654,21 +686,48 @@ export default function ProductDetails() {
                         >
                           <div className="text-sm">
                             <div className="flex justify-between mb-1">
-                              <span className="font-medium">Expire Date</span>
-                              <span>
-                                {isDrugProduct
-                                  ? formatDate(batch.expiryDate)
-                                  : "N/A"}
-                              </span>
+                              <span className="font-medium">Batch ID</span>
+                              <span className="text-xs">{batch.batchId}</span>
                             </div>
-                            <div className="flex justify-between mb-1">
-                              <span className="font-medium">Package Size</span>
-                              <span>
-                                {isDrugProduct
-                                  ? `${batch.sizePerPackage || 24}/pack`
-                                  : batch.serialNumbers?.length || 0}
-                              </span>
-                            </div>
+
+                            {isDrugProduct ? (
+                              <>
+                                <div className="flex justify-between mb-1">
+                                  <span className="font-medium">
+                                    Expire Date
+                                  </span>
+                                  <span>{formatDate(batch.expiryDate)}</span>
+                                </div>
+                                <div className="flex justify-between mb-1">
+                                  <span className="font-medium">
+                                    Package Size
+                                  </span>
+                                  <span>
+                                    {batch.sizePerPackage || "N/A"}/pack
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between mb-1">
+                                  <span className="font-medium">
+                                    Serial Numbers
+                                  </span>
+                                  <span>
+                                    {batch.serialNumbers?.length || 0}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between mb-1">
+                                  <span className="font-medium">
+                                    Manufactured
+                                  </span>
+                                  <span>
+                                    {formatDate(batch.manufactureredDate)}
+                                  </span>
+                                </div>
+                              </>
+                            )}
+
                             <div className="flex justify-between mb-1">
                               <span className="font-medium">Available</span>
                               <span className="text-green-600 font-semibold">
@@ -686,7 +745,7 @@ export default function ProductDetails() {
                             <div className="flex justify-between mb-2">
                               <span className="font-medium">Unit Price</span>
                               <span>
-                                ${batch.sellingPrice?.toFixed(2) || "120.00"}
+                                ${batch.sellingPrice?.toFixed(2) || "0.00"}
                               </span>
                             </div>
                             <div className="text-xs text-gray-500 mb-2">
@@ -695,7 +754,7 @@ export default function ProductDetails() {
                                 <span className="font-semibold">
                                   $
                                   {(
-                                    (batch.sellingPrice || 120) *
+                                    (batch.sellingPrice || 0) *
                                     (selectedBatches[batch.batchId] || 0)
                                   ).toFixed(2)}
                                 </span>

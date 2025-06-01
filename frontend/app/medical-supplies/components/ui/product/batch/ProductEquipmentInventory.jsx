@@ -61,13 +61,86 @@ export default function ProductEquipmentInventory({
     }
   }, [batchData]);
 
-    // Country options - could be fetched from an API
+  // Country options - could be fetched from an API
   const countryOptions = [
     { label: "Country 1", value: "country1" },
     { label: "Country 2", value: "country2" },
     { label: "Country 3", value: "country3" },
   ];
 
+  const validateField = (value) =>
+    value !== undefined && value !== "" && value !== null;
+
+  // Add validation state to your useState hooks
+  const [validationState, setValidationState] = useState({
+    quantity: false,
+    costPrice: false,
+    sellingPrice: false,
+    manufacturer: false,
+    manufacturerCountry: false,
+    manufactureredDate: false,
+    serialNumbers: false,
+  });
+
+  // Add validation effect after your existing useEffect
+  useEffect(() => {
+    setValidationState({
+      quantity: localBatchData.quantity > 0,
+      costPrice: localBatchData.costPrice > 0,
+      sellingPrice:
+        localBatchData.sellingPrice > 0 &&
+        localBatchData.sellingPrice >= localBatchData.costPrice,
+      manufacturer: validateField(localBatchData.manufacturer),
+      manufacturerCountry: validateField(localBatchData.manufacturerCountry),
+      manufactureredDate: validateField(localBatchData.manufactureredDate),
+      serialNumbers:
+        localBatchData.serialNumbers && localBatchData.serialNumbers.length > 0,
+    });
+  }, [localBatchData]);
+
+  // Update your validateForm function to use the validation state
+  const validateForm = useCallback(() => {
+    const newErrors = {};
+
+    if (!validationState.quantity) {
+      newErrors.quantity = "Quantity must be greater than zero";
+    }
+
+    if (!validationState.costPrice) {
+      newErrors.costPrice = "Cost price must be greater than zero";
+    }
+
+    if (!validationState.sellingPrice) {
+      if (localBatchData.sellingPrice <= 0) {
+        newErrors.sellingPrice = "Selling price must be greater than zero";
+      } else if (localBatchData.sellingPrice < localBatchData.costPrice) {
+        newErrors.sellingPrice =
+          "Selling price should be greater than or equal to cost price";
+      }
+    }
+
+    if (!validationState.manufacturer) {
+      newErrors.manufacturer = "Manufacturer is required";
+    }
+
+    if (!validationState.manufacturerCountry) {
+      newErrors.manufacturerCountry = "Manufacturer country is required";
+    }
+
+    if (!validationState.manufactureredDate) {
+      newErrors.manufactureredDate = "Manufacturing date is required";
+    }
+
+    if (!validationState.serialNumbers) {
+      newErrors.serialNumbers = "At least one serial number is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [localBatchData, validationState]);
+
+  // Check if form is valid for button state
+  const isFormValid = Object.values(validationState).every(Boolean);
 
   // Handle input field changes - memoized to prevent unnecessary re-renders
   const handleChange = useCallback((e) => {
@@ -125,31 +198,6 @@ export default function ProductEquipmentInventory({
 
     setErrors((prev) => ({ ...prev, serialNumbers: null }));
   }, []);
-
-  // Form validation - memoized to prevent unnecessary re-renders
-  const validateForm = useCallback(() => {
-    const newErrors = {};
-
-    if (localBatchData.quantity <= 0) {
-      newErrors.quantity = "Quantity must be greater than zero";
-    }
-
-    if (localBatchData.costPrice <= 0) {
-      newErrors.costPrice = "Cost price must be greater than zero";
-    }
-
-    if (localBatchData.sellingPrice <= 0) {
-      newErrors.sellingPrice = "Selling price must be greater than zero";
-    }
-
-    if (localBatchData.sellingPrice < localBatchData.costPrice) {
-      newErrors.sellingPrice =
-        "Selling price should be greater than or equal to cost price";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [localBatchData]);
 
   // Submit form handler - memoized to prevent unnecessary re-renders
   const handleSubmit = useCallback(
@@ -251,6 +299,7 @@ export default function ProductEquipmentInventory({
               placeholder="Manufacturer name"
               value={localBatchData.manufacturer}
               onChange={handleChange}
+              validation="name"
               required={true}
               className="w-full"
             />
@@ -274,7 +323,7 @@ export default function ProductEquipmentInventory({
               onChange={handleChange}
               required={true}
               className="w-full"
-              max={new Date().toISOString().split("T")[0]} 
+              max={new Date().toISOString().split("T")[0]}
               // helpText="Short expiry products will be visually flagged"
             />
           </div>
@@ -382,7 +431,7 @@ export default function ProductEquipmentInventory({
         {/* Navigation Buttons */}
         <div className="pt-2">
           <StepButtons
-            onNext={handleSubmit}
+            onNext={isFormValid && handleSubmit}
             onPrevious={onPrevious}
             nextDisabled={false} // We'll handle validation on submit
             isLoading={isLoading}
