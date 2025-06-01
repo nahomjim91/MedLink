@@ -1113,10 +1113,29 @@ export default function CheckoutPage() {
 
   // console.log("CheckoutPage - cart", cart);
   // Categorize cart items by seller
+const isDataReady = !loading && user && cart;
+  
   const ordersBySeller = useMemo(
-    () => categorizeCartBySeller(cart, user),
-    [cart, user]
+    () => {
+      if (!isDataReady) {
+        return [];
+      }
+      return categorizeCartBySeller(cart, user);
+    },
+    [cart, user, isDataReady] // Add isDataReady to dependencies
   );
+
+  // Show loading until everything is ready
+  if (loading || !user || !cart) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+          <p>Loading checkout...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleOrderSummaryNext = () => {
     setCurrentStep(2);
@@ -1747,7 +1766,7 @@ export default function CheckoutPage() {
   return (
     <div className="container mx-auto bg-white rounded-lg shadow-sm">
       <div className="">
-        {currentStep === 1 && (
+        {currentStep === 1 && ordersBySeller.length > 0 && (
           <OrderSummaryStep
             orders={ordersBySeller}
             currentOrderIndex={currentOrderIndex}
@@ -1758,7 +1777,7 @@ export default function CheckoutPage() {
           />
         )}
 
-        {currentStep === 2 && (
+        {currentStep === 2  && ordersBySeller.length > 0 && (
           <PaymentStep
             orders={ordersBySeller}
             pickupDates={pickupDates}
