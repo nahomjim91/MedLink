@@ -42,6 +42,7 @@ export const GET_PRODUCT_BY_ID = gql`
             sizePerPackage
             manufacturer
             manufacturerCountry
+            manufactureredDate
           }
         }
       }
@@ -77,6 +78,9 @@ export const GET_PRODUCT_BY_ID = gql`
             lastUpdatedAt
             sourceOriginalBatchId
             serialNumbers
+            manufacturer
+            manufacturerCountry
+            manufactureredDate
           }
         }
       }

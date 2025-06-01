@@ -103,8 +103,11 @@ export default function ProductPage() {
           ...newImages,
         ];
       }
-      // console.log("editedProductData" , editedProductData);
-      if (editedProductData.__typename === "DrugProduct") {
+
+      if (
+        editedProductData.__typename === "DrugProduct" ||
+        editedProductData.productType === "DRUG"
+      ) {
         const drugInput = {
           ...commonInput,
           packageType: editedProductData.packageType,
@@ -249,7 +252,6 @@ export default function ProductPage() {
   if (error) return <p>Error loading product: {error.message}</p>;
   if (!productData) return <p>No product found</p>;
 
-
   const batchesColumns = (productType) => {
     console.log("productType", productType);
     return productType === "DRUG"
@@ -259,7 +261,7 @@ export default function ProductPage() {
           { key: "Size Per Package", label: "Size Per Package" },
           { key: "Manufacturer", label: "Manufacturer" },
           { key: "Manufacturer Country", label: "Manufacturer Country" },
-          { key: "Manufactuerr Date", label: "Manufactuerr Date" },
+          { key: "Manufactuer Date", label: "Manufactuer Date" },
           { key: "Buying Price", label: "Buying Price" },
           { key: "Selling Price", label: "Selling Price" },
           { key: "Quantity", label: "Quantity" },
@@ -268,7 +270,7 @@ export default function ProductPage() {
           { key: "BatchID", label: "BatchID" },
           { key: "Manufacturer", label: "Manufacturer" },
           { key: "Manufacturer Country", label: "Manufacturer Country" },
-          { key: "Manufactuerr Date", label: "Manufactuerr Date" },
+          { key: "Manufactuer Date", label: "Manufactuer Date" },
           { key: "Buying Price", label: "Buying Price" },
           { key: "Selling Price", label: "Selling Price" },
           { key: "Quantity", label: "Quantity" },
@@ -278,15 +280,48 @@ export default function ProductPage() {
   const formatProductsData = (batches, productType) => {
     if (!batches || !Array.isArray(batches)) return [];
 
+    // Helper function to format timestamps
+    const formatDate = (timestamp) => {
+      if (!timestamp || timestamp === "-") return "-";
+
+      // Handle both string and number timestamps
+      const numericTimestamp =
+        typeof timestamp === "string" ? parseInt(timestamp) : timestamp;
+
+      // Check if it's a valid timestamp
+      if (isNaN(numericTimestamp) || numericTimestamp <= 0) return "-";
+
+      try {
+        const date = new Date(numericTimestamp);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return "-";
+
+        // Format as readable date (you can customize this format)
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        });
+
+        // Alternative formats you can use:
+        // return date.toISOString().split('T')[0]; // YYYY-MM-DD
+        // return date.toLocaleDateString(); // Default locale format
+        // return date.toDateString(); // "Mon Jan 01 2025" format
+      } catch (error) {
+        return "-";
+      }
+    };
+
     return batches.map((batch) => {
+      // console.log( "Manufacturer Date", formatDate(batch.manufactureredDate), )
       if (productType === "DRUG") {
         return {
           BatchID: batch.batchId || "-",
-          "Expiry Date": batch.expiryDate || "-",
+          "Expiry Date": formatDate(batch.expiryDate),
           "Size Per Package": batch.sizePerPackage || "-",
           Manufacturer: batch.manufacturer || "-",
           "Manufacturer Country": batch.manufacturerCountry || "-",
-          "Manufactuerr Date": batch.manufactureredDate || "-",
+          "Manufactuer Date": formatDate(batch.manufactureredDate),
           "Buying Price": batch.costPrice || "-",
           "Selling Price": batch.sellingPrice || "-",
           Quantity: batch.quantity || "-",
@@ -294,10 +329,10 @@ export default function ProductPage() {
       } else {
         return {
           BatchID: batch.batchId || "-",
-          "Added At": batch.addedAt || "-",
+          "Added At": formatDate(batch.addedAt),
           Manufacturer: batch.manufacturer || "-",
           "Manufacturer Country": batch.manufacturerCountry || "-",
-          "Manufactuerr Date": batch.manufactureredDate || "-",
+          "Manufactuer Date": formatDate(batch.manufactureredDate),
           "Buying Price": batch.costPrice || "-",
           "Selling Price": batch.sellingPrice || "-",
           Quantity: batch.quantity || "-",
@@ -311,7 +346,7 @@ export default function ProductPage() {
     : [];
   const totalCount = productData.batches?.length || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-  console.log("prodcut details" , productData)
+  console.log("prodcut details", productData);
 
   return (
     <div className="relative bg-white rounded-lg py-1.5 shadow-sm h-full">
@@ -401,13 +436,14 @@ export default function ProductPage() {
       <div className="py">
         {activeTab === "overview" && (
           <div className="flex px-8 py-4">
-            <div className="w-1/2 pr-4">
+            <div className="w-1/2 pr-4 h-[67vh] overflow-y-auto">
               <h3 className="text-md font-bold text-secondary mb-4">
                 Product Detail
               </h3>
               <div className="space-y-4 px-8">
                 {isEditing ? (
                   <>
+                    {/* Common fields for both product types */}
                     <EditableTextField
                       label="Product name"
                       value={editedProductData.name}
@@ -418,45 +454,210 @@ export default function ProductPage() {
                     <TextField label="Product id" value={productId} />
                     <EditableTextField
                       label="Category"
-                      value={editedProductData.category}
+                      value={editedProductData.category || ""}
                       name="category"
-                      onChange={handleInputChange}
-                    />
-                    <EditableTextField
-                      label="Package Type"
-                      value={editedProductData.packageType}
-                      name="packageType"
-                      onChange={handleInputChange}
-                    />
-                    <EditableTextField
-                      label="Concentration"
-                      value={editedProductData.concentration}
-                      name="concentration"
                       onChange={handleInputChange}
                     />
                     <EditableTextAreaField
                       label="Description"
-                      value={editedProductData.description}
+                      value={editedProductData.description || ""}
                       name="description"
                       onChange={handleInputChange}
                     />
+
+                    {/* Conditional fields based on product type */}
+                    {editedProductData.productType === "DRUG" ||
+                    editedProductData.__typename === "DrugProduct" ? (
+                      <>
+                        <EditableTextField
+                          label="Package Type"
+                          value={editedProductData.packageType || ""}
+                          name="packageType"
+                          onChange={handleInputChange}
+                        />
+                        <EditableTextField
+                          label="Concentration"
+                          value={editedProductData.concentration || ""}
+                          name="concentration"
+                          onChange={handleInputChange}
+                        />
+                        <div className="flex flex-col">
+                          <label className="text-sm font-medium text-gray-700 mb-1">
+                            Requires Prescription
+                          </label>
+                          <select
+                            name="requiresPrescription"
+                            value={
+                              editedProductData.requiresPrescription || false
+                            }
+                            onChange={(e) =>
+                              handleInputChange({
+                                target: {
+                                  name: "requiresPrescription",
+                                  value: e.target.value === "true",
+                                },
+                              })
+                            }
+                            className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          >
+                            <option value={false}>No</option>
+                            <option value={true}>Yes</option>
+                          </select>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <EditableTextField
+                          label="Brand Name"
+                          value={editedProductData.brandName || ""}
+                          name="brandName"
+                          onChange={handleInputChange}
+                        />
+                        <EditableTextField
+                          label="Model Number"
+                          value={editedProductData.modelNumber || ""}
+                          name="modelNumber"
+                          onChange={handleInputChange}
+                        />
+                        <EditableTextAreaField
+                          label="Warranty Info"
+                          value={editedProductData.warrantyInfo || ""}
+                          name="warrantyInfo"
+                          onChange={handleInputChange}
+                        />
+                        <EditableTextAreaField
+                          label="Spare Part Info"
+                          value={
+                            editedProductData.sparePartInfo?.join(", ") || ""
+                          }
+                          name="sparePartInfo"
+                          onChange={(e) =>
+                            handleInputChange({
+                              target: {
+                                name: "sparePartInfo",
+                                value: e.target.value
+                                  .split(",")
+                                  .map((item) => item.trim())
+                                  .filter((item) => item),
+                              },
+                            })
+                          }
+                          placeholder="Enter spare parts separated by commas"
+                        />
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
+                    {/* Common fields for both product types */}
                     <TextField label="Product name" value={productData.name} />
                     <TextField label="Product id" value={productId} />
-                    <TextField label="Category" value={productData.category} />
                     <TextField
-                      label="Package Type"
-                      value={productData.packageType}
+                      label="Product Type"
+                      value={productData.productType}
                     />
                     <TextField
-                      label="Concentration"
-                      value={productData.concentration}
+                      label="Category"
+                      value={productData.category || "-"}
+                    />
+                    <TextField
+                      label="Owner"
+                      value={productData.ownerName || "-"}
+                    />
+                    <TextField
+                      label="Original Lister"
+                      value={productData.originalListerName || "-"}
                     />
                     <LongTextField
                       label="Description"
-                      value={productData.description}
+                      value={productData.description || "-"}
+                    />
+
+                    {/* Conditional fields based on product type */}
+                    {productData.productType === "DRUG" ||
+                    productData.__typename === "DrugProduct" ? (
+                      <>
+                        <TextField
+                          label="Package Type"
+                          value={productData.packageType || "-"}
+                        />
+                        <TextField
+                          label="Concentration"
+                          value={productData.concentration || "-"}
+                        />
+                        <TextField
+                          label="Requires Prescription"
+                          value={
+                            productData.requiresPrescription ? "Yes" : "No"
+                          }
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <TextField
+                          label="Brand Name"
+                          value={productData.brandName || "-"}
+                        />
+                        <TextField
+                          label="Model Number"
+                          value={productData.modelNumber || "-"}
+                        />
+                        <LongTextField
+                          label="Warranty Info"
+                          value={productData.warrantyInfo || "-"}
+                        />
+                        <TextField
+                          label="Spare Parts"
+                          value={productData.sparePartInfo?.join(", ") || "-"}
+                        />
+                        {productData.documentUrls &&
+                          productData.documentUrls.length > 0 && (
+                            <div className="flex flex-col">
+                              <label className="text-sm font-medium text-gray-700 mb-1">
+                                Documents
+                              </label>
+                              <div className="space-y-1">
+                                {productData.documentUrls.map((url, index) => (
+                                  <a
+                                    key={index}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 underline text-sm"
+                                  >
+                                    Document {index + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                      </>
+                    )}
+
+                    {/* Common status fields */}
+                    <TextField
+                      label="Status"
+                      value={productData.isActive ? "Active" : "Inactive"}
+                    />
+                    <TextField
+                      label="Created At"
+                      value={
+                        productData.createdAt
+                          ? new Date(
+                              parseInt(productData.createdAt)
+                            ).toLocaleDateString()
+                          : "-"
+                      }
+                    />
+                    <TextField
+                      label="Last Updated"
+                      value={
+                        productData.lastUpdatedAt
+                          ? new Date(
+                              parseInt(productData.lastUpdatedAt)
+                            ).toLocaleDateString()
+                          : "-"
+                      }
                     />
                   </>
                 )}

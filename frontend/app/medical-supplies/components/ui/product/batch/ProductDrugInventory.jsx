@@ -155,6 +155,7 @@ export default function ProductDrugInventory({
             onChange={handleChange}
             required={true}
             className="w-full"
+            min={new Date().toISOString().split("T")[0]}
             // helpText="Short expiry products will be visually flagged"
           />
         </div>

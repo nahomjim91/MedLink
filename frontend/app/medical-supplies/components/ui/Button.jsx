@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 export function Button({
-  type ,
+  type,
   variant = "fill",
   color = "primary",
   onClick,
@@ -150,6 +150,7 @@ export function StepButtons({
   showPrevious = true,
   showNext = true,
   className = "",
+  isLoading = false,
 }) {
   return (
     <div className={`flex justify-between gap-4 mt-6   ${className}`}>
@@ -158,10 +159,10 @@ export function StepButtons({
           <Button
             variant="outline"
             color="primary"
-            onClick={onPrevious}
+            onClick={isLoading ? () => {} : onPrevious}
             className={`  flex-1 sm:flex-initial text-sm md:text-base`}
           >
-            {previousLabel}
+            { isLoading ? "Loading..." : previousLabel}
           </Button>
         )}
       </div>
@@ -171,12 +172,12 @@ export function StepButtons({
           <Button
             variant="fill"
             color="primary"
-            onClick={onNext}
+            onClick={isLoading ? () => {} : onNext}
             className={`flex-1 sm:flex-initial text-sm md:text-base ${
               !showPrevious ? "ml-auto" : ""
             }`}
           >
-            {nextLabel}
+            { isLoading ? "Loading..." :  nextLabel}
           </Button>
         )}
       </div>
@@ -184,14 +185,12 @@ export function StepButtons({
   );
 }
 
-export const IconButton = ({ icon, badge, isActive, onClick  }) => {
+export const IconButton = ({ icon, badge, isActive, onClick }) => {
   return (
     <div
       onClick={onClick}
       className={`relative p-2 md:p-3  rounded-full transition-all cursor-pointer ${
-        isActive
-          ? "bg-primary text-white"
-          : "bg-white text-gray-700 "
+        isActive ? "bg-primary text-white" : "bg-white text-gray-700 "
       }`}
     >
       {icon}
@@ -242,7 +241,7 @@ export function TablePageButtons({
   className = "",
   page = 1,
   totalPages = 3,
-  onPageChange
+  onPageChange,
 }) {
   const handlePrevious = () => {
     if (page > 1) {
@@ -266,13 +265,11 @@ export function TablePageButtons({
 
   const isPreviousDisabled = page === 1;
   const isNextDisabled = page === totalPages;
-  
+
   const previousButtonClass = isPreviousDisabled
     ? "opacity-50 cursor-not-allowed"
     : "";
-  const nextButtonClass = isNextDisabled
-    ? "opacity-50 cursor-not-allowed"
-    : "";
+  const nextButtonClass = isNextDisabled ? "opacity-50 cursor-not-allowed" : "";
 
   return (
     <div className={`flex justify-between mt-2 ${className}`}>
@@ -289,11 +286,11 @@ export function TablePageButtons({
           </Button>
         )}
       </div>
-      
+
       <div className="flex items-center text-secondary/80">
         {page} of {totalPages} pages
       </div>
-      
+
       <div>
         {showNext && (
           <Button
