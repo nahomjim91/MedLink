@@ -10,6 +10,8 @@ import {
   Filter,
   Edit,
   Check,
+  ClipboardList,
+  CircleDollarSignIcon,
 } from "lucide-react";
 import Image from "next/image";
 import React, { useState } from "react";
@@ -111,68 +113,60 @@ export const MetricCard = ({
     </div>
   );
 };
+// Dynamic Order Card Component
+export const DynamicMinOrderCard = ({ orders, userRole  }) => {
+  const getOrderIcon = (order) => {
+    // Check if order has drug items, equipment items, or both
+    const hasEquipment = order.items?.some(
+      (item) =>
+        item.productName?.toLowerCase().includes("equipment") ||
+        item.productName?.toLowerCase().includes("device") ||
+        item.productName?.toLowerCase().includes("machine")
+    );
 
-export const MinOrderCard = ({ onSeeAll }) => {
-  const [orders, setOrders] = useState([
-    {
-      id: "Order-#123",
-      date: "2025-04-12",
-      supplier: "ABC Supplier",
-      status: "active",
-      type: "drug",
-    },
-    {
-      id: "Order-#123",
-      date: "2025-04-12",
-      supplier: "Albert Supplier",
-      status: "active",
-      type: "equipment",
-    },
-    {
-      id: "Order-#123",
-      date: "2025-04-12",
-      supplier: "Robert Supplier",
-      status: "pending",
-      type: "both",
-    },
-  ]);
+    const hasDrugs = order.items?.some(
+      (item) =>
+        !item.productName?.toLowerCase().includes("equipment") &&
+        !item.productName?.toLowerCase().includes("device") &&
+        !item.productName?.toLowerCase().includes("machine")
+    );
+
+    if (hasEquipment && hasDrugs)
+      return <BriefcaseMedical className="text-primary" />;
+    if (hasEquipment) return <Syringe className="text-primary" />;
+    return <Pill className="text-primary" />;
+  };
 
   const OrderItem = ({ order }) => (
     <div className="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
       <div className="flex items-center">
-        <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 bg-secondary/10`}
-        >
-          {order.type === "drug" ? (
-            <Pill className="text-primary" />
-          ) : order.type === "equipment" ? (
-            <Syringe className="text-primary" />
-          ) : (
-            <BriefcaseMedical className="text-primary" />
-          )}
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 bg-secondary/10">
+          {getOrderIcon(order)}
         </div>
         <div>
-          <p className="font-medium text-secondary/90">{order.id}</p>
-          <p className="text-xs text-secondary/60">{order.date}</p>
+          <p className="font-medium text-secondary/90">{order.orderNumber}</p>
+          <p className="text-xs text-secondary/60">
+            {new Date(order.orderDate).toLocaleDateString()}
+          </p>
         </div>
       </div>
       <div className="flex items-center">
         <div className="mr-3 text-right">
-          <p className="font-medium text-secondary/80">{order.supplier}</p>
+          <p className="font-medium text-secondary/80">
+            {userRole === "health-facilities"
+              ? order.sellerName
+              : order.buyerName}
+          </p>
+          <p className="text-xs text-secondary/60">
+            ${order.totalCost?.toLocaleString() || 0}
+          </p>
         </div>
         <div className="w-10 h-10 rounded-full overflow-hidden">
           <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
-            {order.supplierProfileUrl ? (
-              <Image
-                src={order.supplierProfileUrl}
-                alt={order.supplier}
-                width={40}
-                height={40}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              order.supplier.charAt(0)
-            )}
+            {(userRole === "health-facilities"
+              ? order.sellerName
+              : order.buyerName
+            )?.charAt(0) || "?"}
           </div>
         </div>
       </div>
@@ -185,66 +179,58 @@ export const MinOrderCard = ({ onSeeAll }) => {
         <h2 className="text-lg font-semibold text-secondary/80">
           Ongoing Orders
         </h2>
-        <button
-          onClick={onSeeAll}
-          className="text-sm text-secondary/50 hover:text-secondary/70"
-        >
+        <button className="text-sm text-secondary/50 hover:text-secondary/70"  onClick={() => {
+          // Navigate to products page or show all products
+            window.location.href = `/medical-supplies/${userRole}/orders`;
+          
+        }}>
           See All
         </button>
       </div>
       <div>
-        {orders.map((order, index) => (
-          <OrderItem key={index} order={order} />
-        ))}
+        {orders.length > 0 ? (
+          orders
+            .slice(0, 3)
+            .map((order, index) => (
+              <OrderItem key={order.orderId || index} order={order} />
+            ))
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-4 py-13">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center bg-primary/20">
+              <ClipboardList size={52} className="text-primary" />
+            </div>
+            <p className="text-sm text-secondary/60">
+              No ongoing orders found.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 };
-// Card Table Component
-export const MinTransactionCard = ({ onSeeAll }) => {
-  // Sample data - In a real app, this would come from props or API
-  const [transactions, setTransactions] = useState([
-    {
-      id: "Order-#123",
-      status: "Delivered",
-      date: "12 Sep 2024, 9:29",
-      amount: "$30K",
-    },
-    {
-      id: "Order-#123",
-      status: "Delivered",
-      date: "12 Sep 2024, 9:29",
-      amount: "$30K",
-    },
-    {
-      id: "Order-#123",
-      status: "Delivered",
-      date: "12 Sep 2024, 9:29",
-      amount: "$30K",
-    },
-  ]);
 
-  // Transaction item component
+// Dynamic Transaction Card Component
+export const DynamicMinTransactionCard = ({ transactions , onSeeAll }) => {
   const TransactionItem = ({ transaction }) => (
     <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
       <div className="flex items-center">
-        <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center mr-4 bg-secondary/10`}
-        >
+        <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 bg-secondary/10">
           <DollarSign className="text-primary" />
         </div>
         <div>
           <p className="font-medium text-secondary/80">
-            {transaction.id}{" "}
+            {transaction.orderNumber}{" "}
             <span className="text-secondary/50 font-normal">
               ({transaction.status})
             </span>
           </p>
-          <p className="text-xs text-secondary/50">{transaction.date}</p>
+          <p className="text-xs text-secondary/50">
+            {new Date(transaction.orderDate).toLocaleDateString()}
+          </p>
         </div>
       </div>
       <div className="text-lg font-semibold text-primary">
-        {transaction.amount}
+        ${transaction.totalCost?.toLocaleString() || 0}
       </div>
     </div>
   );
@@ -255,17 +241,28 @@ export const MinTransactionCard = ({ onSeeAll }) => {
         <h2 className="text-lg font-semibold text-secondary/80">
           Recent Transactions
         </h2>
-        <button
-          onClick={onSeeAll}
-          className="text-sm text-secondary/50 hover:text-secondary/70"
-        >
+        <button onClick={onSeeAll} className="text-sm text-secondary/50 hover:text-secondary/70">
           See All
         </button>
       </div>
       <div>
-        {transactions.map((transaction, index) => (
-          <TransactionItem key={index} transaction={transaction} />
-        ))}
+         { transactions.length > 0 ? transactions.slice(0, 3).map((transaction, index) => (
+          <TransactionItem
+            key={transaction.orderId || index}
+            transaction={transaction}
+          />
+        ))
+        : (
+           <div className="flex flex-col items-center justify-center space-y-4 py-13">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center bg-primary/20">
+              <CircleDollarSignIcon size={52} className="text-primary" />
+            </div>
+            <p className="text-sm text-secondary/60">
+              No recent transactions found.
+            </p>
+          </div>
+        )
+      }
       </div>
     </div>
   );
@@ -350,10 +347,10 @@ export function TableCard({
       onTabChange(tabId);
     }
   };
-  console.log("currentTab",tabData[currentTab] );
+  console.log("currentTab", tabData[currentTab]);
 
   // Determine which data to display based on active tab
-  const displayData =  data;
+  const displayData = data;
 
   const toggleRowExpand = (index) => {
     setExpandedRows((prev) => ({
