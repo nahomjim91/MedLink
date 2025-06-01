@@ -203,11 +203,11 @@ const orderResolvers = {
     },
 
     // Get my orders (as buyer)
-    myOrders: async (_, { limit, offset, status }, context) => {
+    myOrders: async (_, {  status }, context) => {
       try {
         const user = await hasRole(context, ["facility", "supplier"]);
         
-        const options = { limit, offset };
+        const options = { };
         if (status) {
           options.status = convertOrderStatusToDb(status);
         }
@@ -221,11 +221,11 @@ const orderResolvers = {
     },
 
     // Get orders I need to fulfill (as seller)
-    ordersToFulfill: async (_, { limit, offset, status }, context) => {
+    ordersToFulfill: async (_, { status }, context) => {
       try {
         const user = await hasRole(context, ["importer", "supplier"]);
         
-        const options = { limit, offset };
+        const options = {  };
         if (status) {
           options.status = convertOrderStatusToDb(status);
         }
@@ -239,7 +239,7 @@ const orderResolvers = {
     },
 
     // Get order summaries
-    orderSummaries: async (_, { filter, limit, offset }, context) => {
+    orderSummaries: async (_, { filter, }, context) => {
       try {
         const user = isAuthenticated(context);
         
@@ -263,7 +263,7 @@ const orderResolvers = {
           }
         }
 
-        const summaries = await OrderModel.getOrderSummaries(dbFilter, limit, offset);
+        const summaries = await OrderModel.getOrderSummaries(dbFilter,);
         return summaries.map(transformOrderForGraphQL);
       } catch (error) {
         console.error("Error in orderSummaries resolver:", error);
@@ -272,12 +272,12 @@ const orderResolvers = {
     },
 
     // Get orders by status (admin only)
-    ordersByStatus: async (_, { status, limit, offset }, context) => {
+    ordersByStatus: async (_, { status, }, context) => {
       try {
         await isAdmin(context);
         
         const dbStatus = convertOrderStatusToDb(status);
-        const orders = await OrderModel.getByStatus(dbStatus, { limit, offset });
+        const orders = await OrderModel.getByStatus(dbStatus, );
         return orders.map(transformOrderForGraphQL);
       } catch (error) {
         console.error("Error in ordersByStatus resolver:", error);

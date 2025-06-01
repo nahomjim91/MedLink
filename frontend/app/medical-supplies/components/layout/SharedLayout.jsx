@@ -34,8 +34,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userType, setUserType] = useState("healthFacility"); // Default to patient
-  const [unseenChats, setUnseenChats] = useState(2);
-  const { notificationCount} = useSocketContext();
+  const { notificationCount, unreadCount:unseenChats} = useSocketContext();
   const [showDropdown, setShowDropdown] = useState(false);
   const triggerRef = useRef(null);
 
@@ -104,7 +103,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       },
       {
         name: "History",
-        path: "/medical-supplies/" + user.role + "/history",
+        path: "/medical-supplies/" + user.role + "/transaction",
         icon: <HistoryIcon />,
       },
 
@@ -153,7 +152,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       },
       {
         name: "History",
-        path: "/medical-supplies/" + user.role + "/history",
+        path: "/medical-supplies/" + user.role + "/transaction",
         icon: <HistoryIcon />,
       },
 
@@ -198,7 +197,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       },
       {
         name: "History",
-        path: "/medical-supplies/" + user.role + "/history",
+        path: "/medical-supplies/" + user.role + "/transaction",
         icon: <HistoryIcon />,
       },
       {
@@ -233,7 +232,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
       {
         name: "History",
-        path: "/medical-supplies/" + user.role + "/history",
+        path: "/medical-supplies/" + user.role + "/transaction",
         icon: <HistoryIcon />,
       },
       {

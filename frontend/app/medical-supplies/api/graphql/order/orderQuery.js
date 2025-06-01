@@ -3,8 +3,8 @@
 import { gql } from '@apollo/client';
 // Query to get orders based on user role
 export const GET_MY_ORDERS = gql`
-  query GetMyOrders($limit: Int, $offset: Int, $status: OrderStatus) {
-    myOrders(limit: $limit, offset: $offset, status: $status) {
+  query GetMyOrders($status: OrderStatus) {
+    myOrders( status: $status) {
       orderId
       orderNumber
       buyerName
@@ -30,8 +30,8 @@ export const GET_MY_ORDERS = gql`
 
 // Query to get orders to fulfill (for sellers)
 export const GET_ORDERS_TO_FULFILL = gql`
-  query GetOrdersToFulfill($limit: Int, $offset: Int, $status: OrderStatus) {
-    ordersToFulfill(limit: $limit, offset: $offset, status: $status) {
+  query GetOrdersToFulfill(  $status: OrderStatus) {
+    ordersToFulfill( status: $status) {
       orderId
       orderNumber
       buyerName
@@ -57,8 +57,8 @@ export const GET_ORDERS_TO_FULFILL = gql`
 
 // Query to get order summaries with filters
 export const GET_ORDER_SUMMARIES = gql`
-  query GetOrderSummaries($filter: OrderFilterInput, $limit: Int, $offset: Int) {
-    orderSummaries(filter: $filter, limit: $limit, offset: $offset) {
+  query GetOrderSummaries($filter: OrderFilterInput,) {
+    orderSummaries(filter: $filter, ) {
       orderId
       orderNumber
       buyerName

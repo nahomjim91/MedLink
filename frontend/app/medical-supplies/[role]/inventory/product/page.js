@@ -311,7 +311,7 @@ export default function ProductPage() {
     : [];
   const totalCount = productData.batches?.length || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-  // console.log("prodcut details" , productData)
+  console.log("prodcut details" , productData)
 
   return (
     <div className="relative bg-white rounded-lg py-1.5 shadow-sm h-full">

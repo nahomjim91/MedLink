@@ -19,6 +19,7 @@ const MSUserModel = require("./models/msUser");
 const ProductModel = require("./models/productModel");
 const BatchModel = require("./models/batchModel");
 const CartModel = require("./models/cartModel");
+const TransactionModel = require("./models/transactionModel");
 
 const { auth, db, FieldValue } = require("../config/firebase");
 
@@ -104,6 +105,7 @@ MSUserModel.setNotificationService(io);
 ProductModel.setNotificationService(io);
 BatchModel.setNotificationService(io);
 CartModel.setNotificationService(io);
+TransactionModel.setNotificationService(io);
 
 // Helper function to get consistent chat room name
 const getChatRoomName = (userId1, userId2) => {

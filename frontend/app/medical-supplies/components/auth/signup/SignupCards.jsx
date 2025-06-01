@@ -9,6 +9,7 @@ import { useMSAuth } from "../../../hooks/useMSAuth";
 // Initial signup card with Google auth option or email entry
 export function MSSignupStartCard({ onNextStep }) {
   const [isLoading, setIsLoading] = useState(false);
+  const { signInWithGoogle } = useMSAuth();
   
   const handleContinueWithEmail = () => {
     setIsLoading(true);
@@ -40,10 +41,10 @@ export function MSSignupStartCard({ onNextStep }) {
         </div>
 
         {/* Google OAuth Button */}
-        <OAuthButton 
-          provider="google" 
-          onClick={onNextStep} 
-          fullWidth 
+        <OAuthButton
+          provider="google"
+          onClick={signInWithGoogle}
+          fullWidth
           disabled={isLoading}
         />
 
@@ -109,7 +110,6 @@ export function MSSignupFormCard() {
     
     try {
       await signInWithGoogle();
-      gotoVerifyEmail();
     } catch (error) {
       console.error("Google signup error:", error);
       setError(getAuthErrorMessage(error.code));

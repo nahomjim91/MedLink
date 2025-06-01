@@ -197,27 +197,24 @@ const orderTypeDefs = gql`
     order(orderId: ID!): Order
 
     # Get my orders (as buyer)
-    myOrders(limit: Int = 20, offset: Int = 0, status: OrderStatus): [Order!]!
+    myOrders( status: OrderStatus): [Order!]!
 
     # Get orders I need to fulfill (as seller)
     ordersToFulfill(
-      limit: Int = 20
-      offset: Int = 0
+      
       status: OrderStatus
     ): [Order!]!
 
     # Get order summaries (lightweight for listing)
     orderSummaries(
       filter: OrderFilterInput
-      limit: Int = 20
-      offset: Int = 0
+     
     ): [OrderSummary!]!
 
     # Get orders by status (admin)
     ordersByStatus(
       status: OrderStatus!
-      limit: Int = 20
-      offset: Int = 0
+    
     ): [Order!]!
   }
 

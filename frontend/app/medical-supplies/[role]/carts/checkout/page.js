@@ -16,6 +16,7 @@ import { GET_BATCH_CURRENT_QUANTITY } from "../../../api/graphql/product/product
 import { GET_MS_USER_BY_ID } from "../../../api/graphql/queries";
 import client from "../../../api/graphql/client";
 import { MapPin } from "lucide-react";
+import { CREATE_TRANSACTION } from "../../../api/graphql/transaction/transactionMutation";
 
 // Method 1: Popup Window Approach
 function ChapaPopup({
@@ -29,7 +30,7 @@ function ChapaPopup({
   const [popupWindow, setPopupWindow] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState('waiting'); // 'waiting', 'processing', 'verifying', 'success'
+  const [processingStatus, setProcessingStatus] = useState("waiting"); // 'waiting', 'processing', 'verifying', 'success'
   const [timeoutId, setTimeoutId] = useState(null);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ function ChapaPopup({
         if (popup.closed) {
           clearInterval(checkInterval);
           setIsProcessing(true);
-          setProcessingStatus('processing');
+          setProcessingStatus("processing");
 
           // Give some time for the payment to process
           setTimeout(() => {
@@ -103,16 +104,16 @@ function ChapaPopup({
   const checkPaymentStatus = async () => {
     try {
       setIsVerifying(true);
-      setProcessingStatus('verifying');
-      
+      setProcessingStatus("verifying");
+
       // Poll backend to check payment status
       const response = await apiRequest(`/api/payments/status/${txRef}`, {
         method: "GET",
       });
 
       if (response.success && response.data.status === "success") {
-        setProcessingStatus('success');
-        
+        setProcessingStatus("success");
+
         // Show success message briefly before calling onSuccess
         setTimeout(() => {
           onSuccess(response.data);
@@ -138,39 +139,42 @@ function ChapaPopup({
 
   const getStatusContent = () => {
     switch (processingStatus) {
-      case 'processing':
+      case "processing":
         return {
           icon: "⏳",
           title: "Processing Payment...",
           message: "Please wait while we process your payment.",
-          showSpinner: true
+          showSpinner: true,
         };
-      case 'verifying':
+      case "verifying":
         return {
           icon: "🔍",
           title: "Verifying Payment...",
-          message: "We're verifying your payment with the bank. This may take a moment.",
-          showSpinner: true
+          message:
+            "We're verifying your payment with the bank. This may take a moment.",
+          showSpinner: true,
         };
-      case 'success':
+      case "success":
         return {
           icon: "✅",
           title: "Payment Successful!",
           message: "Your payment has been verified and processed successfully.",
-          showSpinner: false
+          showSpinner: false,
         };
       default:
         return {
           icon: "💳",
           title: "Payment Window Opened",
-          message: "Complete your payment in the popup window. This dialog will close automatically when payment is complete.",
-          showSpinner: false
+          message:
+            "Complete your payment in the popup window. This dialog will close automatically when payment is complete.",
+          showSpinner: false,
         };
     }
   };
 
   const statusContent = getStatusContent();
-  const isInProgress = isProcessing || isVerifying || processingStatus === 'success';
+  const isInProgress =
+    isProcessing || isVerifying || processingStatus === "success";
 
   return (
     <div
@@ -210,13 +214,14 @@ function ChapaPopup({
             }}
           />
         )}
-        
+
         {!statusContent.showSpinner && (
           <div
             style={{
               width: "60px",
               height: "60px",
-              backgroundColor: processingStatus === 'success' ? "#10b981" : "#14b8a6",
+              backgroundColor:
+                processingStatus === "success" ? "#10b981" : "#14b8a6",
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",
@@ -233,12 +238,12 @@ function ChapaPopup({
         <h3 style={{ margin: "0 0 15px 0", color: "#1f2937" }}>
           {statusContent.title}
         </h3>
-        
+
         <p style={{ color: "#6b7280", margin: "0 0 20px 0" }}>
           {statusContent.message}
         </p>
 
-        {processingStatus === 'waiting' && (
+        {processingStatus === "waiting" && (
           <div
             style={{
               backgroundColor: "#f9fafb",
@@ -260,7 +265,7 @@ function ChapaPopup({
           </div>
         )}
 
-        {processingStatus !== 'success' && (
+        {processingStatus !== "success" && (
           <button
             onClick={onClose}
             style={{
@@ -439,8 +444,8 @@ function StepProgress({ currentStep }) {
     </div>
   );
 }
-// Step 1: Order Summary Component
 
+// Step 1: Order Summary Component
 function OrderSummaryStep({
   orders,
   currentOrderIndex,
@@ -728,7 +733,7 @@ function OrderSummaryStep({
                     {seller?.address?.state || "Not provided"}
                   </p>
                 </div>
-               
+
                 {seller?.address?.geoLocation && (
                   <div>
                     <span className="text-gray-500 block">Coordinates</span>
@@ -944,6 +949,7 @@ function PaymentStep({
     </div>
   );
 }
+
 // Step 3: Finished Component
 function FinishedStep({ onNext }) {
   return (
@@ -1102,6 +1108,7 @@ export default function CheckoutPage() {
   );
   const [updateDrugBatch] = useMutation(UPDATE_DRUG_BATCH_QUANTITY);
   const [updateEquipmentBatch] = useMutation(UPDATE_EQUIPMENT_BATCH_QUANTITY);
+  const [createTransaction] = useMutation(CREATE_TRANSACTION);
   const [getBatchQuantity] = useLazyQuery(GET_BATCH_CURRENT_QUANTITY);
 
   // console.log("CheckoutPage - cart", cart);
@@ -1323,18 +1330,50 @@ export default function CheckoutPage() {
       rollbackData = await updateBatchQuantitiesOptimistic(
         currentPayment.order
       );
+      console.log(" transaction Data", {
+        buyerId: currentPayment.order.buyerId,
+        sellerId: currentPayment.order.sellerId,
+        transactionId: verificationResponse.data.txRef || currentPayment.txRef,
+        orderId: currentPayment.order.orderId,
+        chapaRef: verificationResponse.data.reference || currentPayment.txRef,
+        chapaStatus: verificationResponse.data.status,
+        amount:
+          verificationResponse.data.amount || currentPayment.order.totalCost,
+        currency: "ETB",
+        status: "PAID_HELD_BY_SYSTEM",
+      });
+      //Step 3: create transaction in database
+      await createTransaction({
+        variables: {
+          input: {
+            buyerId: currentPayment.order.buyerId,
+            sellerId: currentPayment.order.sellerId,
+            transactionId:
+              verificationResponse.data.txRef || currentPayment.txRef,
+            orderId: currentPayment.order.orderId,
+            chapaRef:
+              verificationResponse.data.reference || currentPayment.txRef,
+            chapaStatus: verificationResponse.data.status,
+            amount:
+              verificationResponse.data.amount ||
+              currentPayment.order.totalCost,
+            currency: "ETB",
+            status: "PAID_HELD_BY_SYSTEM",
+          },
+        },
+      });
 
-      // Step 3: Create order in database
+      // Step 4: Create order in database
       const createdOrder = await createOrderInDatabase(currentPayment.order, {
         ...verificationResponse.data,
         transactionId:
           verificationResponse.data.transactionId || currentPayment.txRef,
       });
 
-      // Step 4: Remove items from cart
+      // Step 5: Remove items from cart
       await handleRemoveItemsFromCart(currentPayment.order);
 
-      // Step 5: Update UI state
+      // Step 6: Update UI state
       setPaidOrders((prev) => [...prev, currentPayment.order.orderId]);
       setShowPopup(false);
       setCurrentPayment(null);

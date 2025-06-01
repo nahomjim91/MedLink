@@ -939,7 +939,7 @@ const OrderModel = {
    * @param {Number} offset - Offset
    * @returns {Array} Order summaries
    */
-  async getOrderSummaries(filter = {}, limit = 20, offset = 0) {
+  async getOrderSummaries(filter = {},) {
     try {
       let query = ordersRef;
 
@@ -959,8 +959,6 @@ const OrderModel = {
 
       const ordersSnapshot = await query
         .orderBy("createdAt", "desc")
-        .limit(limit)
-        .offset(offset)
         .get();
 
       return formatDocs(ordersSnapshot.docs).map((order) => ({
@@ -989,8 +987,11 @@ const OrderModel = {
    * @param {String} transactionId - Transaction ID (optional, for payment-related updates)
    * @returns {Object} Updated order
    */
+
   async updateStatus(orderId, status, userId, transactionId = null) {
     try {
+      console.log(`Updating order ${orderId} status from ? to ${status}`);
+
       const orderRef = ordersRef.doc(orderId);
       const orderDoc = await orderRef.get();
 
@@ -999,6 +1000,9 @@ const OrderModel = {
       }
 
       const order = orderDoc.data();
+      console.log(
+        `Current order status: ${order.status}, payment status: ${order.paymentStatus}`
+      );
 
       // Validate status transition and permissions
       if (!this.isValidStatusTransition(order.status, status)) {
@@ -1009,7 +1013,7 @@ const OrderModel = {
 
       // Check permissions
       if (status === "confirmed" || status === "rejected-by-seller") {
-        console.log("userId: ", userId, "order: ", order);
+        console.log("userId: ", userId, "order sellerId: ", order.sellerId);
         if (userId !== order.sellerId) {
           throw new Error("Only seller can confirm or reject orders");
         }
@@ -1026,7 +1030,15 @@ const OrderModel = {
         status,
         order.paymentStatus
       );
+
+      console.log(
+        `Determined new payment status: ${newPaymentStatus} (current: ${order.paymentStatus})`
+      );
+
       if (newPaymentStatus && newPaymentStatus !== order.paymentStatus) {
+        console.log(
+          `Payment status will change from ${order.paymentStatus} to ${newPaymentStatus}`
+        );
         updateData.paymentStatus = newPaymentStatus;
 
         // Add payment-specific timestamps
@@ -1042,6 +1054,17 @@ const OrderModel = {
         if (transactionId) {
           updateData.transactionId = transactionId;
         }
+
+        console.log(`About to update transaction status for order ${orderId}`);
+        // Update transaction status
+        await this.updateTransactionStatus(
+          orderId,
+          newPaymentStatus,
+          transactionId || order.transactionId
+        );
+        console.log(`Transaction status update completed for order ${orderId}`);
+      } else {
+        console.log(`No payment status change needed for order ${orderId}`);
       }
 
       // Handle product transfer for pickup_confirmed and delivered statuses
@@ -1091,6 +1114,7 @@ const OrderModel = {
       }
 
       // Update the order
+      console.log(`Updating order ${orderId} with data:`, updateData);
       await orderRef.update(updateData);
 
       // Send status update notifications
@@ -1101,11 +1125,105 @@ const OrderModel = {
         newPaymentStatus
       );
 
+      console.log(`Order ${orderId} status update completed successfully`);
       // Return updated order with full details
       return await this.getById(orderId);
     } catch (error) {
       console.error("Error updating order status:", error);
       throw error;
+    }
+  },
+
+  /**
+   * Update transaction status based on order payment status
+   * @param {String} orderId - Order ID
+   * @param {String} newPaymentStatus - New payment status
+   * @param {String} transactionId - Transaction ID (optional)
+   */
+  async updateTransactionStatus(
+    orderId,
+    newPaymentStatus,
+    transactionId = null
+  ) {
+    try {
+      const TransactionModel = require("./transactionModel");
+
+      console.log(
+        `Updating transaction status for order ${orderId} to payment status: ${newPaymentStatus}`
+      );
+
+      // Map payment status to transaction status (keeping database format with hyphens)
+      const paymentToTransactionStatusMap = {
+        pending: "pending",
+        processing: "processing",
+        "paid-held-by-system": "paid-held-by-system",
+        "released-to-seller": "released-to-seller",
+        refunded: "refunded",
+        failed: "failed",
+        cancelled: "cancelled",
+      };
+
+      const transactionStatus = paymentToTransactionStatusMap[newPaymentStatus];
+      if (!transactionStatus) {
+        console.warn(
+          `No transaction status mapping for payment status: ${newPaymentStatus}`
+        );
+        return;
+      }
+
+      console.log(
+        `Mapped payment status ${newPaymentStatus} to transaction status: ${transactionStatus}`
+      );
+
+      // Find transaction by orderId or use provided transactionId
+      let transaction;
+      if (transactionId) {
+        transaction = await TransactionModel.getById(transactionId);
+        console.log(`Found transaction by ID: ${transactionId}`, transaction);
+      } else {
+        const transactions = await TransactionModel.getByOrderId(orderId, {
+          limit: 1,
+        });
+        transaction = transactions[0];
+        console.log(`Found transaction by orderId: ${orderId}`, transaction);
+      }
+
+      if (!transaction) {
+        console.warn(`No transaction found for order: ${orderId}`);
+        return;
+      }
+
+      // Check if status actually needs updating
+      if (transaction.status === transactionStatus) {
+        console.log(
+          `Transaction ${transaction.transactionId} already has status: ${transactionStatus}`
+        );
+        return;
+      }
+
+      // Update transaction status using the correct method signature
+      // Based on your TransactionModel.updateStatus(transactionId, status, chapaRef = null)
+      const result = await TransactionModel.updateStatus(
+        transaction.transactionId,
+        transactionStatus,
+        transaction.chapaRef 
+      );
+
+      console.log("Transaction update result:", result);
+      console.log(
+        `Transaction ${transaction.transactionId} status updated from ${transaction.status} to ${transactionStatus}`
+      );
+
+      return result;
+    } catch (error) {
+      console.error("Error updating transaction status:", error);
+      console.error("Error details:", {
+        orderId,
+        newPaymentStatus,
+        transactionId,
+        stack: error.stack,
+      });
+      // Don't throw error to avoid breaking order status update
     }
   },
 
@@ -1471,6 +1589,11 @@ const OrderModel = {
         if (newPaymentStatus === "refunded") {
           updateData.refundedAt = timestamp();
         }
+        await this.updateTransactionStatus(
+          orderId,
+          newPaymentStatus,
+          order.transactionId
+        );
       }
 
       await orderRef.update(updateData);
@@ -1583,6 +1706,7 @@ const OrderModel = {
       if (!orderDoc.exists) {
         throw new Error("Order not found");
       }
+      const order = orderDoc.data();
 
       const updateData = {
         paymentStatus,
@@ -1603,6 +1727,8 @@ const OrderModel = {
       }
 
       await orderRef.update(updateData);
+      await this.updateTransactionStatus(orderId, paymentStatus, transactionId);
+
       await this.sendPaymentStatusNotifications(order, paymentStatus);
 
       return await this.getById(orderId);

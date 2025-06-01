@@ -290,7 +290,11 @@ export const StatCard = ({
         <h3 className="text-secondary/70 font-bold text-lg">{title}</h3>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-2 ">
+      <div
+        className={`grid${
+          metrics.length >= 2 ? " md:grid-cols-3" : "grid-cols-2"
+        }  gap-x-8 gap-y-2 mb-2 `}
+      >
         {metrics.map((metric, index) => (
           <div key={index} className="flex flex-col items-center  ">
             <span className="text-2xl font-medium text-secondary/80">
@@ -346,9 +350,10 @@ export function TableCard({
       onTabChange(tabId);
     }
   };
+  console.log("currentTab",tabData[currentTab] );
 
   // Determine which data to display based on active tab
-  const displayData = tabData[currentTab] || data;
+  const displayData =  data;
 
   const toggleRowExpand = (index) => {
     setExpandedRows((prev) => ({
