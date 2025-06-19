@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, OAuthButton} from "../../ui/Button"
 import { EmailInput, PasswordInput, TextDivider } from "../../ui/Input"
-import { useAuth } from "../../../hooks/useAuth";
+import { useAuth } from "../../../../../hooks/useAuth";
 
 export function LogInFormCard() {
   const router = useRouter();

@@ -2,8 +2,8 @@
 import { usePathname } from "next/navigation";
 import { ApolloWrapper } from "./api/apolloProvider";
 import RouteProtection from "./components/auth/RouteProtection";
-import Navbar from "./components/layout/Navbar";
-import { MSAuthProvider } from "./hooks/useMSAuth";
+import Navbar from "../layout/Navbar";
+import { MSAuthProvider } from "../../hooks/useMSAuth";
 const NavbarWrapper = ({ children }) => {
   const pathname = usePathname();
 
@@ -29,7 +29,7 @@ const NavbarWrapper = ({ children }) => {
   // Render navbar only if not in a protected area
   return (
     <>
-      {!shouldHideNavbar && <Navbar />}
+      {!shouldHideNavbar && <Navbar service="medical-supply" />}
       {children}
     </>
   );

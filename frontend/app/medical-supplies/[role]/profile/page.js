@@ -1,5 +1,5 @@
 "use client";
-import { useMSAuth } from "../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../hooks/useMSAuth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@apollo/client";

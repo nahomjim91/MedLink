@@ -1,6 +1,6 @@
 "use client";
 import { AlertTriangle, Info } from "lucide-react";
-import { useMSAuth } from "../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../hooks/useMSAuth";
 import { Button } from "../../components/ui/Button";
 import { UPDATE_MS_USER_PROFILE } from "../../api/graphql/mutations";
 import { useMutation } from "@apollo/client";

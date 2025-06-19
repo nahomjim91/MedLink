@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMSAuth } from "../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../../hooks/useMSAuth";
 import { useMutation } from "@apollo/client";
 import { COMPLETE_MS_REGISTRATION } from "../../../api/graphql/mutations";
 import RoleSelection from "./RoleSelection";

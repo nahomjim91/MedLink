@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../../../hooks/useAuth";
 import {
   Menu,
   X,

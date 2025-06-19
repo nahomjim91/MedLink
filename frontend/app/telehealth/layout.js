@@ -1,7 +1,7 @@
 'use client'
 import { ApolloWrapper } from "./api/apolloProvider";
-import Navbar from "./components/layout/Navbar";
-import { AuthProvider } from "./hooks/useAuth"; // Updated path to match your new structure
+import Navbar from "../layout/Navbar";
+import { AuthProvider } from "../../hooks/useAuth"; // Updated path to match your new structure
 import { usePathname } from "next/navigation";
 // import { ToastProvider } from "./components/ui/use-toast";
 // import { VideoCallProvider } from "./hooks/useVideoCall";
@@ -29,7 +29,7 @@ const NavbarWrapper = ({ children }) => {
   // Render navbar only if not in a protected area
   return (
     <>
-      {!shouldHideNavbar && <Navbar />}
+      {!shouldHideNavbar && <Navbar service="telehealth" />}
       {children}
     </>
   );
@@ -39,7 +39,7 @@ export default function TelehealthLayout({ children }) {
   return (
     <ApolloWrapper>
       <AuthProvider>
-        <NavbarWrapper>
+        <NavbarWrapper >
           {children}
         </NavbarWrapper>
       </AuthProvider>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import { useMSAuth } from './useMSAuth'; // Your auth hook
+import { useMSAuth } from '../../../hooks/useMSAuth'; // Your auth hook
 import { auth } from '../api/firebase/config';
 
 export const useNotifications = () => {

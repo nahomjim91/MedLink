@@ -8,11 +8,11 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from "firebase/auth";
-import { auth } from "../api/firebase/config";
+import { auth } from "../app/telehealth/api/firebase/config";
 import { usePathname, useRouter } from "next/navigation";
-import { GET_MY_PROFILE } from "../api/graphql/queries";
-import { INITIALIZE_USER_PROFILE } from "../api/graphql/mutations";
-import client from "../api/graphql/client";
+import { GET_MY_PROFILE } from "../app/telehealth/api/graphql/queries";
+import { INITIALIZE_USER_PROFILE } from "../app/telehealth/api/graphql/mutations";
+import client from "../app/telehealth/api/graphql/client";
 import { useMutation } from '@apollo/client';
 
 const AuthContext = createContext();

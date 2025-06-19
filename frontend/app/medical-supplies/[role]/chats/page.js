@@ -5,7 +5,7 @@ import { Search, MessageCircle, Send, Check, Plus } from "lucide-react";
 import Image from "next/image";
 import { Button } from "../../components/ui/Button";
 import { useSocketContext } from "../../context/SocketContext";
-import { useMSAuth } from "../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../hooks/useMSAuth";
 import { NewConversationModal } from "../../components/modal/NewConversationModal";
 import { ProductContextCard } from "../../components/ui/product/ProductContextCard";
 import useProductContext from "../../hooks/useProduct";

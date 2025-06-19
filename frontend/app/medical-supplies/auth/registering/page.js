@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 
 import MultiStepSignup from "../../components/auth/registering/MultiStepSignup";
-import { useMSAuth } from "../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../hooks/useMSAuth";
 
 export default function RegisterPage() {
   const {user} = useMSAuth();

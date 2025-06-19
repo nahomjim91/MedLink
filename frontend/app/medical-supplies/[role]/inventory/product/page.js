@@ -9,7 +9,7 @@ import {
   UPDATE_EQUIPMENT_PRODUCT,
   DELETE_PRODUCT,
 } from "../../../api/graphql/product/productMutations";
-import { useMSAuth } from "../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../../hooks/useMSAuth";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/Button";
 import { Check, X, Pen, Plus, Trash2 } from "lucide-react";

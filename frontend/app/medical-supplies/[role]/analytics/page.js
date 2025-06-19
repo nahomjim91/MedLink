@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { MinTableCard } from "../../components/ui/Cards";
 import { useQuery } from "@apollo/client";
-import { useMSAuth } from "../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../hooks/useMSAuth";
 import { GET_MY_PRODUCTS_WITH_BATCHES } from "../../api/graphql/product/productQueries";
 import {
   GET_MY_ORDERS,

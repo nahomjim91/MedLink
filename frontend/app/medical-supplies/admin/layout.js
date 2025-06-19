@@ -1,6 +1,6 @@
 "use client";
 
-import { useMSAuth } from "../hooks/useMSAuth";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SharedLayout from "../components/layout/SharedLayout";

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useMSAuth } from '../../hooks/useMSAuth';
+import { useMSAuth } from '../../../../hooks/useMSAuth';
 
 export default function RouteProtection({ children }) {
   const { user, loading } = useMSAuth();

@@ -2,7 +2,7 @@
 "use client";
 
 import { useQuery } from "@apollo/client";
-import { useMSAuth } from "../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../../hooks/useMSAuth";
 import { GET_ORDER_DETAILS_BY_ID } from "../../../api/graphql/order/orderQuery";
 import { GET_MS_USER_BY_ID } from "../../../api/graphql/queries";
 import { use, useState, useMemo } from "react";

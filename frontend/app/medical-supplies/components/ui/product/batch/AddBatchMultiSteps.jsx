@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation } from "@apollo/client";
 import { StepProgressIndicator } from "../../StepProgressIndicator";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../../../hooks/useMSAuth";
 
 // GraphQL Mutations
 import { 
@@ -76,45 +76,9 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
     setBatchData((prev) => ({ ...prev, ...newData }));
   }, []);
 
-  // Validation logic
-  const validateCurrentStep = useCallback(() => {
-    setError(null);
-
-    const validators = {
-      1: () => {
-        if (batchData.quantity <= 0) {
-          setError("Quantity must be greater than zero.");
-          return false;
-        }
-
-        if (productData.productType === "DRUG" && !batchData.expiryDate) {
-          setError("Expiry date is required for drugs.");
-          return false;
-        }
-
-        if (batchData.costPrice <= 0) {
-          setError("Cost price must be greater than zero.");
-          return false;
-        }
-
-        if (batchData.sellingPrice <= 0) {
-          setError("Selling price must be greater than zero.");
-          return false;
-        }
-
-        return true;
-      },
-      2: () => true, // No validation for summary step
-    };
-
-    return validators[currentStep] ? validators[currentStep]() : true;
-  }, [currentStep, batchData, productData.productType]);
-
   // Navigation handlers
   const handleNext = useCallback(async () => {
-    if (!validateCurrentStep()) {
-      return;
-    }
+
 
     if (currentStep === getTotalSteps() - 1) {
       await handleSubmitBatch();
@@ -122,7 +86,7 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
     }
 
     setCurrentStep((prev) => Math.min(prev + 1, getTotalSteps()));
-  }, [currentStep, getTotalSteps, validateCurrentStep]);
+  }, [currentStep, getTotalSteps]);
 
   const handlePrevious = useCallback(() => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
