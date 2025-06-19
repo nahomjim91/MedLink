@@ -1,4 +1,4 @@
-// app/telehealth/firebase/config.js
+// app/medical-supplies/firebase/config.js
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
@@ -14,7 +14,7 @@ const firebaseConfig = {
 };
 
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const medicalSuppliesApp = initializeApp(firebaseConfig, 'medical-supplies');
+const auth = getAuth(medicalSuppliesApp);
 
 export { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut };
