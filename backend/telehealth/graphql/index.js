@@ -2,7 +2,7 @@
 const { ApolloServer } = require('apollo-server-express');
 const typeDefs = require('./schemas');
 const resolvers = require('./resolvers');
-const { createContext } = require('../../middleware/auth');
+const { createContext } = require('../middleware/auth');
 
 /**
  * Create and configure Apollo Server
@@ -54,7 +54,7 @@ const setupApolloServer = async (app) => {
   // Apply middleware to Express app
   server.applyMiddleware({ app, path: '/graphql' });
   
-  console.log(`Apollo Server ready at http://localhost:${process.env.TELEHEALTH_SERVER_PORT}${server.graphqlPath}`);
+  console.log(`Apollo Server ready at http://localhost:${process.env.TELEHEALTH_SERVER_PORT||4002}${server.graphqlPath}`);
   
   return server;
 };

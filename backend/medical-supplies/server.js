@@ -7,7 +7,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const { Server } = require("socket.io");
 const setupApolloServer = require("./graphql");
-const { authMiddleware } = require("../middleware/auth");
+const { authMiddleware } = require("./middleware/auth");
 const paymentRoutes = require("./route/payment");
 const chatController = require("./controllers/chatController");
 const notificationController = require("./controllers/notificationController");
@@ -21,7 +21,7 @@ const BatchModel = require("./models/batchModel");
 const CartModel = require("./models/cartModel");
 const TransactionModel = require("./models/transactionModel");
 
-const { auth, db, FieldValue } = require("../config/firebase");
+const { auth, db, FieldValue } = require("./config/firebase");
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {

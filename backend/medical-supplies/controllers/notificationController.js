@@ -1,5 +1,5 @@
 // /controllers/notificationController.js
-const { db, FieldValue } = require("../../config/firebase");
+const { db, FieldValue } = require("../config/firebase");
 
 // Notification types for medical supplies system
 const NOTIFICATION_TYPES = {

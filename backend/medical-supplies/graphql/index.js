@@ -2,7 +2,7 @@
 const { ApolloServer } = require('apollo-server-express');
 const typeDefs = require('./schemas/index');
 const resolvers = require('./resolvers/index');
-const { createContext } = require('../../middleware/auth');
+const { createContext } = require('../middleware/auth');
 
 /**
  * Create and configure Apollo Server

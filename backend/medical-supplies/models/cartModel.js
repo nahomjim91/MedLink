@@ -1,5 +1,5 @@
 // /models/cartModel.js
-const { db, FieldValue } = require("../../config/firebase");
+const { db, FieldValue } = require("../config/firebase");
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers");
 const ProductModel = require("./productModel");
 const BatchModel = require("./batchModel");

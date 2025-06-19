@@ -1,5 +1,5 @@
 // /telehealth/utils/helpers.js
-const { db, FieldValue } = require("../config/firebase");
+const { db, FieldValue } = require("../medical-supplies/config/firebase");
 
 const formatDoc = (doc) => {
   if (!doc.exists) return null;

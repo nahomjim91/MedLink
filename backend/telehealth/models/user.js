@@ -1,7 +1,7 @@
 /**
  * User model for MedLink telehealth
  */
-const { db } = require('../../config/firebase');
+const { db } = require('../config/firebase');
 const { formatDoc, sanitizeInput, timestamp } = require('../../utils/helpers');
 const DoctorProfileModel = require('./doctorProfile');
 const PatientProfileModel = require('./patientProfile');

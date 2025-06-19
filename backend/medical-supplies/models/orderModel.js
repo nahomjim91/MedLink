@@ -1,5 +1,5 @@
 // /models/orderModel.js
-const { db, FieldValue } = require("../../config/firebase");
+const { db } = require("../config/firebase");
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers");
 const MSUserModel = require("./msUser");
 const ProductModel = require("./productModel");

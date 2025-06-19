@@ -1,5 +1,5 @@
 // models/transactionModel.js
-const { db, admin } = require("../../config/firebase");
+const { db, admin } = require("../config/firebase");
 const {
   formatDoc,
   formatDocs,

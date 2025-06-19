@@ -1,5 +1,5 @@
 // //service/notificationService.js
-const { db, FieldValue } = require("../../config/firebase");
+const { db, FieldValue } = require("../config/firebase");
 
 class NotificationService {
   constructor(io) {

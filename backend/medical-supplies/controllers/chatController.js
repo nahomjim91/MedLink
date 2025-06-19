@@ -1,5 +1,5 @@
 // socket/chatController.js
-const { db, FieldValue, admin } = require("../../config/firebase");
+const { db, FieldValue, admin } = require("../config/firebase");
 
 const isUserOnline = (userId, userConnections) => {
   return (

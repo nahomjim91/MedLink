@@ -1,7 +1,7 @@
 // socket/socket.js
 const { Server } = require('socket.io');
 const { createServer } = require('http');
-const { auth } = require('../../config/firebase');
+const { auth } = require('../config/firebase');
 
 // Store user connections
 const userConnections = new Map();

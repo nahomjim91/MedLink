@@ -1,7 +1,7 @@
 /**
  * Medical Supplies User model with Notification Integration
  */
-const { db, GeoPoint } = require("../../config/firebase");
+const { db, GeoPoint } = require("../config/firebase");
 const {
   formatDoc,
   formatDocs,
