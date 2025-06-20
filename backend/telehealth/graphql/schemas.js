@@ -24,7 +24,7 @@ const typeDefs = gql`
     displayName: String
     gender: String
     profileImageUrl: String
-    specialization: String
+    specialization: [String]
     experienceYears: Int
     aboutMe: String
     certificates: [Certificate]
@@ -60,7 +60,7 @@ const typeDefs = gql`
   input DoctorProfileInput {
     displayName: String
     gender: String
-    specialization: String
+    specialization: [String]
     experienceYears: Int
     aboutMe: String
     profileImageUrl: String

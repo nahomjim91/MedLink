@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Check, ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Check, ChevronDown, Star } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { Search } from "lucide-react";
 import { IconButton } from "./Button";
@@ -15,8 +15,100 @@ export function TextInput({
   fullWidth = false,
   required = false,
   className = "",
+  isDesabled = false,
+  validation = "default",
+  name,
   ...props
 }) {
+  // Validation patterns
+  const validationPatterns = {
+    name: /^[a-zA-Z\s]*$/, // Only letters and spaces
+    phone: /^[0-9+\-\s()]*$/, // Numbers, +, -, spaces, parentheses
+    phoneEthiopia: /^[0-9]*$/, // Ethiopian phone - only numbers
+    batch: /^[a-zA-Z0-9#\-\s]*$/, // Letters, numbers, #, -, spaces
+    email: /^[a-zA-Z0-9@._\-]*$/, // Email characters
+    alphanumeric: /^[a-zA-Z0-9\s]*$/, // Letters, numbers, spaces
+    numeric: /^[0-9]*$/, // Numbers only
+    default: /.*/, // Allow everything (no restriction)
+  };
+
+  // Get validation pattern based on validation prop
+  const getValidationPattern = (validationType) => {
+    return validationPatterns[validationType] || validationPatterns.default;
+  };
+
+  // Ethiopian phone validation function
+  const validateEthiopianPhone = (inputValue) => {
+    // Only allow numbers
+    if (!/^[0-9]*$/.test(inputValue)) return false;
+
+    // Allow empty input (for when user is still typing)
+    if (inputValue === "") return true;
+
+    // Must be 10 digits total
+    if (inputValue.length > 10) return false;
+
+    // First digit must be 0
+    if (inputValue.length >= 1 && inputValue[0] !== "0") return false;
+
+    // Second digit must be 9 or 7
+    if (
+      inputValue.length >= 2 &&
+      inputValue[1] !== "9" &&
+      inputValue[1] !== "7"
+    )
+      return false;
+
+    return true;
+  };
+
+  // Handle input change with validation
+  const handleChange = (e) => {
+    const inputValue = e.target.value;
+
+    // Special handling for Ethiopian phone
+    if (validation === "phoneEthiopia") {
+      if (validateEthiopianPhone(inputValue)) {
+        const newEvent = {
+          target: {
+            name: name,
+            value: inputValue,
+          },
+        };
+        onChange(newEvent);
+      }
+      return;
+    }
+
+    // Regular pattern validation for other types
+    const pattern = getValidationPattern(validation);
+    if (pattern.test(inputValue)) {
+      const newEvent = {
+        target: {
+          name: name,
+          value: inputValue,
+        },
+      };
+      onChange(newEvent);
+    }
+  };
+
+  // Generate error message for Ethiopian phone
+  const getPhoneErrorMessage = () => {
+    if (validation === "phoneEthiopia" && value) {
+      if (value.length > 0 && value.length < 10) {
+        return "Phone number must be 10 digits";
+      }
+      if (value.length >= 1 && value[0] !== "0") {
+        return "Phone number must start with 0";
+      }
+      if (value.length >= 2 && value[1] !== "9" && value[1] !== "7") {
+        return "Second digit must be 9 or 7 (09xxxxxxxx or 07xxxxxxxx)";
+      }
+    }
+    return errorMessage;
+  };
+
   return (
     <div className={`mb-4 ${fullWidth ? "w-full" : ""} ${className}`}>
       {label && (
@@ -26,9 +118,11 @@ export function TextInput({
       )}
       <input
         type={type}
+        name={name}
         value={value}
-        onChange={onChange}
+        onChange={handleChange}
         placeholder={placeholder}
+        disabled={isDesabled}
         className={`
             w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2  text-xs md:text-sm
             ${
@@ -40,8 +134,8 @@ export function TextInput({
         required={required}
         {...props}
       />
-      {error && errorMessage && (
-        <p className="text-error text-xs mt-1">{errorMessage}</p>
+      {error && (
+        <p className="text-error text-xs mt-1">{getPhoneErrorMessage()}</p>
       )}
     </div>
   );
@@ -530,5 +624,53 @@ export const SearchBar = () => {
       <IconButton icon={<Search/>} isActive={true} />
       </div>
     </div>
+  );
+};
+
+export const Rating = ({ label, value, showValue = true, maxStars = 5 }) => {
+  // Ensure value is between 0 and maxStars
+  const ratingValue = Math.max(0, Math.min(maxStars, value));
+  
+  // Generate array of star indices
+  const stars = Array.from({ length: maxStars }, (_, i) => i + 1);
+  
+  return (
+      <div className="flex items-center bg-gray-50 rounded-lg p-3">
+        <div className="flex items-center">
+          {stars.map((star) => {
+            // Full star
+            if (star <= Math.floor(ratingValue)) {
+              return (
+                <Star 
+                  key={star}
+                  className="text-primary/60 fill-primary" 
+                  size={18}
+                />
+              );
+            }
+            // Half star
+            else if (star <= ratingValue + 0.5) {
+              return (
+                <div key={star} className="relative">
+                  {/* Empty star as background */}
+                  <Star className="text-primary/60" size={18} />
+                  {/* Half-filled star (clipped) */}
+                  <div className="absolute inset-0 overflow-hidden w-1/2">
+                    <Star className="text-primary/60 fill-primary" size={18} />
+                  </div>
+                </div>
+              );
+            }
+            // Empty star
+            else {
+              return <Star key={star} className="text-primary/60" size={18} />;
+            }
+          })}
+        </div>
+        
+        {showValue && (
+          <span className="ml-2 text-base font-bold">{ratingValue.toFixed(1)}</span>
+        )}
+      </div>
   );
 };

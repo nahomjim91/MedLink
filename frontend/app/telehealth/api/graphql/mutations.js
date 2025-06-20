@@ -49,31 +49,6 @@ export const COMPLETE_REGISTRATION = gql`
   }
 `;
 
-// Mutation to update doctor profile
-export const UPDATE_DOCTOR_PROFILE = gql`
-  mutation UpdateDoctorProfile($input: DoctorProfileInput!) {
-    updateDoctorProfile(input: $input) {
-      doctorId
-      displayName
-      specialization
-      experienceYears
-      aboutMe
-      profileImageUrl
-      isApproved
-    }
-  }
-`;
-
-// Mutation to update patient profile
-export const UPDATE_PATIENT_PROFILE = gql`
-  mutation UpdatePatientProfile($input: PatientProfileInput!) {
-    updatePatientProfile(input: $input) {
-      id
-      profileComplete
-    }
-  }
-`;
-
 // Mutation to add a certificate
 export const ADD_CERTIFICATE = gql`
   mutation AddCertificate($certificate: CertificateInput!) {
@@ -83,6 +58,35 @@ export const ADD_CERTIFICATE = gql`
         name
         url
       }
+    }
+  }
+`;
+
+export const UPDATE_DOCTOR_PROFILE = gql`
+  mutation UpdateDoctorProfile($input: DoctorProfileInput!) {
+    updateDoctorProfile(input: $input) {
+      doctorId
+      displayName
+      gender
+      specialization
+      experienceYears
+      aboutMe
+      profileImageUrl
+      isApproved
+    }
+  }
+`;
+
+export const UPDATE_PATIENT_PROFILE = gql`
+  mutation UpdatePatientProfile($input: PatientProfileInput!) {
+    updatePatientProfile(input: $input) {
+      id
+      firstName
+      lastName
+      phoneNumber
+      gender
+      dob
+      profileImageUrl
     }
   }
 `;

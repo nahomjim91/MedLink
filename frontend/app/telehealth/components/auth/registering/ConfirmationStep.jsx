@@ -1,15 +1,21 @@
 import Link from "next/link";
 import { Button, StepButtons } from "../../ui/Button";
 
-export default function ConfirmationStep({ userData, onNext, onPrevious, isLoading }) {
+export default function ConfirmationStep({
+  userData,
+  onNext,
+  onPrevious,
+  isLoading,
+}) {
   return (
     <div className="px-6">
       <h2 className="text-2xl font-bold text-secondary/80 mb-4">
         Confirm Your Details
       </h2>
-      
+
       <p className="text-secondary/60 mb-6">
-        Please review your information below before finalizing your registration.
+        Please review your information below before finalizing your
+        registration.
       </p>
 
       <div className="mb-8 bg-gray-50 rounded-lg p-4 text-left">
@@ -30,17 +36,18 @@ export default function ConfirmationStep({ userData, onNext, onPrevious, isLoadi
             <span className="font-medium">Gender:</span> {userData.gender}
           </li>
           <li>
-            <span className="font-medium">Date of Birth:</span> {userData.dateOfBirth}
+            <span className="font-medium">Date of Birth:</span>{" "}
+            {userData.dateOfBirth}
           </li>
           <li>
             <span className="font-medium">Phone:</span> {userData.phoneNumber}
           </li>
-          
+
           {userData.role === "doctor" && (
             <>
               <li>
                 <span className="font-medium">Specialization:</span>{" "}
-                {userData.specialization}
+                {userData.specialization?.map((spec) => spec.name).join(", ")}
               </li>
               <li>
                 <span className="font-medium">Experience:</span>{" "}
@@ -48,19 +55,22 @@ export default function ConfirmationStep({ userData, onNext, onPrevious, isLoadi
               </li>
               {userData.aboutYou && (
                 <li>
-                  <span className="font-medium">About:</span> {userData.aboutYou}
+                  <span className="font-medium">About:</span>{" "}
+                  {userData.aboutYou}
                 </li>
               )}
             </>
           )}
-          
+
           {userData.role === "patient" && (
             <>
               <li>
-                <span className="font-medium">Height:</span> {userData.height} cm
+                <span className="font-medium">Height:</span> {userData.height}{" "}
+                cm
               </li>
               <li>
-                <span className="font-medium">Weight:</span> {userData.weight} kg
+                <span className="font-medium">Weight:</span> {userData.weight}{" "}
+                kg
               </li>
               <li>
                 <span className="font-medium">Blood Type:</span>{" "}
@@ -71,9 +81,11 @@ export default function ConfirmationStep({ userData, onNext, onPrevious, isLoadi
         </ul>
       </div>
 
-      
-      <StepButtons onNext={onNext} onPrevious={onPrevious} />
-
+      <StepButtons
+        onNext={ isLoading ? () => {} : onNext}
+        onPrevious={onPrevious}
+        nextLabel={isLoading ? "Loading..." : "Confirm"}
+      />
     </div>
   );
 }

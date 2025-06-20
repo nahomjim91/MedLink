@@ -226,9 +226,7 @@ export default function MultiStepSignup({ email }) {
   // Navigate to dashboard after completion
   const handleComplete = () => {
     router.push(
-      userData.role === "patient"
-        ? "/telehealth/dashboard"
-        : "/medical-supplies/dashboard"
+     `/telehealth/${userData.role}`
     );
   };
 

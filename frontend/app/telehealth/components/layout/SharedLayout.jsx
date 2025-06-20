@@ -265,7 +265,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               <LogOut />
             </div>
             <Link
-              href={`/${userType}/profile`}
+              href={`/telehealth/${userType}/profile`}
               className="flex items-center px-4 py-3 text-lg text-secondary rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ImageIconButton
@@ -457,7 +457,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         </AnimatePresence>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        <main className="flex-1 overflow-y-auto ">
           {children}
         </main>
       </div>
