@@ -710,15 +710,6 @@ const productResolvers = {
 
   Batch: {
     __resolveType(batch, context, info) {
-      // console.log("=== BATCH.__RESOLVETYPE DEBUG START ===");
-      // console.log("🔍 __resolveType called with batch:", {
-      //   batchId: batch.batchId,
-      //   productType: batch.productType,
-      //   hasProductType: batch.hasOwnProperty('productType'),
-      //   productTypeType: typeof batch.productType,
-      //   allBatchKeys: Object.keys(batch),
-      //   fullBatch: JSON.stringify(batch, null, 2)
-      // });
 
       if (batch.productType === "DRUG") {
         console.log("✅ Resolving to DrugBatch");
@@ -728,14 +719,6 @@ const productResolvers = {
         console.log("✅ Resolving to EquipmentBatch");
         return "EquipmentBatch";
       }
-
-      // console.error("❌ Could not resolve batch type - productType mismatch");
-      // console.error("Expected: 'DRUG' or 'EQUIPMENT'");
-      // console.error("Received:", batch.productType);
-      // console.error("Full batch object:", batch);
-      // console.log("=== BATCH.__RESOLVETYPE DEBUG END ===");
-
-      // Instead of returning null, let's try to infer the type or provide a fallback
       if (batch.expiryDate) {
         console.log("🔄 Fallback: Assuming DrugBatch due to expiryDate field");
         return "DrugBatch";
@@ -746,37 +729,12 @@ const productResolvers = {
     },
 
     product: async (parentBatch, _, context) => {
-      // console.log("=== BATCH.PRODUCT RESOLVER DEBUG START ===");
-      // console.log("Batch.product resolver called with batch:", {
-      //   batchId: parentBatch.batchId,
-      //   productId: parentBatch.productId,
-      //   productType: parentBatch.productType,
-      //   fullBatchObject: JSON.stringify(parentBatch, null, 2)
-      // });
-
       await isAuthenticated(context);
-
-      // if (!parentBatch.productId) {
-      //   console.error("❌ Missing productId in batch:", parentBatch);
-      //   throw new ApolloError(
-      //     "Batch has no associated product ID.",
-      //     "BATCH_MISSING_PRODUCT_ID"
-      //   );
-      // }
-
-      try {
+        try {
         console.log(
           `🔍 Attempting to fetch product with ID: ${parentBatch.productId}`
         );
         const product = await ProductModel.getById(parentBatch.productId);
-
-        // console.log("📋 Product fetch result:", {
-        //   found: !!product,
-        //   productId: product?.productId,
-        //   productType: product?.productType,
-        //   fullProduct: product ? JSON.stringify(product, null, 2) : 'NULL/UNDEFINED'
-        // });
-
         if (!product) {
           console.error(
             `❌ Product not found for productId: ${parentBatch.productId}`

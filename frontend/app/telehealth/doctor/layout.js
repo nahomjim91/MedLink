@@ -47,7 +47,7 @@ export default function DoctorLayout({ children }) {
   return (
     <div className="min-h-screen ">
     <SharedLayout allowedRoles={["DOCTOR", "doctor"]}>
-        <main className="container mx-auto px-2">
+        <main className="px-2">
           {children}
         </main>
       </SharedLayout>

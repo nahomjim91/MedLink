@@ -43,12 +43,10 @@ export const GET_DOCTOR_BY_ID = gql`
   query GetDoctorById($id: ID!) {
     doctorById(id: $id) {
       doctorId
-      displayName
-      gender
-      profileImageUrl
       specialization
       experienceYears
       aboutMe
+      pricePerSession
       certificates {
         name
         url
@@ -56,6 +54,13 @@ export const GET_DOCTOR_BY_ID = gql`
       averageRating
       ratingCount
       isApproved
+      user {
+        firstName
+        lastName
+        gender
+        profileImageUrl
+        dob
+      }
     }
   }
 `;
@@ -65,31 +70,94 @@ export const GET_DOCTORS_BY_SPECIALIZATION = gql`
   query GetDoctorsBySpecialization($specialization: String!) {
     doctorsBySpecialization(specialization: $specialization) {
       doctorId
-      displayName
-      gender
-      profileImageUrl
       specialization
       experienceYears
+      pricePerSession
       averageRating
       ratingCount
       isApproved
+      user {
+        firstName
+        lastName
+        gender
+        profileImageUrl
+      }
     }
   }
 `;
-
 // Query to get all doctors with pagination
 export const GET_ALL_DOCTORS = gql`
   query GetAllDoctors($limit: Int, $offset: Int) {
     allDoctors(limit: $limit, offset: $offset) {
       doctorId
-      displayName
-      gender
-      profileImageUrl
       specialization
       experienceYears
+      pricePerSession
       averageRating
       ratingCount
       isApproved
+      user {
+        firstName
+        lastName
+        gender
+        profileImageUrl
+      }
     }
+  }
+`;
+
+export const SEARCH_DOCTORS = gql`
+  query SearchDoctors($input: DoctorSearchInput!, $limit: Int, $offset: Int) {
+    searchDoctors(input: $input, limit: $limit, offset: $offset) {
+      doctors {
+        doctorId
+        specialization
+        experienceYears
+        averageRating
+        ratingCount
+        pricePerSession
+        aboutMe
+        isApproved
+        user {
+          firstName
+          lastName
+          gender
+          profileImageUrl
+        }
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+export const FILTER_DOCTORS = gql`
+  query FilterDoctors($filter: DoctorFilterInput!, $limit: Int, $offset: Int) {
+    filterDoctors(filter: $filter, limit: $limit, offset: $offset) {
+      doctors {
+        doctorId
+        specialization
+        experienceYears
+        averageRating
+        ratingCount
+        pricePerSession
+        aboutMe
+        isApproved
+        user {
+          firstName
+          lastName
+          gender
+          profileImageUrl
+        }
+      }
+      totalCount
+      hasMore
+    }
+  }
+`;
+
+export const GET_DOCTOR_SPECIALIZATIONS = gql`
+  query GetDoctorSpecializations {
+    getDoctorSpecializations
   }
 `;

@@ -22,9 +22,6 @@ const typeDefs = gql`
 
   type DoctorProfile {
     doctorId: ID!
-    displayName: String
-    gender: String
-    profileImageUrl: String
     specialization: [String]
     experienceYears: Int
     aboutMe: String
@@ -37,6 +34,7 @@ const typeDefs = gql`
     pricePerSession: Float
     telehealthWalletBalance: Float
     availabilitySlots: [DoctorAvailabilitySlot]
+    user: THUser
     createdAt: Date
     updatedAt: Date
   }
@@ -59,10 +57,11 @@ const typeDefs = gql`
 
   type PatientProfile {
     patientId: ID!
-    height: String
-    weight: String
+    height: Float
+    weight: Float
     bloodType: String
     telehealthWalletBalance: Float
+    user: THUser
   }
 
   input THUserInput {
@@ -92,8 +91,8 @@ const typeDefs = gql`
   }
 
   input PatientProfileInput {
-    height: String
-    weight: String
+    height: Float
+    weight: Float
     bloodType: String
   }
 
@@ -108,6 +107,45 @@ const typeDefs = gql`
     endTime: Date
   }
 
+  # Filter and search inputs
+  input DoctorSearchInput {
+    searchTerm: String
+    specialization: [String]
+    minExperience: Int
+    maxExperience: Int
+    minPrice: Float
+    maxPrice: Float
+    minRating: Float
+    gender: String
+    isApproved: Boolean
+    sortBy: String # "rating", "experience", "price", "name"
+    sortOrder: String # "asc", "desc"
+  }
+
+  input DoctorFilterInput {
+    specializations: [String]
+    experienceRange: ExperienceRangeInput
+    priceRange: PriceRangeInput
+    rating: Float
+    gender: String
+  }
+
+  input ExperienceRangeInput {
+    min: Int
+    max: Int
+  }
+
+  input PriceRangeInput {
+    min: Float
+    max: Float
+  }
+
+  type DoctorSearchResult {
+    doctors: [DoctorProfile]
+    totalCount: Int
+    hasMore: Boolean
+  }
+
   type Query {
     # User queries
     me: THUser
@@ -117,6 +155,19 @@ const typeDefs = gql`
     doctorById(id: ID!): DoctorProfile
     doctorsBySpecialization(specialization: String!): [DoctorProfile]
     allDoctors(limit: Int, offset: Int): [DoctorProfile]
+
+    # Search and filter queries
+    searchDoctors(
+      input: DoctorSearchInput!
+      limit: Int
+      offset: Int
+    ): DoctorSearchResult
+    filterDoctors(
+      filter: DoctorFilterInput!
+      limit: Int
+      offset: Int
+    ): DoctorSearchResult
+    getDoctorSpecializations: [String]
 
     # Availability queries
     doctorAvailableSlots(doctorId: ID!, date: String): [DoctorAvailabilitySlot]
@@ -140,7 +191,9 @@ const typeDefs = gql`
 
     # Availability mutations
     addAvailabilitySlot(input: AvailabilitySlotInput!): [DoctorAvailabilitySlot]
-    updateAvailabilitySlot(input: UpdateAvailabilitySlotInput!): DoctorAvailabilitySlot
+    updateAvailabilitySlot(
+      input: UpdateAvailabilitySlotInput!
+    ): DoctorAvailabilitySlot
     deleteAvailabilitySlot(slotId: ID!): Boolean
     deleteMultipleSlots(slotIds: [ID!]!): Boolean
 

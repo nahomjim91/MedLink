@@ -22,7 +22,7 @@ export default function PatientLayout({ children }) {
     // Verify that the user is an admin
     if (user.role !== "patient") {
       console.log(
-`        User with role ${user.role} attempted to access admin route - redirecting`
+        `        User with role ${user.role} attempted to access admin route - redirecting`
       );
 
       // Redirect to their correct role path
@@ -47,7 +47,7 @@ export default function PatientLayout({ children }) {
   return (
     <div className="min-h-screen ">
       <SharedLayout allowedRoles={["PATIENT", "patient"]}>
-        <main className="container mx-auto px-4">{children}</main>
+        <main className="px-2">{children}</main>
       </SharedLayout>
     </div>
   );

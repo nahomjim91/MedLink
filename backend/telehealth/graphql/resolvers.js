@@ -76,7 +76,6 @@ const dateScalar = new GraphQLScalarType({
   },
 });
 
-
 // Check if user is authenticated
 const isAuthenticated = (context) => {
   if (!context.user) {
@@ -117,10 +116,22 @@ const resolvers = {
       if (parent.role !== "doctor") return null;
       return await DoctorProfileModel.getById(parent.id);
     },
+    async patientProfile(parent) {
+      if (parent.role !== "patient") return null;
+      return await PatientProfileModel.getById(parent.id);
+    },
   },
   DoctorProfile: {
     async availabilitySlots(parent) {
       return await DoctorAvailabilitySlotModel.getDoctorSlots(parent.doctorId);
+    },
+    async user(parent) {
+      return await UserModel.getById(parent.doctorId);
+    },
+  },
+  PatientProfile: {
+    async user(parent) {
+      return await UserModel.getById(parent.patientId);
     },
   },
   Query: {
@@ -173,6 +184,46 @@ const resolvers = {
       return await DoctorProfileModel.getAllApproved(limit, offset);
     },
 
+    // Search doctors with comprehensive filtering
+    searchDoctors: async (_, { input, limit = 20, offset = 0 }) => {
+      try {
+        const result = await DoctorProfileModel.searchDoctors(
+          input,
+          limit,
+          offset
+        );
+        return result;
+      } catch (error) {
+        console.error("Error searching doctors:", error);
+        throw error;
+      }
+    },
+
+    // Filter doctors
+    filterDoctors: async (_, { filter, limit = 20, offset = 0 }) => {
+      try {
+        const result = await DoctorProfileModel.filterDoctors(
+          filter,
+          limit,
+          offset
+        );
+        return result;
+      } catch (error) {
+        console.error("Error filtering doctors:", error);
+        throw error;
+      }
+    },
+
+    // Get all unique specializations
+    getDoctorSpecializations: async () => {
+      try {
+        return await DoctorProfileModel.getAllSpecializations();
+      } catch (error) {
+        console.error("Error getting specializations:", error);
+        throw error;
+      }
+    },
+
     // Get available slots for a specific doctor
     doctorAvailableSlots: async (_, { doctorId, date }) => {
       return await DoctorAvailabilitySlotModel.getAvailableSlots(
@@ -182,11 +233,10 @@ const resolvers = {
     },
 
     // Get current doctor's availability slots
-    myAvailabilitySlots: async (_, {  }, context) => {
+    myAvailabilitySlots: async (_, {}, context) => {
       const user = await isDoctor(context);
-      return await DoctorAvailabilitySlotModel.getDoctorSlots(user.uid)
+      return await DoctorAvailabilitySlotModel.getDoctorSlots(user.uid);
     },
-    
   },
 
   Mutation: {

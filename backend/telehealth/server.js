@@ -73,7 +73,7 @@ app.get('/telehealth/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'telehealth' });
 });
 
-cron.schedule("*/5 * * * * *", async () => {
+cron.schedule("0 0 * * *", async () => {
   try {
     const deletedCount = await AvailabilitySlot.cleanupExpiredSlots(1); // or any hoursAgo you prefer
     console.log(`⏱️ Cleanup ran: ${deletedCount} expired slots deleted`);
