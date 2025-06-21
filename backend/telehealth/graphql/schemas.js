@@ -1,4 +1,4 @@
-// /graphql/schemas.js
+// /graphql/schemas.js - Updated with Availability Slots
 const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
@@ -36,8 +36,20 @@ const typeDefs = gql`
     rejectionReason: String
     pricePerSession: Float
     telehealthWalletBalance: Float
+    availabilitySlots: [DoctorAvailabilitySlot]
     createdAt: Date
     updatedAt: Date
+  }
+
+  type DoctorAvailabilitySlot {
+    slotId: ID!
+    doctorId: ID!
+    startTime: Date!
+    endTime: Date!
+    isBooked: Boolean!
+    appointmentId: String
+    patientId: String
+    createdAt: Date!
   }
 
   type Certificate {
@@ -85,6 +97,17 @@ const typeDefs = gql`
     bloodType: String
   }
 
+  input AvailabilitySlotInput {
+    startTime: Date!
+    endTime: Date!
+  }
+
+  input UpdateAvailabilitySlotInput {
+    slotId: ID!
+    startTime: Date
+    endTime: Date
+  }
+
   type Query {
     # User queries
     me: THUser
@@ -94,6 +117,10 @@ const typeDefs = gql`
     doctorById(id: ID!): DoctorProfile
     doctorsBySpecialization(specialization: String!): [DoctorProfile]
     allDoctors(limit: Int, offset: Int): [DoctorProfile]
+
+    # Availability queries
+    doctorAvailableSlots(doctorId: ID!, date: String): [DoctorAvailabilitySlot]
+    myAvailabilitySlots: [DoctorAvailabilitySlot]
   }
 
   type Mutation {
@@ -110,6 +137,12 @@ const typeDefs = gql`
 
     # Admin mutations
     approveDoctorProfile(doctorId: ID!): DoctorProfile
+
+    # Availability mutations
+    addAvailabilitySlot(input: AvailabilitySlotInput!): [DoctorAvailabilitySlot]
+    updateAvailabilitySlot(input: UpdateAvailabilitySlotInput!): DoctorAvailabilitySlot
+    deleteAvailabilitySlot(slotId: ID!): Boolean
+    deleteMultipleSlots(slotIds: [ID!]!): Boolean
 
     # Registration
     completeRegistration(

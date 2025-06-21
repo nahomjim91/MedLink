@@ -9,6 +9,8 @@ const dotenv = require('dotenv');
 const { Server } = require('socket.io');
 const setupApolloServer = require('./graphql');
 const { authMiddleware } = require('./middleware/auth');
+const AvailabilitySlot = require('./models/availabilitySlot');
+const cron = require('node-cron');
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -69,6 +71,15 @@ io.on('connection', (socket) => {
 // Basic health check endpoint
 app.get('/telehealth/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'telehealth' });
+});
+
+cron.schedule("*/5 * * * * *", async () => {
+  try {
+    const deletedCount = await AvailabilitySlot.cleanupExpiredSlots(1); // or any hoursAgo you prefer
+    console.log(`⏱️ Cleanup ran: ${deletedCount} expired slots deleted`);
+  } catch (err) {
+    console.error("❌ Cleanup error:", err);
+  }
 });
 
 /**
