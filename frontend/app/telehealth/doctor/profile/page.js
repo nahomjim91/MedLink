@@ -1,5 +1,6 @@
+// frontend/app/telehealth/doctor/profile/page.js
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Star,
   ThumbsUp,
@@ -9,12 +10,170 @@ import {
   Save,
   PenIcon,
   XCircleIcon,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Plus,
+  X,
 } from "lucide-react";
 import ProfileImage from "../../components/ui/ProfileImage";
 import { Rating } from "../../components/ui/Input";
-import { useAuth } from "../../../../hooks/useAuth";
+import { useAuth } from "../../hooks/useAuth";
+import { useProfileUpdate } from "../../hooks/useProfileUpdate";
 
-// Reusable components
+// Success/Error notification component
+const NotificationBanner = ({ type, message, onClose }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    if (type === "success" && message) {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(() => onClose(), 300);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [type, message, onClose]);
+
+  if (!message || !isVisible) return null;
+
+  const isSuccess = type === "success";
+
+  return (
+    <div
+      className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md transition-opacity duration-300 ${
+        isVisible ? "opacity-100" : "opacity-0"
+      } ${
+        isSuccess
+          ? "bg-green-50 border border-green-200"
+          : "bg-red-50 border border-red-200"
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        {isSuccess ? (
+          <CheckCircle className="w-5 h-5 text-green-600" />
+        ) : (
+          <AlertCircle className="w-5 h-5 text-red-600" />
+        )}
+        <p
+          className={`text-sm font-medium ${
+            isSuccess ? "text-green-800" : "text-red-800"
+          }`}
+        >
+          {message}
+        </p>
+        <button
+          onClick={() => {
+            setIsVisible(false);
+            setTimeout(() => onClose(), 300);
+          }}
+          className={`ml-auto ${
+            isSuccess
+              ? "text-green-600 hover:text-green-800"
+              : "text-red-600 hover:text-red-800"
+          }`}
+        >
+          <XCircleIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Specialized component for handling specialization array
+const SpecializationEditor = ({ value = [], onChange, isEditing, className = "" }) => {
+  const [inputValue, setInputValue] = useState("");
+  
+  const specializations = Array.isArray(value) ? value : [];
+
+  const addSpecialization = () => {
+    if (inputValue.trim() && !specializations.includes(inputValue.trim())) {
+      const newSpecs = [...specializations, inputValue.trim()];
+      onChange(newSpecs);
+      setInputValue("");
+    }
+  };
+
+  const removeSpecialization = (index) => {
+    const newSpecs = specializations.filter((_, i) => i !== index);
+    onChange(newSpecs);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addSpecialization();
+    }
+  };
+
+  if (!isEditing) {
+    return (
+      <span className={className}>
+        {specializations.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {specializations.map((spec, index) => (
+              <span
+                key={index}
+                className="inline-block bg-primary/10 text-primary px-2 py-1 rounded-md text-xs"
+              >
+                {spec}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-gray-400 italic">Not specified</span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {/* Display current specializations */}
+      {specializations.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {specializations.map((spec, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md text-sm"
+            >
+              <span>{spec}</span>
+              <button
+                type="button"
+                onClick={() => removeSpecialization(index)}
+                className="text-primary hover:text-primary/70"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Input for new specialization */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Add specialization (e.g., Cardiology)"
+          className="flex-1 p-2 border border-secondary/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-none text-sm"
+        />
+        <button
+          type="button"
+          onClick={addSpecialization}
+          disabled={!inputValue.trim()}
+          className="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced EditableField component
 const EditableField = ({
   value,
   field,
@@ -24,29 +183,74 @@ const EditableField = ({
   isEditing,
   onInputChange,
   placeholder = "",
+  inputType = "text",
+  isSpecialization = false,
 }) => {
   if (isEditing && isEditable) {
-    return multiline ? (
-      <textarea
-        value={value}
-        onChange={(e) => onInputChange(field, e.target.value)}
-        className={`w-full p-2 border border-secondary/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-none min-h-[100px] resize-none ${className}`}
-        rows={4}
-        placeholder={placeholder}
-      />
-    ) : (
+    if (isSpecialization) {
+      return (
+        <SpecializationEditor
+          value={value}
+          onChange={(newValue) => onInputChange(field, newValue)}
+          isEditing={isEditing}
+          className={className}
+        />
+      );
+    }
+    
+    if (multiline) {
+      return (
+        <textarea
+          value={value || ""}
+          onChange={(e) => onInputChange(field, e.target.value)}
+          className={`w-full p-2 border border-secondary/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-none min-h-[100px] resize-none ${className}`}
+          rows={4}
+          placeholder={placeholder}
+        />
+      );
+    }
+    
+    return (
       <input
-        type="text"
-        value={value}
-        onChange={(e) => onInputChange(field, e.target.value)}
+        type={inputType}
+        value={value || ""}
+        onChange={(e) => {
+          let newValue = e.target.value;
+          // Handle number inputs
+          if (inputType === "number") {
+            newValue = newValue === "" ? "" : parseFloat(newValue) || 0;
+          }
+          onInputChange(field, newValue);
+        }}
         className={`w-full p-2 border border-secondary/40 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-none ${className}`}
         placeholder={placeholder}
+        step={inputType === "number" ? "0.01" : undefined}
+        min={inputType === "number" ? "0" : undefined}
       />
     );
   }
+
+  // Display mode
+  if (isSpecialization) {
+    return (
+      <SpecializationEditor
+        value={value}
+        onChange={() => {}}
+        isEditing={false}
+        className={className}
+      />
+    );
+  }
+
   return (
     <span className={className}>
-      {value || <span className="text-gray-400 italic">Not specified</span>}
+      {value || value === 0 ? (
+        inputType === "number" && field === "pricePerSession" ? 
+          `$${parseFloat(value).toFixed(2)}` : 
+          value
+      ) : (
+        <span className="text-gray-400 italic">Not specified</span>
+      )}
     </span>
   );
 };
@@ -59,6 +263,8 @@ const InformationRow = ({
   isEditing,
   onInputChange,
   className = "",
+  inputType = "text",
+  isSpecialization = false,
 }) => (
   <div
     className={`flex ${
@@ -69,12 +275,14 @@ const InformationRow = ({
   >
     <div className="text-secondary/80 text-sm font-medium">{label}</div>
     <EditableField
+      inputType={inputType}
       isEditable={isEditable}
       value={value}
       field={field}
       isEditing={isEditing}
       onInputChange={onInputChange}
       className="text-secondary text-sm"
+      isSpecialization={isSpecialization}
     />
   </div>
 );
@@ -84,34 +292,48 @@ const ProfileHeader = ({
   isEditing,
   onEditClick,
   onSave,
+  onCancel,
   averageRating,
+  isUpdating,
+  hasChanges,
   isMobile = false,
 }) => (
-  <div className="flex flex-col justify-center items-center gap-">
+  <div className="flex flex-col justify-center items-center gap-4">
     <ProfileImage
-      imageUrl={doctorData.photoURL}
+      imageUrl={doctorData.profileImageUrl || doctorData.photoURL}
       altText="Profile"
       isEditing={isEditing}
-      userName={doctorData.name}
+      userName={doctorData.firstName}
     />
 
     <div className="text-center">
       <h1 className="text-2xl lg:text-3xl font-bold text-secondary mb-2">
-        {doctorData.name}
+        {doctorData.firstName} {doctorData.lastName}
       </h1>
 
       <div className="flex justify-center">
         {isEditing ? (
           <div className="flex gap-4">
             <button
-              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors px-4 py-2 rounded-lg bg-primary/10"
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                hasChanges && !isUpdating
+                  ? "text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20"
+                  : "text-gray-400 bg-gray-100 cursor-not-allowed"
+              }`}
               onClick={onSave}
+              disabled={!hasChanges || isUpdating}
             >
-              <Save size={18} /> Save
+              {isUpdating ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Save size={18} />
+              )}
+              {isUpdating ? "Saving..." : "Save Changes"}
             </button>
             <button
-              className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors px-4 py-2 rounded-lg bg-red-50"
-              onClick={onEditClick}
+              className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors px-4 py-2 rounded-lg bg-red-50 disabled:opacity-50"
+              onClick={onCancel}
+              disabled={isUpdating}
             >
               <XCircleIcon size={18} /> Cancel
             </button>
@@ -130,23 +352,34 @@ const ProfileHeader = ({
     {/* Stats Pills */}
     <div className="flex flex-wrap justify-center gap-2 mt-4">
       {doctorData.age && (
-        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm ">
+        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm">
           <span className="text-sm font-medium">{doctorData.age} years</span>
         </div>
       )}
       {doctorData.gender && (
-        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm ">
+        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm">
           <User className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">{doctorData.gender}</span>
+          <span className="text-sm font-medium">
+            {doctorData.gender?.toLowerCase() === "m" ? "Male" : "Female"}
+          </span>
         </div>
       )}
-      <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm ">
+      <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm">
         <Star className="w-4 h-4 text-primary fill-current" />
         <span className="text-sm font-medium">{averageRating || "0.0"}</span>
       </div>
-      {doctorData.experience && (
-        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm ">
-          <span className="text-sm font-medium">{doctorData.experience}</span>
+      {doctorData.experienceYears && (
+        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm">
+          <span className="text-sm font-medium">
+            {doctorData.experienceYears}+ years
+          </span>
+        </div>
+      )}
+      {doctorData.pricePerSession > 0 && (
+        <div className="flex items-center gap-2 py-2 px-4 bg-white rounded-full shadow-sm">
+          <span className="text-sm font-medium">
+            ${parseFloat(doctorData.pricePerSession).toFixed(2)}/session
+          </span>
         </div>
       )}
     </div>
@@ -163,9 +396,9 @@ const InfoCard = ({
   <div
     className={` ${
       !isProfile
-        ? "bg-white rounded-2xl p-4  shadow-sm border border-gray-100"
+        ? "bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
         : ""
-    }  ${className}`}
+    } ${className}`}
   >
     <div className="flex items-center justify-between mb-4">
       <h3 className="text-lg font-semibold text-secondary">{title}</h3>
@@ -210,7 +443,7 @@ const ReviewCard = ({ review }) => (
 
 const CertificatesList = ({ certificates }) => (
   <div className="space-y-3">
-    {certificates.length > 0 ? (
+    {certificates && certificates.length > 0 ? (
       certificates.map((cert, index) => (
         <div key={index} className="group">
           <p className="text-sm text-secondary/80 mb-2">
@@ -236,25 +469,106 @@ const CertificatesList = ({ certificates }) => (
 );
 
 export default function ProfilePage() {
-  const [isEditing, setIsEditing] = useState(false);
   const { user } = useAuth();
+  const [notification, setNotification] = useState({ type: "", message: "" });
+  const [saveResult, setSaveResult] = useState(null);
 
-  const [doctorData, setDoctorData] = useState({
-    name: "",
-    age: "",
-    gender: "",
-    experience: "",
-    patients: 0,
-    perSession: "",
-    phone: "",
-    email: "",
-    registeredDate: "",
-    aboutMe: "",
-    specialization: [],
-    isApproved: false,
-    photoURL: "",
-    certificates: [],
-  });
+  // Memoize initial data to prevent unnecessary re-renders
+  const initialData = useMemo(() => {
+    if (!user) return {};
+
+    const birthDate = user.dob ? new Date(user.dob) : null;
+    const age = birthDate
+      ? new Date().getFullYear() - birthDate.getFullYear()
+      : "";
+    
+    return {
+      // User fields
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      phoneNumber: user.phoneNumber || "",
+      gender: user.gender || "",
+      dob: user.dob || "",
+      profileImageUrl: user.profileImageUrl || user.photoURL || "",
+
+      // Doctor profile fields - FIXED: Ensure pricePerSession is properly handled
+      displayName:
+        user.doctorProfile?.displayName || `${user.firstName} ${user.lastName}`,
+      specialization: Array.isArray(user.doctorProfile?.specialization) 
+        ? user.doctorProfile.specialization 
+        : user.doctorProfile?.specialization 
+          ? [user.doctorProfile.specialization]
+          : [],
+      experienceYears: user.doctorProfile?.experienceYears || "",
+      aboutMe: user.doctorProfile?.aboutMe || "",
+      certificates: user.doctorProfile?.certificates || [],
+      pricePerSession: user.doctorProfile?.pricePerSession || 0,
+
+      // Computed fields for display
+      age: age,
+      isApproved: user.doctorProfile?.isApproved || false,
+      averageRating: user.doctorProfile?.averageRating || 0,
+    };
+  }, [user]);
+
+//   console.log("initialData: ", initialData);
+
+  // Initialize the hook
+  const {
+    isEditing,
+    formData,
+    hasChanges,
+    loading,
+    error,
+    handleInputChange,
+    handleArrayFieldChange,
+    handleSave,
+    handleCancel,
+    handleEdit,
+    updateFormData,
+  } = useProfileUpdate(user?.role.toUpperCase() || "DOCTOR", initialData);
+
+  // Update form data when user changes
+  useEffect(() => {
+    if (user && Object.keys(initialData).length > 0) {
+      updateFormData(initialData);
+    }
+  }, [user?.id, initialData, updateFormData]);
+
+  // Handle save with notifications
+  const handleSaveWithNotification = async () => {
+    try {
+      const result = await handleSave();
+      setSaveResult(result);
+
+      if (result.success) {
+        setNotification({
+          type: "success",
+          message: "Profile updated successfully!",
+        });
+      } else {
+        setNotification({
+          type: "error",
+          message: result.error || "Failed to update profile",
+        });
+      }
+    } catch (err) {
+      setNotification({
+        type: "error",
+        message: "An unexpected error occurred",
+      });
+    }
+  };
+
+  // Handle GraphQL errors
+  useEffect(() => {
+    if (error) {
+      setNotification({
+        type: "error",
+        message: error.message || "Failed to update profile",
+      });
+    }
+  }, [error]);
 
   // Placeholder reviews data
   const [reviews] = useState([
@@ -290,54 +604,6 @@ export default function ProfilePage() {
     },
   ]);
 
-  // Update doctorData when user data is available
-  useEffect(() => {
-    if (user) {
-      const birthDate = user.dob ? new Date(user.dob) : null;
-      const age = birthDate
-        ? new Date().getFullYear() - birthDate.getFullYear()
-        : "";
-
-      setDoctorData({
-        name: user.displayName || `${user.firstName} ${user.lastName}`,
-        age: age,
-        gender:
-          user.gender === "M"
-            ? "Male"
-            : user.gender === "F"
-            ? "Female"
-            : user.gender,
-        experience: user.doctorProfile?.experienceYears
-          ? `${user.doctorProfile.experienceYears}+ years`
-          : "",
-        patients: 0,
-        perSession: "",
-        phone: user.phoneNumber || "",
-        email: user.email || "",
-        registeredDate: "",
-        aboutMe: user.doctorProfile?.aboutMe || "",
-        specialization: user.doctorProfile?.specialization || [],
-        isApproved: user.doctorProfile?.isApproved || false,
-        photoURL: user.photoURL || "",
-        certificates: user.doctorProfile?.certificates || [],
-      });
-    }
-  }, [user]);
-
-  const handleInputChange = (field, value) => {
-    setDoctorData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleEditClick = () => {
-    setIsEditing(!isEditing);
-  };
-
-  const handleSave = () => {
-    console.log("Saving data:", doctorData);
-    setIsEditing(false);
-    // TODO: Implement actual save functionality
-  };
-
   // Calculate average rating
   const averageRating =
     reviews.length > 0
@@ -345,7 +611,12 @@ export default function ProfilePage() {
           reviews.reduce((sum, review) => sum + review.rating, 0) /
           reviews.length
         ).toFixed(1)
-      : 0;
+      : formData.averageRating || 0;
+
+  // Clear notifications
+  const clearNotification = () => {
+    setNotification({ type: "", message: "" });
+  };
 
   // Show loading state if user data is not available
   if (!user) {
@@ -360,16 +631,26 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto  ">
+      {/* Notification Banners */}
+      <NotificationBanner
+        type={notification.type}
+        message={notification.message}
+        onClose={clearNotification}
+      />
+
+      <div className="max-w-7xl mx-auto">
         {/* Profile Header - Always visible */}
         <div className="mb-3">
           <InfoCard title="" className="text-center" isProfile={true}>
             <ProfileHeader
-              doctorData={doctorData}
+              doctorData={formData}
               isEditing={isEditing}
-              onEditClick={handleEditClick}
-              onSave={handleSave}
+              onEditClick={handleEdit}
+              onSave={handleSaveWithNotification}
+              onCancel={handleCancel}
               averageRating={averageRating}
+              isUpdating={loading}
+              hasChanges={hasChanges}
             />
           </InfoCard>
         </div>
@@ -381,25 +662,46 @@ export default function ProfilePage() {
             {/* Contact Information */}
             <InfoCard title="Contact Information">
               <div className="space-y-4">
-                <InformationRow
-                  label="Full Name"
-                  value={doctorData.name}
-                  field="name"
-                  isEditable={true}
-                  isEditing={isEditing}
-                  onInputChange={handleInputChange}
-                />
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <InformationRow
+                      label="First Name"
+                      value={formData.firstName}
+                      field="firstName"
+                      isEditable={true}
+                      isEditing={isEditing}
+                      onInputChange={handleInputChange}
+                    />
+                    <InformationRow
+                      label="Last Name"
+                      value={formData.lastName}
+                      field="lastName"
+                      isEditable={true}
+                      isEditing={isEditing}
+                      onInputChange={handleInputChange}
+                    />
+                  </div>
+                ) : (
+                  <InformationRow
+                    label="Full Name"
+                    value={`${formData.firstName} ${formData.lastName}`}
+                    field="displayName"
+                    isEditable={false}
+                    isEditing={isEditing}
+                    onInputChange={handleInputChange}
+                  />
+                )}
                 <InformationRow
                   label="Phone Number"
-                  value={doctorData.phone}
-                  field="phone"
+                  value={formData.phoneNumber}
+                  field="phoneNumber"
                   isEditable={true}
                   isEditing={isEditing}
                   onInputChange={handleInputChange}
                 />
                 <InformationRow
                   label="Email Address"
-                  value={doctorData.email}
+                  value={user.email}
                   field="email"
                   isEditable={false}
                   isEditing={isEditing}
@@ -408,24 +710,26 @@ export default function ProfilePage() {
               </div>
             </InfoCard>
 
-            {/* General Information */}
+            {/* Professional Details */}
             <InfoCard title="Professional Details">
               <div className="space-y-4">
                 <InformationRow
-                  label="Experience"
-                  value={doctorData.experience}
-                  field="experience"
+                  label="Experience (Years)"
+                  value={formData.experienceYears}
+                  field="experienceYears"
                   isEditable={true}
                   isEditing={isEditing}
                   onInputChange={handleInputChange}
+                  inputType="number"
                 />
                 <InformationRow
                   label="Specialization"
-                  value={doctorData.specialization.join(", ")}
+                  value={formData.specialization}
                   field="specialization"
                   isEditable={true}
                   isEditing={isEditing}
                   onInputChange={handleInputChange}
+                  isSpecialization={true}
                 />
                 <div className="flex justify-between items-center">
                   <span className="text-secondary/80 text-sm font-medium">
@@ -433,21 +737,34 @@ export default function ProfilePage() {
                   </span>
                   <span
                     className={`text-sm px-3 py-1 rounded-full font-medium ${
-                      doctorData.isApproved
+                      formData.isApproved
                         ? "bg-green-100 text-green-800"
                         : "bg-yellow-100 text-yellow-800"
                     }`}
                   >
-                    {doctorData.isApproved ? "Approved" : "Pending"}
+                    {formData.isApproved ? "Approved" : "Pending"}
                   </span>
                 </div>
                 <InformationRow
-                  label="Rate per Session"
-                  value={doctorData.perSession || "Not set"}
-                  field="perSession"
+                  label="Gender"
+                  value={
+                    formData.gender?.toLowerCase() === "m" ? "Male" : 
+                    formData.gender?.toLowerCase() === "f" ? "Female" : 
+                    formData.gender
+                  }
+                  field="gender"
+                  isEditable={false}
+                  isEditing={isEditing}
+                  onInputChange={handleInputChange}
+                />
+                <InformationRow
+                  label="Price Per Session"
+                  value={formData.pricePerSession}
+                  field="pricePerSession"
                   isEditable={true}
                   isEditing={isEditing}
                   onInputChange={handleInputChange}
+                  inputType="number"
                 />
               </div>
             </InfoCard>
@@ -458,7 +775,7 @@ export default function ProfilePage() {
             <InfoCard title="About Me">
               <div className="text-secondary/80 text-sm leading-relaxed">
                 <EditableField
-                  value={doctorData.aboutMe}
+                  value={formData.aboutMe}
                   field="aboutMe"
                   multiline={true}
                   isEditable={true}
@@ -468,13 +785,13 @@ export default function ProfilePage() {
                   placeholder="Tell patients about yourself, your experience, and what makes you unique as a healthcare provider..."
                 />
                 {!isEditing &&
-                  doctorData.aboutMe &&
-                  doctorData.aboutMe.length > 200 && (
+                  formData.aboutMe &&
+                  formData.aboutMe.length > 200 && (
                     <button className="text-primary hover:text-primary/80 mt-3 text-sm font-medium transition-colors">
                       Read More...
                     </button>
                   )}
-                {!doctorData.aboutMe && !isEditing && (
+                {!formData.aboutMe && !isEditing && (
                   <div className="text-center py-8">
                     <div className="text-secondary/40 italic">
                       No description available. Click &quot;Edit Profile&quot;
@@ -487,7 +804,7 @@ export default function ProfilePage() {
 
             {/* Certificates */}
             <InfoCard title="Certificates & Qualifications">
-              <CertificatesList certificates={doctorData.certificates} />
+              <CertificatesList certificates={formData.certificates} />
             </InfoCard>
           </div>
 

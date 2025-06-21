@@ -1,22 +1,4 @@
-import { gql } from '@apollo/client';
-
-// Mutation to update user profile
-export const UPDATE_USER_PROFILE = gql`
-  mutation UpdateUserProfile($input: THUserInput!) {
-    updateUserProfile(input: $input) {
-      id
-      email
-      firstName
-      lastName
-      role
-      gender
-      dob
-      phoneNumber
-      profileComplete
-      profileImageUrl
-    }
-  }
-`;
+import { gql } from "@apollo/client";
 
 export const INITIALIZE_USER_PROFILE = gql`
   mutation InitializeUserProfile($email: String!) {
@@ -49,11 +31,12 @@ export const COMPLETE_REGISTRATION = gql`
   }
 `;
 
-// Mutation to add a certificate
+// Add Certificate Mutation (for doctors)
 export const ADD_CERTIFICATE = gql`
   mutation AddCertificate($certificate: CertificateInput!) {
     addCertificate(certificate: $certificate) {
       doctorId
+      displayName
       certificates {
         name
         url
@@ -61,7 +44,26 @@ export const ADD_CERTIFICATE = gql`
     }
   }
 `;
+// User Profile Update Mutation
+export const UPDATE_USER_PROFILE = gql`
+  mutation UpdateUserProfile($input: THUserInput!) {
+    updateUserProfile(input: $input) {
+      id
+      email
+      firstName
+      lastName
+      role
+      gender
+      dob
+      phoneNumber
+      profileComplete
+      profileImageUrl
+      createdAt
+    }
+  }
+`;
 
+// Doctor Profile Update Mutation
 export const UPDATE_DOCTOR_PROFILE = gql`
   mutation UpdateDoctorProfile($input: DoctorProfileInput!) {
     updateDoctorProfile(input: $input) {
@@ -73,10 +75,20 @@ export const UPDATE_DOCTOR_PROFILE = gql`
       aboutMe
       profileImageUrl
       isApproved
+      averageRating
+      ratingCount
+      approvedAt
+      telehealthWalletBalance
+      pricePerSession
+      certificates {
+        name
+        url
+      }
     }
   }
 `;
 
+// Patient Profile Update Mutation
 export const UPDATE_PATIENT_PROFILE = gql`
   mutation UpdatePatientProfile($input: PatientProfileInput!) {
     updatePatientProfile(input: $input) {
@@ -87,6 +99,14 @@ export const UPDATE_PATIENT_PROFILE = gql`
       gender
       dob
       profileImageUrl
+      telehealthWalletBalance
+      patientProfile {
+        patientId
+        height
+        weight
+        bloodType
+        telehealthWalletBalance
+      }
     }
   }
 `;

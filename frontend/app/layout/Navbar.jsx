@@ -6,7 +6,7 @@ import LanguageSelector from "../medical-supplies/components/ui/LanguageSelector
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMSAuth } from "../../hooks/useMSAuth";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../telehealth/hooks/useAuth";
 
 export default function Navbar({ service = "medical-supply" }) {
   // Use appropriate auth hook based on service

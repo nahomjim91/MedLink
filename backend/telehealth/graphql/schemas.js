@@ -1,5 +1,5 @@
 // /graphql/schemas.js
-const { gql } = require('apollo-server-express');
+const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
   scalar Date
@@ -15,8 +15,9 @@ const typeDefs = gql`
     dob: Date
     profileImageUrl: String
     createdAt: Date
-    profileComplete: Boolean 
+    profileComplete: Boolean
     doctorProfile: DoctorProfile
+    patientProfile: PatientProfile
   }
 
   type DoctorProfile {
@@ -32,6 +33,11 @@ const typeDefs = gql`
     ratingCount: Int
     isApproved: Boolean
     approvedAt: Date
+    rejectionReason: String
+    pricePerSession: Float
+    telehealthWalletBalance: Float
+    createdAt: Date
+    updatedAt: Date
   }
 
   type Certificate {
@@ -64,6 +70,8 @@ const typeDefs = gql`
     experienceYears: Int
     aboutMe: String
     profileImageUrl: String
+    pricePerSession: Float
+    telehealthWalletBalance: Float
   }
 
   input CertificateInput {
@@ -90,19 +98,19 @@ const typeDefs = gql`
 
   type Mutation {
     # User mutations
-    initializeUserProfile(email: String!): THUser 
+    initializeUserProfile(email: String!): THUser
     updateUserProfile(input: THUserInput!): THUser
-    
+
     # Doctor mutations
     updateDoctorProfile(input: DoctorProfileInput!): DoctorProfile
     addCertificate(certificate: CertificateInput!): DoctorProfile
-    
+
     # Patient mutations
     updatePatientProfile(input: PatientProfileInput!): THUser
-    
+
     # Admin mutations
     approveDoctorProfile(doctorId: ID!): DoctorProfile
-    
+
     # Registration
     completeRegistration(
       THuserInput: THUserInput!
@@ -113,4 +121,3 @@ const typeDefs = gql`
 `;
 
 module.exports = typeDefs;
-

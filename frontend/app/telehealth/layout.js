@@ -1,14 +1,14 @@
 'use client'
 import { ApolloWrapper } from "./api/apolloProvider";
 import Navbar from "../layout/Navbar";
-import { AuthProvider } from "../../hooks/useAuth"; // Updated path to match your new structure
+import { AuthProvider } from "./hooks/useAuth"; // Updated path to match your new structure
 import { usePathname } from "next/navigation";
 // import { ToastProvider } from "./components/ui/use-toast";
 // import { VideoCallProvider } from "./hooks/useVideoCall";
 
 const NavbarWrapper = ({ children }) => {
   const pathname = usePathname();
-  
+ 
   // Define paths where navbar should be hidden
   const hideNavbarPaths = [
     '/telehealth/admin',
@@ -23,6 +23,9 @@ const NavbarWrapper = ({ children }) => {
   const shouldHideNavbar = hideNavbarPaths.some(path => 
     pathname === path || pathname.startsWith(`${path}/`)
   );
+
+
+
   
   // Also hide navbar in auth paths
   

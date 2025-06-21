@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "../../../../hooks/useAuth";
+import { useAuth } from "../../hooks/useAuth";
 import {
   Menu,
   X,
@@ -443,7 +443,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                   >
                     <LogOut size={24} className="hover:text-white" />
                   </div>
-                  <Link href={`/${userType}/profile`} className="block">
+                  <Link href={`/telehealth/${userType}/profile`} className="block">
                     <ImageIconButton
                       imageUrl={user.image || "/image/trees.jpg"}
                       isActive={false}

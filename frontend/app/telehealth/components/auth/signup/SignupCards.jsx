@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, OAuthButton } from "../../ui/Button";
 import { EmailInput, PasswordInput, TextDivider } from "../../ui/Input";
-import { useAuth } from "../../../../../hooks/useAuth";
+import { useAuth } from "../../../hooks/useAuth";
 
 // Initial signup card with Google auth option or email entry
 export function SignupStartCard({ onNextStep, }) {

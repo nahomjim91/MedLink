@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../../../../hooks/useAuth";
+import { useAuth } from "../../../hooks/useAuth";
 import { useMutation } from "@apollo/client";
 import {
   COMPLETE_REGISTRATION,

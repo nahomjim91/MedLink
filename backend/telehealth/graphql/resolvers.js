@@ -145,6 +145,7 @@ const resolvers = {
     // Update doctor profile
     updateDoctorProfile: async (_, { input }, context) => {
       const user = await isDoctor(context);
+      console.log("Resolver: updateDoctorProfile - input:", input);
       return await DoctorProfileModel.update(user.uid, input);
     },
 

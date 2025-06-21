@@ -20,10 +20,19 @@ export const GET_MY_PROFILE = gql`
         experienceYears
         aboutMe
         isApproved
+        telehealthWalletBalance
+        pricePerSession
         certificates {
           name
           url
         }
+      }
+      patientProfile {
+        patientId
+        height
+        weight
+        bloodType
+        telehealthWalletBalance
       }
     }
   }
@@ -84,4 +93,3 @@ export const GET_ALL_DOCTORS = gql`
     }
   }
 `;
-
