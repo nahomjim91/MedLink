@@ -302,11 +302,6 @@ export default function ProductPage() {
           month: "short",
           day: "2-digit",
         });
-
-        // Alternative formats you can use:
-        // return date.toISOString().split('T')[0]; // YYYY-MM-DD
-        // return date.toLocaleDateString(); // Default locale format
-        // return date.toDateString(); // "Mon Jan 01 2025" format
       } catch (error) {
         return "-";
       }

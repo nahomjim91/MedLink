@@ -187,6 +187,7 @@ export const AuthProvider = ({ children }) => {
         phoneNumber: profileData.phoneNumber,
         doctorProfile: profileData.doctorProfile,
         patientProfile: profileData.patientProfile,
+        createdAt: profileData.createdAt,
       });
 
       // 1. Handle incomplete profile: Redirect to registration if not already there.

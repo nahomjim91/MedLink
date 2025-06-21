@@ -17,6 +17,7 @@ import ProfileImage from "../../../components/ui/ProfileImage";
 import { useParams } from "next/navigation";
 import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
 import { GET_DOCTOR_AVAILABLE_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
+import { AboutMeCard } from "../../../components//ui/Card";
 
 export default function DoctorProfileResponsive() {
   const params = useParams();
@@ -293,7 +294,7 @@ export default function DoctorProfileResponsive() {
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-12 gap-3">
             {/* Doctor Profile Card */}
-            <div className="col-span-3 bg-white rounded-2xl p-6 shadow-sm h-fit">
+            <div className="col-span-3 bg-white rounded-2xl p-4 shadow-sm h-fit">
               <div className="text-center mb-6 flex flex-col items-center">
                 <ProfileImage
                   imageUrl={
@@ -302,14 +303,14 @@ export default function DoctorProfileResponsive() {
                   altText={`${doctor.user?.firstName} ${doctor.user?.lastName}`}
                   userName={`Dr. ${doctor.user?.firstName} ${doctor.user?.lastName}`}
                 />
-                <h2 className="text-2xl font-bold text-secondary/80">
+                <h2 className="text-2xl font-bold text-secondary/80 mt-5">
                   Dr. {doctor.user?.firstName} {doctor.user?.lastName}
                 </h2>
               </div>
             </div>
 
             {/* Doctor Details Card */}
-            <div className="col-span-9 bg-white rounded-2xl p-6 shadow-sm h-fit flex">
+            <div className="col-span-9 bg-white rounded-2xl p-3 shadow-sm h-fit flex gap-6">
               <div className="flex-1/3">
                 <h3 className="text-lg font-bold text-secondary/80 mb-4">
                   General Info
@@ -317,56 +318,46 @@ export default function DoctorProfileResponsive() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Gender</span>
-                    <span className="text-secondary/80 font-semibold">
+                    <span className="text-secondary/60 font-semibold">
                       {doctor.user?.gender || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Specialization</span>
-                    <span className="text-secondary/80 font-semibold">
+                    <span className="text-secondary/60 font-semibold">
                       {doctor.specialization}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Experience</span>
-                    <span className="text-secondary/80 font-semibold">
+                    <span className="text-secondary/60 font-semibold">
                       {doctor.experienceYears}+ years
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Rating</span>
-                    <span className="text-secondary/80 font-semibold">
+                    <span className="text-secondary/60 font-semibold">
                       {doctor.averageRating || "N/A"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Per Session</span>
-                    <span className="text-secondary/80 font-semibold">
+                    <span className="text-secondary/60 font-semibold">
                       ${doctor.pricePerSession}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="flex-2/3 ml-6">
-                <h3 className="text-xl font-bold text-secondary/80 my-2">
-                  About Me
-                </h3>
-                <p className="text-secondary/60 leading-relaxed mb-4">
-                  {doctor.aboutMe || "No description available."}
-                </p>
-                <button className="text-teal-500 hover:text-teal-600 font-semibold">
-                  Read More
-                </button>
-              </div>
+              <AboutMeCard doctor={doctor}/>
             </div>
 
             {/* Calendar Section */}
-            <div className="col-span-4 bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
+            <div className="col-span-4 bg-white rounded-2xl p-3 shadow-sm">
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="text-xl font-bold text-secondary/80">
                   Calendar
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center">
                   <button
                     onClick={() => navigateMonth("prev")}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -386,7 +377,7 @@ export default function DoctorProfileResponsive() {
               </div>
 
               {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-1 mb-6">
+              <div className="grid grid-cols-7 gap-1 mb-2">
                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
                   (day) => (
                     <div
@@ -484,7 +475,7 @@ export default function DoctorProfileResponsive() {
             </div>
 
             {/* Certificate Section */}
-            <div className="col-span-4 bg-white rounded-2xl p-6 shadow-sm">
+            <div className="col-span-4 bg-white rounded-2xl p-3 shadow-sm">
               <h3 className="text-xl font-bold text-secondary/80 mb-6">
                 Certificates
               </h3>
@@ -514,7 +505,7 @@ export default function DoctorProfileResponsive() {
             </div>
 
             {/* Reviews Section */}
-            <div className="col-span-4 bg-white rounded-2xl p-6 shadow-sm">
+            <div className="col-span-4 bg-white rounded-2xl p-3 shadow-sm">
               <h3 className="text-xl font-bold text-secondary/80 mb-6">
                 Reviews
               </h3>
@@ -630,15 +621,7 @@ export default function DoctorProfileResponsive() {
         </div>
 
         {/* About Me */}
-        <div className="px-6 mb-6">
-          <h2 className="text-lg font-bold text-secondary/80 mb-3">About Me</h2>
-          <p className="text-secondary/60 text-sm leading-relaxed">
-            {doctor.aboutMe || "No description available."}
-          </p>
-          <button className="text-teal-500 text-sm font-medium mt-2">
-            Read More ...
-          </button>
-        </div>
+       <AboutMeCard doctor={doctor}  />
 
         {/* Available Slots */}
         <div className="px-6 mb-8">

@@ -14,6 +14,7 @@ export const GET_MY_PROFILE = gql`
       dob
       profileImageUrl
       profileComplete
+      createdAt
       doctorProfile {
         doctorId
         specialization

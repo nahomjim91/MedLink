@@ -78,7 +78,9 @@ export const UPDATE_DOCTOR_PROFILE = gql`
       averageRating
       ratingCount
       approvedAt
-      telehealthWalletBalance
+      doctorProfile {
+        telehealthWalletBalance
+      }
       pricePerSession
       certificates {
         name
@@ -99,7 +101,7 @@ export const UPDATE_PATIENT_PROFILE = gql`
       gender
       dob
       profileImageUrl
-      telehealthWalletBalance
+      
       patientProfile {
         patientId
         height

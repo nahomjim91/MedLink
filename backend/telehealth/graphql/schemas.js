@@ -72,6 +72,8 @@ const typeDefs = gql`
     dob: Date
     role: String
     profileImageUrl: String
+    profileComplete: Boolean
+    telehealthWalletBalance: Float
   }
 
   input DoctorProfileInput {
