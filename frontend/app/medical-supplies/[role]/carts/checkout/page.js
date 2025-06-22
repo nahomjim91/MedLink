@@ -1282,7 +1282,7 @@ const isDataReady = !loading && user && cart;
   // Initialize payment with backend
   const initializePayment = async (order) => {
     try {
-      console.log("Initializing payment for order:", order.orderId);
+      console.log("Initializing payment for order:", order.orderId); 
 
       const response = await apiRequest("/api/payments/initialize", {
         method: "POST",

@@ -23,11 +23,108 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refetching, setRefetching] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   
   // Initialize the mutation hook
   const [initializeUserProfileMutation] = useMutation(INITIALIZE_USER_PROFILE, { client });
+
+  // Helper function to handle profile data processing
+  const processProfileData = (firebaseUser, profileData) => {
+    const userRole = profileData.role;
+    const isProfileComplete = profileData.profileComplete || false;
+
+    return {
+      id: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName || profileData.firstName || "",
+      photoURL: firebaseUser.photoURL || profileData.profileImageUrl || "",
+      emailVerified: firebaseUser.emailVerified,
+      role: userRole,
+      profileComplete: isProfileComplete,
+      // Include other relevant fields fetched
+      firstName: profileData.firstName,
+      lastName: profileData.lastName,
+      gender: profileData.gender,
+      dob: profileData.dob,
+      phoneNumber: profileData.phoneNumber,
+      doctorProfile: profileData.doctorProfile,
+      patientProfile: profileData.patientProfile,
+      createdAt: profileData.createdAt,
+    };
+  };
+
+  // Refetch user profile method
+  const refetchUser = async () => {
+    if (!auth.currentUser) {
+      console.warn("No authenticated user to refetch");
+      return null;
+    }
+
+    setRefetching(true);
+    
+    try {
+      // Reload Firebase user to get latest data
+      await reload(auth.currentUser);
+      
+      // Get fresh Firebase token
+      const token = await auth.currentUser.getIdToken(true); // Force refresh
+      localStorage.setItem("token", token);
+
+      // Check if email is verified
+      if (!auth.currentUser.emailVerified) {
+        const userData = {
+          id: auth.currentUser.uid,
+          email: auth.currentUser.email,
+          displayName: auth.currentUser.displayName || "",
+          photoURL: auth.currentUser.photoURL || "",
+          emailVerified: false,
+          role: null,
+          profileComplete: false,
+        };
+        setUser(userData);
+        return userData;
+      }
+
+      // Fetch fresh profile data from GraphQL
+      const { data, error } = await client.query({
+        query: GET_MY_PROFILE,
+        fetchPolicy: "network-only", // Always fetch from network
+      });
+
+      if (error) {
+        console.error("Error refetching user profile:", error);
+        throw error;
+      }
+
+      if (data && data.me) {
+        const updatedUser = processProfileData(auth.currentUser, data.me);
+        setUser(updatedUser);
+        console.log("User profile refetched successfully:", updatedUser);
+        return updatedUser;
+      } else {
+        // Handle case where profile doesn't exist
+        const incompleteUser = {
+          id: auth.currentUser.uid,
+          email: auth.currentUser.email,
+          displayName: auth.currentUser.displayName || "",
+          photoURL: auth.currentUser.photoURL || "",
+          emailVerified: auth.currentUser.emailVerified,
+          role: null,
+          profileComplete: false,
+        };
+        setUser(incompleteUser);
+        return incompleteUser;
+      }
+
+    } catch (error) {
+      console.error("Error during user refetch:", error);
+      throw error;
+    } finally {
+      setRefetching(false);
+    }
+  };
 
   useEffect(() => {
     const registrationPath = "/telehealth/auth/registering";
@@ -168,30 +265,11 @@ export const AuthProvider = ({ children }) => {
     });
 
     const handleProfileData = (firebaseUser, profileData) => {
-      const userRole = profileData.role;
-      const isProfileComplete = profileData.profileComplete || false;
-
-      setUser({
-        id: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName || profileData.firstName || "",
-        photoURL: firebaseUser.photoURL || profileData.profileImageUrl || "",
-        emailVerified: firebaseUser.emailVerified,
-        role: userRole,
-        profileComplete: isProfileComplete,
-        // Include other relevant fields fetched
-        firstName: profileData.firstName,
-        lastName: profileData.lastName,
-        gender: profileData.gender,
-        dob: profileData.dob,
-        phoneNumber: profileData.phoneNumber,
-        doctorProfile: profileData.doctorProfile,
-        patientProfile: profileData.patientProfile,
-        createdAt: profileData.createdAt,
-      });
+      const updatedUser = processProfileData(firebaseUser, profileData);
+      setUser(updatedUser);
 
       // 1. Handle incomplete profile: Redirect to registration if not already there.
-      if (!isProfileComplete && pathname !== registrationPath) {
+      if (!updatedUser.profileComplete && pathname !== registrationPath) {
         console.log("Profile incomplete, redirecting to registration.");
         router.push(registrationPath);
         setLoading(false);
@@ -199,7 +277,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       // 2. Handle complete profile:
-      if (isProfileComplete) {
+      if (updatedUser.profileComplete) {
         // Redirect away from auth/registration pages
         if (
           pathname === registrationPath ||
@@ -210,18 +288,18 @@ export const AuthProvider = ({ children }) => {
           console.log(
             "Profile complete, redirecting from auth page to dashboard."
           );
-          const roleDashboard = userRole 
-            ? `/telehealth/${userRole}` 
+          const roleDashboard = updatedUser.role 
+            ? `/telehealth/${updatedUser.role}` 
             : dashboardPath;
           router.push(roleDashboard);
         }
         // Redirect if user tries to access a route they shouldn't
-        else if (!canAccessCurrentRoute(userRole, pathname)) {
+        else if (!canAccessCurrentRoute(updatedUser.role, pathname)) {
           console.log(
-            `User with role ${userRole} cannot access ${pathname}, redirecting to appropriate dashboard.`
+            `User with role ${updatedUser.role} cannot access ${pathname}, redirecting to appropriate dashboard.`
           );
-          const roleDashboard = userRole 
-            ? `/telehealth/${userRole}` 
+          const roleDashboard = updatedUser.role 
+            ? `/telehealth/${updatedUser.role}` 
             : dashboardPath;
           router.push(roleDashboard);
         }
@@ -452,6 +530,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         loading,
+        refetching,
         signup,
         login,
         logout,
@@ -460,6 +539,7 @@ export const AuthProvider = ({ children }) => {
         checkEmailVerification,
         sendPasswordReset,
         canAccessRoute,
+        refetchUser,
         getRolePath: () =>
           user?.role
             ? `/telehealth/${user.role}`

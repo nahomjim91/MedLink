@@ -263,7 +263,7 @@ export default function PatientProfile() {
         </div>
 
         {/* Mobile/Tablet Card View - Shown on smaller screens */}
-        <div className="h-[50vh] overflow-y-auto lg:hidden">
+        <div className="h-[50vh] overflow-y-auto lg:hidden scrollbar-hide">
           <div className="lg:hidden grid grid-cols-2 md:grid-cols-3 gap-4">
             {files.map((file) => (
               <div
@@ -405,7 +405,7 @@ export default function PatientProfile() {
         <h4 className="font-medium text-gray-700 mb-4">
           Currently Who have access
         </h4>
-        <div className="h-[48vh] overflow-y-auto">
+        <div className="h-[48vh] overflow-y-auto scrollbar-hide">
           <div className="space-y-2">
             {accessList.map((person) => (
               <div

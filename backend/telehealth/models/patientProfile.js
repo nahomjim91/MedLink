@@ -1,7 +1,7 @@
 /**
  * Patient profile model for MedLink telehealth
  */
-const { db } = require('../config/firebase');
+const { db, FieldValue } = require('../config/firebase');
 const { formatDoc, sanitizeInput, timestamp } = require('../../utils/helpers');
 
 // Collection reference
@@ -115,7 +115,7 @@ const PatientProfileModel = {
       
       // Update wallet balance
       await docRef.update({
-        telehealthWalletBalance: db.FieldValue.increment(amount),
+telehealthWalletBalance: FieldValue.increment(amount),
         updatedAt: timestamp()
       });
       

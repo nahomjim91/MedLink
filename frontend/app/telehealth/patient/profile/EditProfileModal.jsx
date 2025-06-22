@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { X, Save, Loader2 } from "lucide-react";
 import { useProfileUpdate } from "../../hooks/useProfileUpdate";
 import { NumberInput, SelectInput, TextInput } from "../../components/ui/Input";
+import { Button } from "../../components/ui/Button";
 
 export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
   const [errors, setErrors] = useState({});
@@ -260,7 +261,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 bg-opacity-10 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] scrollbar-hide overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-800">Edit Profile</h2>
@@ -371,19 +372,21 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
 
           {/* Action Buttons */}
           <div className="flex gap-3 mt-6">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              color="error"
               onClick={handleClose}
               disabled={loading}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1"
             >
               Cancel
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="submit"
               disabled={!isFormValid() || loading}
-              className="flex-1 px-4 py-2 bg-teal-500 text-white rounded-lg hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 flex items-center justify-around *:disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -396,7 +399,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
                   Save Changes
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

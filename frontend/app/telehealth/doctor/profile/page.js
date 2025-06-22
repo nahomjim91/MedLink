@@ -203,7 +203,7 @@ const EditableField = ({
         <textarea
           value={value || ""}
           onChange={(e) => onInputChange(field, e.target.value)}
-          className={`w-full p-2 border border-secondary/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-none min-h-[100px] resize-none ${className}`}
+          className={`w-full p-2 border border-secondary/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-none scrollbar-hide min-h-[100px] resize-none ${className}`}
           rows={4}
           placeholder={placeholder}
         />
@@ -821,7 +821,7 @@ export default function ProfilePage() {
                 </div>
               }
             >
-              <div className="space-y-4 max-h-96 lg:max-h-[500px] overflow-y-auto">
+              <div className="space-y-4 max-h-96 lg:max-h-[500px] overflow-y-auto scrollbar-hide">
                 {reviews.map((review) => (
                   <ReviewCard key={review.id} review={review} />
                 ))}

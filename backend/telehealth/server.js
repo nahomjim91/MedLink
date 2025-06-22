@@ -11,6 +11,8 @@ const setupApolloServer = require('./graphql');
 const { authMiddleware } = require('./middleware/auth');
 const AvailabilitySlot = require('./models/availabilitySlot');
 const cron = require('node-cron');
+const paymentRoutes = require("./route/payment");
+
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -72,6 +74,9 @@ io.on('connection', (socket) => {
 app.get('/telehealth/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'telehealth' });
 });
+
+// Routes
+app.use("/api/payments", paymentRoutes);
 
 cron.schedule("0 0 * * *", async () => {
   try {

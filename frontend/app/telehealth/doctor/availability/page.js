@@ -461,7 +461,7 @@ const DoctorAvailabilityCalendar = () => {
             return (
               <div
                 key={index}
-                className={`min-h-[140px] p-3 border-r border-b last:border-r-0 ${
+                className={`min-h-[140px] p-3 border-r border-b last:border-r-0 scrollbar-hide ${
                   !day.isCurrentMonth ? "bg-gray-50" : "bg-white"
                 } hover:bg-gray-50 transition-colors`}
               >
@@ -534,7 +534,7 @@ const DoctorAvailabilityCalendar = () => {
           })}
         </div>
 
-        <div className="grid grid-cols-7 min-h-[500px]">
+        <div className="grid grid-cols-7 min-h-[500px] scrollbar-hide">
           {weekDays.map((day, index) => {
             const daySlots = getSlotsForDate(day);
 
