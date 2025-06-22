@@ -5,6 +5,7 @@ const router = express.Router();
 const dotenv = require('dotenv');
 const Patient = require('../models/patientProfile'); 
 const crypto = require('crypto'); // Add this for webhook verification
+const { TransactionModel } = require('../models/transactionAndRefund'); // Adjust the import path as needed
 
 dotenv.config();
 
@@ -168,7 +169,15 @@ router.post('/wallet/add-funds/verify', async (req, res) => {
           console.log(`Attempting to update wallet for patient ${userIdFromMeta} with amount ${amount}`);
           const updatedPatient = await Patient.updateWalletBalance(userIdFromMeta, amount);
           console.log(`Wallet updated successfully for patient ${userIdFromMeta}`);
-
+          TransactionModel.create({
+            userId: userIdFromMeta,
+            type: 'DEPOSIT',
+            amount: amount,
+            reason: 'Telehealth wallet funding',
+            status: 'success',
+            relatedAppointmentId: null, // No appointment related to wallet funding
+            chapaRef: txRef // Chapa transaction reference
+          });
           res.json({
             success: true,
             data: {

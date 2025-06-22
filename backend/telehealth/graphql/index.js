@@ -1,7 +1,7 @@
 // /graphql/index.js
 const { ApolloServer } = require('apollo-server-express');
-const typeDefs = require('./schemas');
-const resolvers = require('./resolvers');
+const typeDefs = require('./schemas/index');
+const resolvers = require('./resolvers/index');
 const { createContext } = require('../middleware/auth');
 
 /**

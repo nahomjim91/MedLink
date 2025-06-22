@@ -1,10 +1,10 @@
 // /graphql/resolvers.js
 const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
-const UserModel = require("../models/user");
-const DoctorProfileModel = require("../models/doctorProfile");
-const PatientProfileModel = require("../models/patientProfile");
-const DoctorAvailabilitySlotModel = require("../models/availabilitySlot");
+const UserModel = require("../../models/user");
+const DoctorProfileModel = require("../../models/doctorProfile");
+const PatientProfileModel = require("../../models/patientProfile");
+const DoctorAvailabilitySlotModel = require("../../models/availabilitySlot");
 const {
   AuthenticationError,
   ForbiddenError,
