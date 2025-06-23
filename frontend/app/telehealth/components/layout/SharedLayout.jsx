@@ -76,8 +76,8 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         icon: <BarChart2 />,
       },
       {
-        name: "History",
-        path: "/telehealth/doctor/history",
+        name: "Availability",
+        path: "/telehealth/doctor/availability",
         icon: <Clock />,
       },
       {
@@ -108,10 +108,11 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
     ],
     patient: [
       { name: "Home", path: "/telehealth/patient", icon: <Home /> },
+      
       {
-        name: "Analytics",
-        path: "/telehealth/patient/analytics",
-        icon: <BarChart2 />,
+        name: "Doctors",
+        path: "/telehealth/patient/doctors",
+        icon: <Users />,
       },
       {
         name: "History",

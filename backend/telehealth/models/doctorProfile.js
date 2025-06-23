@@ -46,6 +46,8 @@ const DoctorProfileModel = {
         .orderBy("experienceYears", "desc")
         .get();
 
+        // console.log(snapshot.docs.length);
+
       return formatDocs(snapshot.docs);
     } catch (error) {
       console.error("Error getting doctors by specialization:", error);

@@ -176,6 +176,7 @@ const resolvers = {
 
     // Get doctors by specialization
     doctorsBySpecialization: async (_, { specialization }) => {
+      // console.log("Resolver: doctorsBySpecialization - specialization:", specialization);
       return await DoctorProfileModel.getBySpecialization(specialization);
     },
 
@@ -211,7 +212,7 @@ const resolvers = {
       } catch (error) {
         console.error("Error filtering doctors:", error);
         throw error;
-      }
+      } 
     },
 
     // Get all unique specializations
