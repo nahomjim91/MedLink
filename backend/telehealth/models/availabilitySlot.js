@@ -98,6 +98,27 @@ const DoctorAvailabilitySlotModel = {
       throw error;
     }
   },
+  /**
+ * Get slot by ID
+ * @param {String} slotId - Slot ID
+ * @returns {Object|null} Slot data or null if not found
+ */
+async getById(slotId) {
+  try {
+    const docRef = slotsRef.doc(slotId);
+    const docSnapshot = await docRef.get();
+
+    if (!docSnapshot.exists) {
+      return null;
+    }
+
+    return formatDoc(docSnapshot);
+  } catch (error) {
+    console.error('Error getting slot by ID:', error);
+    throw error;
+  }
+},
+
 
   /**
    * Get available slots for a doctor (not booked)

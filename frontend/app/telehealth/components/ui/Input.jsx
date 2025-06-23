@@ -674,3 +674,47 @@ export const Rating = ({ label, value, showValue = true, maxStars = 5 }) => {
       </div>
   );
 };
+
+export function TextAreaInput({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder = "Enter description",
+  error = false,
+  errorMessage = "",
+  required = false,
+  rows = 5,
+  className = "",
+  ...props
+}) {
+  return (
+    <div className={`mb-4 w-full ${className}`}>
+      {label && (
+        <label className="block text-secondary/90 text-sm font-medium mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      <textarea
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+        className={`
+          w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm
+          ${
+            error
+              ? "border-red-500 focus:border-red-500 focus:ring-red-300/30"
+              : "border-gray-200 focus:border-teal-500 focus:ring-teal-500/20"
+          }
+        `}
+        required={required}
+        {...props}
+      />
+      {error && errorMessage && (
+        <p className="text-red-500 text-xs mt-1">{errorMessage}</p>
+      )}
+    </div>
+  );
+}

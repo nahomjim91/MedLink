@@ -18,13 +18,21 @@ import { useParams } from "next/navigation";
 import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
 import { GET_DOCTOR_AVAILABLE_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
 import { AboutMeCard } from "../../../components//ui/Card";
+import AppointmentModal from "../../../components/ui/modal/AppointmentModal ";
+import { useAppointment } from "../../../hooks/useAppointment ";
+import { useAuth } from "../../../hooks/useAuth";
+import TelehealthAddFunds from "../../../components/ui/AddFound";
 
 export default function DoctorProfileResponsive() {
   const params = useParams();
   const doctorId = params.doctorId;
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const {user}= useAuth();
 
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [selectedTime, setSelectedTime] = useState("");
+  const [showAddFundsModal, setShowAddFundsModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(
     new Date().toLocaleString("default", { month: "long" })
   );
@@ -32,6 +40,7 @@ export default function DoctorProfileResponsive() {
   const [formattedSelectedDate, setFormattedSelectedDate] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const daysPerWeek = 7;
+  
 
   // GraphQL Queries
   const {
@@ -55,6 +64,8 @@ export default function DoctorProfileResponsive() {
     },
     skip: !doctorId || !formattedSelectedDate,
   });
+
+    const { createAppointment, loading: appointmentLoading, error: appointmentError } = useAppointment();
 
   // Set initial selected date to today or first available date
   useEffect(() => {
@@ -199,22 +210,60 @@ export default function DoctorProfileResponsive() {
     setSelectedTime(timeString);
   };
 
-  const handleBookAppointment = () => {
+const handleBookAppointment = () => {
     const selectedSlot = availableSlots.find(
       (slot) => formatSlotTime(slot.startTime) === selectedTime
     );
 
     if (selectedSlot) {
-      // Handle booking logic here
-      console.log("Booking appointment:", {
-        doctorId,
-        slotId: selectedSlot.slotId,
-        date: formattedSelectedDate,
-        time: selectedTime,
-      });
-      // You would typically call a booking mutation here
+      setSelectedSlot(selectedSlot);
+      setShowAppointmentModal(true);
     }
   };
+
+  const handleUpdate = (formData) => {
+    // Handle form data update logic here
+    // console.log("Form Data Updated:", formData);
+  };
+
+  // Updated handleConfirm to actually create the appointment
+  const handleConfirm = async (appointmentData) => {
+    try {
+      // console.log("Creating appointment with data:", appointmentData);
+      
+      // Prepare the appointment input data
+      const appointmentInput = {
+        doctorId: appointmentData.doctor?.doctorId || appointmentData.doctor?._id,
+        doctorName: `${appointmentData.doctor?.user?.firstName || 'Dr.'} ${appointmentData.doctor?.user?.lastName || 'Doctor'}`,
+        reasonNote: appointmentData.reason,
+        scheduledStartTime: appointmentData.slot?.startTime || new Date(appointmentData.date + ' ' + appointmentData.time.split(' - ')[0]),
+        scheduledEndTime: appointmentData.slot?.endTime || new Date(appointmentData.date + ' ' + appointmentData.time.split(' - ')[1]),
+        associatedSlotId: appointmentData.slot?.slotId || appointmentData.slot?._id
+      };
+
+      // Create the appointment using the hook
+      const newAppointment = await createAppointment(appointmentInput);
+      
+      // console.log('Appointment created successfully:', newAppointment);
+      
+      // Optional: Show success message or redirect
+      // You might want to show a toast notification here
+      refetchSlots();
+      
+      return newAppointment;
+      
+    } catch (error) {
+      console.error('Failed to create appointment:', error);
+      // Handle error - you might want to show an error toast here
+      throw error; // Re-throw so the modal can handle the error state
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowAppointmentModal(false);
+    setSelectedSlot(null);
+  };
+  
   const allDates = generateCalendarDays().filter(
     (date) => date.day && !date.disabled
   );
@@ -348,7 +397,7 @@ export default function DoctorProfileResponsive() {
                   </div>
                 </div>
               </div>
-              <AboutMeCard doctor={doctor}/>
+              <AboutMeCard doctor={doctor} />
             </div>
 
             {/* Calendar Section */}
@@ -621,7 +670,7 @@ export default function DoctorProfileResponsive() {
         </div>
 
         {/* About Me */}
-       <AboutMeCard doctor={doctor}  />
+        <AboutMeCard doctor={doctor} />
 
         {/* Available Slots */}
         <div className="px-6 mb-8">
@@ -744,6 +793,23 @@ export default function DoctorProfileResponsive() {
           </div>
         </div>
       </div>
+      {showAppointmentModal && (
+       <AppointmentModal
+          doctor={doctor}
+          slot={selectedSlot}
+          date={formattedSelectedDate}
+          time={selectedTime} // Pass the time if you have it
+          onClose={handleCloseModal}
+          onConfirm={handleConfirm}
+          onUpdate={handleUpdate}
+          isLowFounds={user.patientProfile.telehealthWalletBalance < doctor.pricePerSession}
+          openAddfoundsModal={() => setShowAddFundsModal(true)}
+          
+        />
+      )}
+       {showAddFundsModal && (
+              <TelehealthAddFunds onClose={() => setShowAddFundsModal(false)} />
+            )}
     </div>
   );
 }
