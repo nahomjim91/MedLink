@@ -1,72 +1,160 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, Clock, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "./Button";
-const AppointmentCard = ({ appointment, onClose }) => (
-  <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50 md:hidden">
-    <div className="bg-white rounded-2xl p-6 ">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Appointment Details
-        </h3>
-        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
-          <X className="w-5 h-5 text-error" />
-        </button>
-      </div>
+import CancelModal from "./modal/AppointmentModal "; 
+// Cancel Modal Component
 
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-          <img
-            src={appointment.avatar}
-            alt={appointment.doctorName}
-            className="w-full h-full object-cover"
-          />
-        </div>
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900 text-lg">
-            {appointment.doctorName}
-          </h4>
-          <p className="text-sm text-gray-500">{appointment.specialty}</p>
-        </div>
-      </div>
 
-      <div className="flex gap-6 mb-6">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-500" />
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">
-              Date
-            </p>
-            <p className="text-sm font-medium text-gray-900">
-              {appointment.formattedDate}
-            </p>
+const AppointmentCard = ({
+  appointment,
+  onClose,
+  onCancel,
+  loading,
+}) => {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+
+  const canCancel = ["REQUESTED", "PENDING"].includes(appointment.status);
+  const canReschedule = [
+    "REQUESTED",
+    "PENDING",
+    "CONFIRMED",
+    "SCHEDULED",
+  ].includes(appointment.status);
+
+  const handleCancelConfirm = async (appointmentId, reason) => {
+    try {
+      await onCancel(appointmentId, reason);
+      setShowCancelModal(false);
+      onClose();
+    } catch (error) {
+      // Error is handled by the parent component
+      console.error("Cancel failed:", error);
+    }
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50 md:hidden">
+        <div className="bg-white rounded-2xl p-6 m-4 max-w-sm w-full">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Appointment Details
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+              <img
+                src={appointment.avatar}
+                alt={appointment.doctorName}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-gray-900 text-lg">
+                {appointment.doctorName}
+              </h4>
+              <p className="text-sm text-gray-500">{appointment.specialty}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <div
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    appointment.status === "CONFIRMED"
+                      ? "bg-green-100 text-green-700"
+                      : appointment.status === "PENDING"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : appointment.status === "REQUESTED"
+                      ? "bg-blue-100 text-blue-700"
+                      : appointment.status === "SCHEDULED"
+                      ? "bg-teal-100 text-teal-700"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {appointment.status}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-6 mb-6">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  Date
+                </p>
+                <p className="text-sm font-medium text-gray-900">
+                  {appointment.formattedDate}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-500" />
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  Time
+                </p>
+                <p className="text-sm font-medium text-gray-900">
+                  {appointment.time}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => {
+                /* Handle view profile */
+              }}
+              disabled={loading}
+            >
+              View Profile
+            </Button>
+
+            {canCancel && (
+              <Button
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                onClick={() => setShowCancelModal(true)}
+                disabled={loading}
+              >
+                Cancel Appointment
+              </Button>
+            )}
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-gray-500" />
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">
-              Time
-            </p>
-            <p className="text-sm font-medium text-gray-900">
-              {appointment.time}
-            </p>
-          </div>
-        </div>
       </div>
 
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1">
-          Re-Schedule
-        </Button>
-        <Button className="flex-1">View Profile</Button>
-      </div>
-    </div>
-  </div>
-);
+      {showCancelModal && (
+        <CancelModal
+          appointment={appointment}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleCancelConfirm}
+          loading={loading}
+        />
+      )}
+    </>
+  );
+};
 
 export default function CalendarAppointments({
   appointments: propAppointments = [],
+  onCancelAppointment,
+  loading = false,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -155,6 +243,7 @@ export default function CalendarAppointments({
   };
 
   const getAppointmentsForDay = (dateKey) => {
+    // console.log("Fetching appointments for date:", processedAppointments.length);
     return processedAppointments.filter((apt) => apt.dateKey === dateKey);
   };
 
@@ -170,10 +259,7 @@ export default function CalendarAppointments({
     const appointments = getAppointmentsForDay(dayObj.dateKey);
 
     if (appointments.length > 0) {
-      // On mobile, show appointment card modal for first appointment
-      if (window.innerWidth < 768) {
-        setSelectedAppointment(appointments[0]);
-      }
+      setSelectedAppointment([...appointments]);
     }
   };
 
@@ -230,8 +316,67 @@ export default function CalendarAppointments({
     ? getAppointmentsForDay(selectedDate)
     : processedAppointments.slice(0, 3); // Show upcoming if no date selected
 
+  // Desktop appointment actions
+  const DesktopAppointmentActions = ({ appointment }) => {
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const canCancel = ["REQUESTED", "PENDING"].includes(appointment.status);
+    const canReschedule = [
+      "REQUESTED",
+      "PENDING",
+      "CONFIRMED",
+      "SCHEDULED",
+    ].includes(appointment.status);
+
+    const handleCancelConfirm = async (appointmentId, reason) => {
+      try {
+        await onCancelAppointment(appointmentId, reason);
+        setShowCancelModal(false);
+      } catch (error) {
+        console.error("Cancel failed:", error);
+      }
+    };
+
+    return (
+      <>
+        <div className="flex gap-3">
+          {canCancel && (
+            <Button
+              variant="outline"
+              className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+              onClick={() => setShowCancelModal(true)}
+              disabled={loading}
+              size="sm"
+            >
+              Cancel
+            </Button>
+          )}
+
+          <Button
+            className="flex-1"
+            onClick={() => {
+              /* Handle view profile */
+            }}
+            disabled={loading}
+            size="sm"
+          >
+            View Profile
+          </Button>
+        </div>
+
+        {showCancelModal && (
+          <CancelModal
+            appointment={appointment}
+            onClose={() => setShowCancelModal(false)}
+            onConfirm={handleCancelConfirm}
+            loading={loading}
+          />
+        )}
+      </>
+    );
+  };
+
   return (
-    <div className="w-full ">
+    <div className="w-full">
       <div className="grid grid-cols-1 md:grid-cols-2">
         {/* Calendar */}
         <div className="bg-white rounded-l-2xl shadow-sm border border-gray-100">
@@ -333,11 +478,11 @@ export default function CalendarAppointments({
 
             {/* Desktop Calendar Grid */}
             <div className="hidden md:block">
-              <div className="grid grid-cols-7 gap-1 ">
+              <div className="grid grid-cols-7 gap-1">
                 {shortDayNames.map((day) => (
                   <div
                     key={day}
-                    className="text-center text-xs font-medium text-teal-500 "
+                    className="text-center text-xs font-medium text-teal-500"
                   >
                     {day}
                   </div>
@@ -398,10 +543,10 @@ export default function CalendarAppointments({
                 selectedDateAppointments.map((appointment) => (
                   <div
                     key={appointment.id}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                    className="flex items-center gap-3 p-3 bg-background rounded-lg cursor-pointer hover:bg-gray-100"
                     onClick={() => setSelectedAppointment(appointment)}
                   >
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0">
                       <img
                         src={appointment.avatar}
                         alt={appointment.doctorName}
@@ -415,6 +560,21 @@ export default function CalendarAppointments({
                       <p className="text-xs text-gray-500">
                         {appointment.formattedDate} • {appointment.time}
                       </p>
+                      <div
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                          appointment.status === "CONFIRMED"
+                            ? "bg-green-100 text-green-700"
+                            : appointment.status === "PENDING"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : appointment.status === "REQUESTED"
+                            ? "bg-blue-100 text-blue-700"
+                            : appointment.status === "SCHEDULED"
+                            ? "bg-teal-100 text-teal-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {appointment.status}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -455,6 +615,7 @@ export default function CalendarAppointments({
 
               <div className="space-y-3 h-[28vh] overflow-y-auto scrollbar-hide">
                 {selectedAppointmentsForDesktop.map((appointment, index) => (
+                
                   <div
                     key={appointment.id}
                     className={`${
@@ -470,12 +631,27 @@ export default function CalendarAppointments({
                         />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-semibold text-secondary ">
+                        <h4 className="font-semibold text-secondary">
                           {appointment.doctorName}
                         </h4>
                         <p className="text-sm text-secondary/60">
                           {appointment.specialty}
                         </p>
+                        <div
+                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                            appointment.status === "CONFIRMED"
+                              ? "bg-green-100 text-green-700"
+                              : appointment.status === "PENDING"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : appointment.status === "REQUESTED"
+                              ? "bg-blue-100 text-blue-700"
+                              : appointment.status === "SCHEDULED"
+                              ? "bg-teal-100 text-teal-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {appointment.status}
+                        </div>
                       </div>
                     </div>
 
@@ -505,12 +681,7 @@ export default function CalendarAppointments({
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
-                      <Button variant="outline" className="flex-1 rounded-full">
-                        Re-Schedule
-                      </Button>
-                      <Button className="flex-1">View Profile</Button>
-                    </div>
+                    <DesktopAppointmentActions appointment={appointment} />
                   </div>
                 ))}
               </div>
@@ -536,6 +707,8 @@ export default function CalendarAppointments({
         <AppointmentCard
           appointment={selectedAppointment}
           onClose={() => setSelectedAppointment(null)}
+          onCancel={onCancelAppointment}
+          loading={loading}
         />
       )}
     </div>

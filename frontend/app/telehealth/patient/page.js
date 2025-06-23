@@ -15,9 +15,13 @@ export default function TelehealthPatientPage() {
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [historyAppointments, setHistoryAppointments] = useState([]);
-  
+
   const { user } = useAuth();
-  const { fetchMyAppointments, loading: appointmentsLoading } = useAppointment();
+  const {
+    fetchMyAppointments,
+    cancelAppointment,
+    loading: appointmentsLoading,
+  } = useAppointment();
 
   const {
     data: specializationsData,
@@ -32,107 +36,162 @@ export default function TelehealthPatientPage() {
       try {
         const appointmentsData = await fetchMyAppointments();
         setAppointments(appointmentsData);
-        
-        console.log('Appointments Data:', appointmentsData);
+
         // Filter appointments for history (cancelled and finished)
         const historyData = appointmentsData.filter(
-          appointment => 
-            appointment.status === 'CANCELLED' || 
-            appointment.status === 'COMPLETED'
+          (appointment) =>
+            appointment.status === "CANCELLED_DOCTOR" ||
+            appointment.status === "CANCELLED_PATIENT" ||
+            appointment.status === "COMPLETED"
         );
         setHistoryAppointments(historyData);
       } catch (error) {
-        console.error('Error fetching appointments:', error);
+        console.error("Error fetching appointments:", error);
       }
     };
 
     loadAppointments();
   }, [fetchMyAppointments]);
 
+  // Handle appointment cancellation
+  const handleCancelAppointment = async (appointmentId, reason) => {
+    try {
+      console.log("Canceling appointment with ID:", appointmentId);
+      await cancelAppointment(appointmentId, reason);
+      // Refresh appointments after cancellation
+      const updatedAppointments = await fetchMyAppointments();
+      setAppointments(updatedAppointments);
+
+      // Update history appointments
+      const historyData = updatedAppointments.filter(
+        (appointment) =>
+          appointment.status === "CANCELLED_DOCTOR" ||
+          appointment.status === "CANCELLED_PATIENT" ||
+          appointment.status === "COMPLETED"
+      );
+      setHistoryAppointments(historyData);
+
+      console.log("Appointment cancelled successfully");
+    } catch (error) {
+      console.error("Failed to cancel appointment:", error);
+      throw error; // Re-throw to let the component handle the error display
+    }
+  };
+
   // Get the closest upcoming appointment
   const getUpcomingAppointment = () => {
-
     const upcomingAppointments = appointments.filter(
-      appointment => 
-        appointment.status === 'CONFIRMED' || 
-        appointment.status === 'PENDING' ||
-        appointment.status === 'REQUESTED' ||
-        appointment.status === 'SCHEDULED'
+      (appointment) =>
+        appointment.status === "CONFIRMED" ||
+        appointment.status === "PENDING" ||
+        appointment.status === "REQUESTED" ||
+        appointment.status === "SCHEDULED"
     );
-    
+
     if (upcomingAppointments.length === 0) return null;
-    
+
     // Sort by scheduled start time and get the closest one
     const sortedAppointments = upcomingAppointments.sort((a, b) => {
       const timeA = new Date(a.scheduledStartTime);
       const timeB = new Date(b.scheduledStartTime);
       return timeA - timeB;
     });
-    
+
     const closest = sortedAppointments[0];
-    
+
     // Transform to match UpcomingAppointmentCard expected format
     return {
-      id: closest.id,
-      doctorName: closest.doctor?.name || closest.doctor?.user?.name || 'Unknown Doctor',
-      specialty: closest.doctor?.specialization || 'General',
-      date: new Date(closest.scheduledStartTime).toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short',
-        weekday: 'long'
+      id: closest.appointmentId,
+      doctorName:
+        "Dr. " + closest.doctor?.firstName ||
+        closest.doctor?.user?.firstName ||
+        "Unknown Doctor",
+      specialty:
+        closest.doctor?.doctorProfile.specialization.join(", ") || "General",
+      date: new Date(closest.scheduledStartTime).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        weekday: "long",
       }),
-      time: `${new Date(closest.scheduledStartTime).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      })} - ${new Date(closest.scheduledEndTime).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
+      time: `${new Date(closest.scheduledStartTime).toLocaleTimeString(
+        "en-US",
+        {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        }
+      )} - ${new Date(closest.scheduledEndTime).toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
       })}`,
-      avatar: closest.doctor?.profilePicture || 
+      avatar:
+        closest.doctor?.profilePicture ||
         "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
-      status: closest.status
+      status: closest.status,
     };
   };
 
   // Transform appointments for calendar
- const getCalendarAppointments = () => {
-  return appointments.map(appointment => ({
-    id: appointment.id,
-    doctorName: appointment.doctor?.name || appointment.doctor?.user?.name || 'Unknown Doctor',
-    specialty: appointment.doctor?.specialization || 'General',
-    date: new Date(appointment.scheduledStartTime), // Convert to Date object
-    time: `${new Date(appointment.scheduledStartTime).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })} - ${new Date(appointment.scheduledEndTime).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })}`,
-    status: appointment.status,
-    avatar: appointment.doctor?.profilePicture || "/api/placeholder/60/60"
-  }));
-};
+  const getCalendarAppointments = () => {
+    return appointments.map((appointment) => ({
+      id: appointment.appointmentId,
+      doctorName:
+        "Dr. " + appointment.doctor?.firstName ||
+        appointment.doctor?.user?.firstName ||
+        "Unknown Doctor",
+      specialty:
+        appointment.doctor?.doctorProfile.specialization.join(", ") ||
+        "General",
+      date: new Date(appointment.scheduledStartTime), // Convert to Date object
+      time: `${new Date(appointment.scheduledStartTime).toLocaleTimeString(
+        "en-US",
+        {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        }
+      )} - ${new Date(appointment.scheduledEndTime).toLocaleTimeString(
+        "en-US",
+        {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        }
+      )}`,
+      status: appointment.status,
+      avatar: appointment.doctor?.profilePicture || "/api/placeholder/60/60",
+    }));
+  };
 
   // Transform history appointments
   const getHistoryAppointments = () => {
-    return historyAppointments.map(appointment => ({
-      id: appointment.id,
-      doctor: appointment.doctor?.name || appointment.doctor?.user?.name || 'Unknown Doctor',
-      specialty: appointment.doctor?.specialization || 'General',
-      date: new Date(appointment.scheduledStartTime).toLocaleDateString('en-US', {
-        day: 'numeric',
-        month: 'short',
-        weekday: 'long'
-      }),
-      diagnosis: appointment.diagnosis || appointment.notes || (
-        appointment.status === 'CANCELLED' ? 'Cancelled' : 'Completed'
+    return historyAppointments.map((appointment) => ({
+      id: appointment.appointmentId,
+      doctor:
+        "Dr. " + appointment.doctor?.firstName ||
+        appointment.doctor?.user?.firstName ||
+        "Unknown Doctor",
+      specialty:
+        appointment.doctor?.doctorProfile?.specialization[0] || "General",
+      date: new Date(appointment.scheduledStartTime).toLocaleDateString(
+        "en-US",
+        {
+          day: "numeric",
+          month: "short",
+          weekday: "long",
+        }
       ),
+      diagnosis:
+        appointment.diagnosis ||
+        appointment.notes ||
+        (appointment.status === "CANCELLED_DOCTOR"
+          ? "Cancelled by Doctor"
+          : appointment.status === "CANCELLED_PATIENT"
+          ? "Cancelled"
+          : "Completed"),
       status: appointment.status,
-      avatar: appointment.doctor?.profilePicture || "/api/placeholder/60/60"
+      avatar: appointment.doctor?.profilePicture || "/api/placeholder/60/60",
     }));
   };
 
@@ -190,16 +249,28 @@ export default function TelehealthPatientPage() {
             </div>
           </div>
         ) : upcomingAppointment ? (
-          <UpcomingAppointmentCard upcomingAppointment={upcomingAppointment} />
+          <UpcomingAppointmentCard
+            upcomingAppointment={upcomingAppointment}
+            onCancelAppointment={handleCancelAppointment}
+            loading={appointmentsLoading}
+          />
         ) : (
           <div className="bg-white p-6 rounded-xl shadow-sm">
-            <h2 className="text-lg font-semibold text-secondary mb-4">Upcoming Appointment</h2>
-            <p className="text-gray-500 text-center">No upcoming appointments</p>
+            <h2 className="text-lg font-semibold text-secondary mb-4">
+              Upcoming Appointment
+            </h2>
+            <p className="text-gray-500 text-center">
+              No upcoming appointments
+            </p>
           </div>
         )}
 
-        {/* Calendar */}
-        <CalendarAppointments appointments={calendarAppointments} />
+        {/* Calendar with methods passed */}
+        <CalendarAppointments
+          appointments={calendarAppointments}
+          onCancelAppointment={handleCancelAppointment}
+          loading={appointmentsLoading}
+        />
       </div>
 
       {/* Bottom Section */}
@@ -223,8 +294,11 @@ export default function TelehealthPatientPage() {
 
             {appointmentsLoading ? (
               // Loading skeleton
-              Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="grid grid-cols-4 gap-4 py-3 animate-pulse">
+              Array.from({ length: 5 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-4 gap-4 py-3 animate-pulse"
+                >
                   <div className="flex items-center gap-2">
                     <div className="hidden md:block w-8 h-8 rounded-full bg-gray-200"></div>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
@@ -242,12 +316,12 @@ export default function TelehealthPatientPage() {
                 >
                   <div className="flex items-center gap-2">
                     <div className="hidden md:block w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
-                      <img 
-                        src={appointment.avatar} 
+                      <img
+                        src={appointment.avatar}
                         alt={appointment.doctor}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.target.style.display = 'none';
+                          e.target.style.display = "none";
                         }}
                       />
                     </div>
@@ -257,20 +331,24 @@ export default function TelehealthPatientPage() {
                   </div>
                   <div className="">{appointment.specialty}</div>
                   <div className="">{appointment.date}</div>
-                  <div className={`flex items-center gap-1 ${
-                    appointment.status === 'CANCELLED' 
-                      ? 'text-red-600' 
-                      : appointment.status === 'COMPLETED'
-                      ? 'text-green-600'
-                      : 'text-gray-600'
-                  }`}>
-                    <span className={`w-2 h-2 rounded-full ${
-                      appointment.status === 'CANCELLED' 
-                        ? 'bg-red-400' 
-                        : appointment.status === 'COMPLETED'
-                        ? 'bg-green-400'
-                        : 'bg-gray-400'
-                    }`}></span>
+                  <div
+                    className={`flex items-center gap-1 ${
+                      appointment.status === "CANCELLED"
+                        ? "text-red-600"
+                        : appointment.status === "COMPLETED"
+                        ? "text-green-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        appointment.status === "CANCELLED"
+                          ? "bg-red-400"
+                          : appointment.status === "COMPLETED"
+                          ? "bg-green-400"
+                          : "bg-gray-400"
+                      }`}
+                    ></span>
                     {appointment.diagnosis}
                   </div>
                 </div>
@@ -444,7 +522,7 @@ export default function TelehealthPatientPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Add Funds Modal */}
       {showAddFunds && (
         <TelehealthAddFunds onClose={() => setShowAddFunds(false)} />

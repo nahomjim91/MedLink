@@ -1,8 +1,13 @@
-const { db } = require('../config/firebase');
-const { formatDoc, formatDocs, sanitizeInput, timestamp } = require('../../utils/helpers');
+const { db } = require("../config/firebase");
+const {
+  formatDoc,
+  formatDocs,
+  sanitizeInput,
+  timestamp,
+} = require("../../utils/helpers");
 
 // Collection reference
-const slotsRef = db.collection('doctorAvailabilitySlots');
+const slotsRef = db.collection("doctorAvailabilitySlots");
 
 /**
  * Doctor Availability Slot model
@@ -19,27 +24,27 @@ const DoctorAvailabilitySlotModel = {
     try {
       const start = new Date(startTime);
       const end = new Date(endTime);
-      
+
       // Validate time range
       if (start >= end) {
-        throw new Error('Start time must be before end time');
+        throw new Error("Start time must be before end time");
       }
-      
+
       // Check for overlapping slots
       await this.validateNoOverlap(doctorId, start, end);
-      
+
       // Generate 30-minute slots
       const slots = [];
       const slotDuration = 30 * 60 * 1000; // 30 minutes in milliseconds
-      
+
       let currentStart = new Date(start);
-      
+
       while (currentStart < end) {
         const currentEnd = new Date(currentStart.getTime() + slotDuration);
-        
+
         // Don't create slot if it would exceed the end time
         if (currentEnd > end) break;
-        
+
         const slotData = {
           doctorId,
           startTime: currentStart,
@@ -47,27 +52,27 @@ const DoctorAvailabilitySlotModel = {
           isBooked: false,
           appointmentId: null,
           patientId: null,
-          createdAt: timestamp()
+          createdAt: timestamp(),
         };
-        
+
         // Create slot document
         const docRef = slotsRef.doc();
         await docRef.set({
           slotId: docRef.id,
-          ...slotData
+          ...slotData,
         });
-        
+
         slots.push({
           slotId: docRef.id,
-          ...slotData
+          ...slotData,
         });
-        
+
         currentStart = new Date(currentEnd);
       }
-      
+
       return slots;
     } catch (error) {
-      console.error('Error creating availability slots:', error);
+      console.error("Error creating availability slots:", error);
       throw error;
     }
   },
@@ -80,45 +85,44 @@ const DoctorAvailabilitySlotModel = {
    */
   async getDoctorSlots(doctorId, date = null) {
     try {
-      let query = slotsRef.where('doctorId', '==', doctorId);
-      
+      let query = slotsRef.where("doctorId", "==", doctorId);
+
       if (date) {
-        const startOfDay = new Date(date + 'T00:00:00.000Z');
-        const endOfDay = new Date(date + 'T23:59:59.999Z');
-        
+        const startOfDay = new Date(date + "T00:00:00.000Z");
+        const endOfDay = new Date(date + "T23:59:59.999Z");
+
         query = query
-          .where('startTime', '>=', startOfDay)
-          .where('startTime', '<=', endOfDay);
+          .where("startTime", ">=", startOfDay)
+          .where("startTime", "<=", endOfDay);
       }
-      
-      const snapshot = await query.orderBy('startTime', 'asc').get();
+
+      const snapshot = await query.orderBy("startTime", "asc").get();
       return formatDocs(snapshot.docs);
     } catch (error) {
-      console.error('Error getting doctor slots:', error);
+      console.error("Error getting doctor slots:", error);
       throw error;
     }
   },
   /**
- * Get slot by ID
- * @param {String} slotId - Slot ID
- * @returns {Object|null} Slot data or null if not found
- */
-async getById(slotId) {
-  try {
-    const docRef = slotsRef.doc(slotId);
-    const docSnapshot = await docRef.get();
+   * Get slot by ID
+   * @param {String} slotId - Slot ID
+   * @returns {Object|null} Slot data or null if not found
+   */
+  async getById(slotId) {
+    try {
+      const docRef = slotsRef.doc(slotId);
+      const docSnapshot = await docRef.get();
 
-    if (!docSnapshot.exists) {
-      return null;
+      if (!docSnapshot.exists) {
+        return null;
+      }
+
+      return formatDoc(docSnapshot);
+    } catch (error) {
+      console.error("Error getting slot by ID:", error);
+      throw error;
     }
-
-    return formatDoc(docSnapshot);
-  } catch (error) {
-    console.error('Error getting slot by ID:', error);
-    throw error;
-  }
-},
-
+  },
 
   /**
    * Get available slots for a doctor (not booked)
@@ -129,26 +133,26 @@ async getById(slotId) {
   async getAvailableSlots(doctorId, date = null) {
     try {
       let query = slotsRef
-        .where('doctorId', '==', doctorId)
-        .where('isBooked', '==', false);
-      
+        .where("doctorId", "==", doctorId)
+        .where("isBooked", "==", false);
+
       if (date) {
-        const startOfDay = new Date(date + 'T00:00:00.000Z');
-        const endOfDay = new Date(date + 'T23:59:59.999Z');
-        
+        const startOfDay = new Date(date + "T00:00:00.000Z");
+        const endOfDay = new Date(date + "T23:59:59.999Z");
+
         query = query
-          .where('startTime', '>=', startOfDay)
-          .where('startTime', '<=', endOfDay);
+          .where("startTime", ">=", startOfDay)
+          .where("startTime", "<=", endOfDay);
       }
-      
+
       // Only show future slots
       const now = new Date();
-      query = query.where('startTime', '>', now);
-      
-      const snapshot = await query.orderBy('startTime', 'asc').get();
+      query = query.where("startTime", ">", now);
+
+      const snapshot = await query.orderBy("startTime", "asc").get();
       return formatDocs(snapshot.docs);
     } catch (error) {
-      console.error('Error getting available slots:', error);
+      console.error("Error getting available slots:", error);
       throw error;
     }
   },
@@ -159,42 +163,55 @@ async getById(slotId) {
    * @param {Object} data - Update data
    * @returns {Object} Updated slot
    */
-  async updateSlot(slotId, data) {
+  async updateSlot(slotId, data, currentUserId) {
     try {
       const docRef = slotsRef.doc(slotId);
       const docSnapshot = await docRef.get();
-      
+
       if (!docSnapshot.exists) {
-        throw new Error('Availability slot not found');
+        throw new Error("Availability slot not found");
       }
-      
+
       const currentSlot = docSnapshot.data();
-      
+      console.log(currentUserId);
+      const isDoctor = currentUserId === currentSlot.doctorId;
+      const isPatient = currentUserId === currentSlot.patientId;
       // Don't allow updating booked slots
-      if (currentSlot.isBooked) {
-        throw new Error('Cannot update booked slot');
+      if (!(isDoctor || isPatient)) {
+        if (currentSlot.isBooked) {
+          throw new Error("Cannot update booked slot");
+        }
       }
-      
+
       // If updating time, validate no overlap
       if (data.startTime || data.endTime) {
-        const newStart = data.startTime ? new Date(data.startTime) : currentSlot.startTime;
-        const newEnd = data.endTime ? new Date(data.endTime) : currentSlot.endTime;
-        
+        const newStart = data.startTime
+          ? new Date(data.startTime)
+          : currentSlot.startTime;
+        const newEnd = data.endTime
+          ? new Date(data.endTime)
+          : currentSlot.endTime;
+
         if (newStart >= newEnd) {
-          throw new Error('Start time must be before end time');
+          throw new Error("Start time must be before end time");
         }
-        
+
         // Check for overlaps (excluding current slot)
-        await this.validateNoOverlap(currentSlot.doctorId, newStart, newEnd, slotId);
+        await this.validateNoOverlap(
+          currentSlot.doctorId,
+          newStart,
+          newEnd,
+          slotId
+        );
       }
-      
+
       const sanitizedData = sanitizeInput(data);
       await docRef.update(sanitizedData);
-      
+
       const updatedDoc = await docRef.get();
       return formatDoc(updatedDoc);
     } catch (error) {
-      console.error('Error updating availability slot:', error);
+      console.error("Error updating availability slot:", error);
       throw error;
     }
   },
@@ -208,22 +225,22 @@ async getById(slotId) {
     try {
       const docRef = slotsRef.doc(slotId);
       const docSnapshot = await docRef.get();
-      
+
       if (!docSnapshot.exists) {
-        throw new Error('Availability slot not found');
+        throw new Error("Availability slot not found");
       }
-      
+
       const slotData = docSnapshot.data();
-      
+
       // Don't allow deleting booked slots
       if (slotData.isBooked) {
-        throw new Error('Cannot delete booked slot');
+        throw new Error("Cannot delete booked slot");
       }
-      
+
       await docRef.delete();
       return true;
     } catch (error) {
-      console.error('Error deleting availability slot:', error);
+      console.error("Error deleting availability slot:", error);
       throw error;
     }
   },
@@ -236,11 +253,11 @@ async getById(slotId) {
   async deleteMultipleSlots(slotIds) {
     try {
       const batch = db.batch();
-      
+
       for (const slotId of slotIds) {
         const docRef = slotsRef.doc(slotId);
         const docSnapshot = await docRef.get();
-        
+
         if (docSnapshot.exists) {
           const slotData = docSnapshot.data();
           if (!slotData.isBooked) {
@@ -248,11 +265,11 @@ async getById(slotId) {
           }
         }
       }
-      
+
       await batch.commit();
       return true;
     } catch (error) {
-      console.error('Error deleting multiple slots:', error);
+      console.error("Error deleting multiple slots:", error);
       throw error;
     }
   },
@@ -268,27 +285,27 @@ async getById(slotId) {
     try {
       const docRef = slotsRef.doc(slotId);
       const docSnapshot = await docRef.get();
-      
+
       if (!docSnapshot.exists) {
-        throw new Error('Availability slot not found');
+        throw new Error("Availability slot not found");
       }
-      
+
       const slotData = docSnapshot.data();
-      
+
       if (slotData.isBooked) {
-        throw new Error('Slot is already booked');
+        throw new Error("Slot is already booked");
       }
-      
+
       await docRef.update({
         isBooked: true,
         appointmentId,
-        patientId
+        patientId,
       });
-      
+
       const updatedDoc = await docRef.get();
       return formatDoc(updatedDoc);
     } catch (error) {
-      console.error('Error booking slot:', error);
+      console.error("Error booking slot:", error);
       throw error;
     }
   },
@@ -301,17 +318,17 @@ async getById(slotId) {
   async unbookSlot(slotId) {
     try {
       const docRef = slotsRef.doc(slotId);
-      
+
       await docRef.update({
         isBooked: false,
         appointmentId: null,
-        patientId: null
+        patientId: null,
       });
-      
+
       const updatedDoc = await docRef.get();
       return formatDoc(updatedDoc);
     } catch (error) {
-      console.error('Error unbooking slot:', error);
+      console.error("Error unbooking slot:", error);
       throw error;
     }
   },
@@ -327,25 +344,25 @@ async getById(slotId) {
     try {
       // Check for overlapping slots
       const overlappingQuery = slotsRef
-        .where('doctorId', '==', doctorId)
-        .where('startTime', '<', endTime)
-        .where('endTime', '>', startTime);
-      
+        .where("doctorId", "==", doctorId)
+        .where("startTime", "<", endTime)
+        .where("endTime", ">", startTime);
+
       const snapshot = await overlappingQuery.get();
-      
-      const overlapping = snapshot.docs.filter(doc => {
+
+      const overlapping = snapshot.docs.filter((doc) => {
         return excludeSlotId ? doc.id !== excludeSlotId : true;
       });
-      
+
       if (overlapping.length > 0) {
-        throw new Error('Time slot overlaps with existing availability');
+        throw new Error("Time slot overlaps with existing availability");
       }
     } catch (error) {
-      if (error.message.includes('overlaps')) {
+      if (error.message.includes("overlaps")) {
         throw error;
       }
-      console.error('Error validating slot overlap:', error);
-      throw new Error('Error validating time slot');
+      console.error("Error validating slot overlap:", error);
+      throw new Error("Error validating time slot");
     }
   },
 
@@ -356,26 +373,26 @@ async getById(slotId) {
    */
   async cleanupExpiredSlots(hoursAgo = 24) {
     try {
-      const cutoffTime = new Date(Date.now() - (hoursAgo * 60 * 60 * 1000));
-      
+      const cutoffTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000);
+
       const expiredQuery = slotsRef
-        .where('isBooked', '==', false)
-        .where('endTime', '<', cutoffTime);
-      
+        .where("isBooked", "==", false)
+        .where("endTime", "<", cutoffTime);
+
       const snapshot = await expiredQuery.get();
-      
+
       const batch = db.batch();
-      snapshot.docs.forEach(doc => {
+      snapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
       });
-      
+
       await batch.commit();
       return snapshot.docs.length;
     } catch (error) {
-      console.error('Error cleaning up expired slots:', error);
+      console.error("Error cleaning up expired slots:", error);
       throw error;
     }
-  }
+  },
 };
 
 module.exports = DoctorAvailabilitySlotModel;

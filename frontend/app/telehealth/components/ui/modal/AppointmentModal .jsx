@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, Clock, User, DollarSign, X, Check, AlertTriangle, CreditCard } from "lucide-react";
 import { TextAreaInput } from "../Input";
+import { Button } from "../Button";
 
 export default function AppointmentModal({
   doctor,
@@ -398,3 +399,72 @@ export default function AppointmentModal({
     </div>
   );
 }
+
+// Cancel Modal Component
+export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
+  const [reason, setReason] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Cancel reason submitted:", reason);
+    console.log("Appointment ID:", appointment);
+    if (reason.trim()) {
+      onConfirm(appointment.id, reason.trim());
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+        <div className="flex items-center gap-3 mb-4">
+          <AlertTriangle className="w-6 h-6 text-red-500" />
+          <h3 className="text-lg font-semibold text-gray-900">
+            Cancel Appointment
+          </h3>
+        </div>
+
+        <p className="text-gray-600 mb-4">
+          Are you sure you want to cancel your appointment with{" "}
+          {appointment.doctorName}?
+        </p>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for cancellation (required)
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              rows="3"
+              placeholder="Please provide a reason..."
+              required
+              disabled={loading}
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Keep Appointment
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 bg-red-500 hover:bg-red-600"
+              disabled={loading || !reason.trim()}
+            >
+              {loading ? "Cancelling..." : "Cancel Appointment"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+

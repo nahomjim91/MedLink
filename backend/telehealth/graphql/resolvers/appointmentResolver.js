@@ -454,12 +454,12 @@ const appointmentResolvers = {
         context
       );
 
+
       // Check if appointment can be cancelled
       const cancellableStatuses = ["requested", "confirmed", "upcoming"];
-      if (!cancellableStatuses.includes(appointment.status)) {
+      if (!cancellableStatuses.includes(appointment.status.toLowerCase())) {
         throw new UserInputError("Cannot cancel appointment in current status");
       }
-
       // Free up the associated slot
       if (appointment.associatedSlotId) {
         await DoctorAvailabilitySlotModel.updateSlot(
@@ -469,6 +469,7 @@ const appointmentResolvers = {
             appointmentId: null,
             patientId: null,
           }
+          ,user.id
         );
       }
 

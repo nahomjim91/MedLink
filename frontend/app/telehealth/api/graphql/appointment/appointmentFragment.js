@@ -1,5 +1,5 @@
 // /graphql/appointment/appointmentFragment.js
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 // Fragment for appointment data
 export const APPOINTMENT_FRAGMENT = gql`
@@ -27,6 +27,7 @@ export const APPOINTMENT_FRAGMENT = gql`
       lastName
       email
       phoneNumber
+      profileImageUrl
     }
     doctor {
       id
@@ -34,6 +35,10 @@ export const APPOINTMENT_FRAGMENT = gql`
       lastName
       email
       phoneNumber
+      profileImageUrl
+      doctorProfile {
+        specialization
+      }
     }
   }
 `;
