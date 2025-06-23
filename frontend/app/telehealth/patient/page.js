@@ -1,53 +1,140 @@
 "use client";
-import React, { useState } from "react";
-import {
-  Heart,
-  Eye,
-  Stethoscope,
-  Plus,
-  Star,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Star } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { UpcomingAppointmentCard } from "../components/ui/Card";
 import CalendarAppointments from "../components/ui/CalendarAppointments";
 import TelehealthAddFunds from "../components/ui/AddFound";
 import { useAuth } from "../hooks/useAuth";
+import { GET_DOCTOR_SPECIALIZATIONS } from "../api/graphql/queries";
+import { useQuery } from "@apollo/client";
+import { useAppointment } from "../hooks/useAppointment ";
 
 export default function TelehealthPatientPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddFunds, setShowAddFunds] = useState(false);
-  const {user} = useAuth();
+  const [appointments, setAppointments] = useState([]);
+  const [historyAppointments, setHistoryAppointments] = useState([]);
+  
+  const { user } = useAuth();
+  const { fetchMyAppointments, loading: appointmentsLoading } = useAppointment();
 
-  const appointmentHistory = [
-    {
-      id: 1,
-      doctor: "Dr. Vinny Vong",
-      specialty: "Dentist",
-      date: "11 May, Friday",
-      diagnosis: "Covid-19",
-    },
-    {
-      id: 2,
-      doctor: "Dr. Vinny Vong",
-      specialty: "Dentist",
-      date: "11 May, Friday",
-      diagnosis: "Covid-19",
-    },
-    {
-      id: 3,
-      doctor: "Dr. Vinny Vong",
-      specialty: "Dentist",
-      date: "11 May, Friday",
-      diagnosis: "Covid-19",
-    },
-    {
-      id: 4,
-      doctor: "Dr. Vinny Vong",
-      specialty: "Dentist",
-      date: "11 May, Friday",
-      diagnosis: "Covid-19",
-    },
-  ];
+  const {
+    data: specializationsData,
+    loading: specializationsLoading,
+    error: specializationsError,
+  } = useQuery(GET_DOCTOR_SPECIALIZATIONS);
+  const specialties = specializationsData?.getDoctorSpecializations || [];
+
+  // Fetch appointments on component mount
+  useEffect(() => {
+    const loadAppointments = async () => {
+      try {
+        const appointmentsData = await fetchMyAppointments();
+        setAppointments(appointmentsData);
+        
+        console.log('Appointments Data:', appointmentsData);
+        // Filter appointments for history (cancelled and finished)
+        const historyData = appointmentsData.filter(
+          appointment => 
+            appointment.status === 'CANCELLED' || 
+            appointment.status === 'COMPLETED'
+        );
+        setHistoryAppointments(historyData);
+      } catch (error) {
+        console.error('Error fetching appointments:', error);
+      }
+    };
+
+    loadAppointments();
+  }, [fetchMyAppointments]);
+
+  // Get the closest upcoming appointment
+  const getUpcomingAppointment = () => {
+
+    const upcomingAppointments = appointments.filter(
+      appointment => 
+        appointment.status === 'CONFIRMED' || 
+        appointment.status === 'PENDING' ||
+        appointment.status === 'REQUESTED' ||
+        appointment.status === 'SCHEDULED'
+    );
+    
+    if (upcomingAppointments.length === 0) return null;
+    
+    // Sort by scheduled start time and get the closest one
+    const sortedAppointments = upcomingAppointments.sort((a, b) => {
+      const timeA = new Date(a.scheduledStartTime);
+      const timeB = new Date(b.scheduledStartTime);
+      return timeA - timeB;
+    });
+    
+    const closest = sortedAppointments[0];
+    
+    // Transform to match UpcomingAppointmentCard expected format
+    return {
+      id: closest.id,
+      doctorName: closest.doctor?.name || closest.doctor?.user?.name || 'Unknown Doctor',
+      specialty: closest.doctor?.specialization || 'General',
+      date: new Date(closest.scheduledStartTime).toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'short',
+        weekday: 'long'
+      }),
+      time: `${new Date(closest.scheduledStartTime).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })} - ${new Date(closest.scheduledEndTime).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })}`,
+      avatar: closest.doctor?.profilePicture || 
+        "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
+      status: closest.status
+    };
+  };
+
+  // Transform appointments for calendar
+ const getCalendarAppointments = () => {
+  return appointments.map(appointment => ({
+    id: appointment.id,
+    doctorName: appointment.doctor?.name || appointment.doctor?.user?.name || 'Unknown Doctor',
+    specialty: appointment.doctor?.specialization || 'General',
+    date: new Date(appointment.scheduledStartTime), // Convert to Date object
+    time: `${new Date(appointment.scheduledStartTime).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })} - ${new Date(appointment.scheduledEndTime).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })}`,
+    status: appointment.status,
+    avatar: appointment.doctor?.profilePicture || "/api/placeholder/60/60"
+  }));
+};
+
+  // Transform history appointments
+  const getHistoryAppointments = () => {
+    return historyAppointments.map(appointment => ({
+      id: appointment.id,
+      doctor: appointment.doctor?.name || appointment.doctor?.user?.name || 'Unknown Doctor',
+      specialty: appointment.doctor?.specialization || 'General',
+      date: new Date(appointment.scheduledStartTime).toLocaleDateString('en-US', {
+        day: 'numeric',
+        month: 'short',
+        weekday: 'long'
+      }),
+      diagnosis: appointment.diagnosis || appointment.notes || (
+        appointment.status === 'CANCELLED' ? 'Cancelled' : 'Completed'
+      ),
+      status: appointment.status,
+      avatar: appointment.doctor?.profilePicture || "/api/placeholder/60/60"
+    }));
+  };
 
   const specialtyDoctors = [
     {
@@ -69,57 +156,14 @@ export default function TelehealthPatientPage() {
     },
   ];
 
-  const specialties = [
-    { name: "Dentist", icon: Heart, active: true },
-    { name: "Oculist", icon: Eye, active: false },
-    { name: "Cardio", icon: Stethoscope, active: false },
-    { name: "Gen", icon: Heart, active: false },
-  ];
-
-  // Calendar helper functions
-  const getDaysInMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  const generateCalendarDays = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
-    const days = [];
-
-    // Add empty cells for days before month starts
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
-    }
-
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(day);
-    }
-
-    return days;
-  };
-
-  const navigateMonth = (direction) => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + direction);
-      return newDate;
-    });
-  };
-
-  const monthYear = currentDate.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const upcomingAppointment = getUpcomingAppointment();
+  const calendarAppointments = getCalendarAppointments();
+  const historyData = getHistoryAppointments();
 
   return (
     <div className="">
       {/* Header with New Appointment button */}
-      <div className="flex  justify-between md:justify-end items-center mb-6 md:mb-2">
+      <div className="flex justify-between md:justify-end items-center mb-6 md:mb-2">
         <div className="md:hidden">
           <h1 className="text-2xl font-bold text-gray-900">Hello, Ms X</h1>
         </div>
@@ -132,21 +176,30 @@ export default function TelehealthPatientPage() {
       {/* Upcoming Appointments and Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
         {/* Upcoming Appointments */}
-
-        <UpcomingAppointmentCard
-          upcomingAppointment={{
-            id: 1,
-            doctorName: "Dr. Vinny Vong",
-            specialty: "Dentist",
-            date: "11 May, Friday",
-            time: "11am - 11:30am",
-            avatar:
-              "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
-          }}
-        />
+        {appointmentsLoading ? (
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : upcomingAppointment ? (
+          <UpcomingAppointmentCard upcomingAppointment={upcomingAppointment} />
+        ) : (
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-4">Upcoming Appointment</h2>
+            <p className="text-gray-500 text-center">No upcoming appointments</p>
+          </div>
+        )}
 
         {/* Calendar */}
-        <CalendarAppointments />
+        <CalendarAppointments appointments={calendarAppointments} />
       </div>
 
       {/* Bottom Section */}
@@ -165,25 +218,68 @@ export default function TelehealthPatientPage() {
               <div>Doctor</div>
               <div>Speciality</div>
               <div>Date of Visit</div>
-              <div>Diagnosis</div>
+              <div>Status/Diagnosis</div>
             </div>
 
-            {appointmentHistory.map((appointment) => (
-              <div
-                key={appointment.id}
-                className="grid grid-cols-4 gap-4 py-3 text-sm border-b border-gray-100 last:border-b-0 text-secondary/60"
-              >
-                <div className=" flex items-center gap-2">
-                  <div className=" hidden md:block w-8 h-8 rounded-full bg-gray-300"></div>
-                  <span className=" font-medium text-gray-900">
-                    {appointment.doctor}
-                  </span>
+            {appointmentsLoading ? (
+              // Loading skeleton
+              Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="grid grid-cols-4 gap-4 py-3 animate-pulse">
+                  <div className="flex items-center gap-2">
+                    <div className="hidden md:block w-8 h-8 rounded-full bg-gray-200"></div>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  <div className="h-4 bg-gray-200 rounded w-18"></div>
                 </div>
-                <div className="">{appointment.specialty}</div>
-                <div className="">{appointment.date}</div>
-                <div className="">{appointment.diagnosis}</div>
+              ))
+            ) : historyData.length > 0 ? (
+              historyData.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="grid grid-cols-4 gap-4 py-3 text-sm border-b border-gray-100 last:border-b-0 text-secondary/60"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="hidden md:block w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
+                      <img 
+                        src={appointment.avatar} 
+                        alt={appointment.doctor}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                    <span className="font-medium text-gray-900">
+                      {appointment.doctor}
+                    </span>
+                  </div>
+                  <div className="">{appointment.specialty}</div>
+                  <div className="">{appointment.date}</div>
+                  <div className={`flex items-center gap-1 ${
+                    appointment.status === 'CANCELLED' 
+                      ? 'text-red-600' 
+                      : appointment.status === 'COMPLETED'
+                      ? 'text-green-600'
+                      : 'text-gray-600'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${
+                      appointment.status === 'CANCELLED' 
+                        ? 'bg-red-400' 
+                        : appointment.status === 'COMPLETED'
+                        ? 'bg-green-400'
+                        : 'bg-gray-400'
+                    }`}></span>
+                    {appointment.diagnosis}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-gray-500">
+                No appointment history found
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -202,18 +298,16 @@ export default function TelehealthPatientPage() {
 
             <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
               {specialties.map((specialty) => {
-                const IconComponent = specialty.icon;
                 return (
                   <button
-                    key={specialty.name}
+                    key={specialty}
                     className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
                       specialty.active
                         ? "bg-teal-500 text-white"
                         : "bg-gray-100 text-secondary/80 hover:bg-gray-200"
                     }`}
                   >
-                    <IconComponent className="w-4 h-4" />
-                    {specialty.name}
+                    {specialty}
                   </button>
                 );
               })}
@@ -294,18 +388,16 @@ export default function TelehealthPatientPage() {
                           </div>
                         </div>
                         <div className="flex flex-col items- gap-4">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 text-teal-400 fill-current" />
-
-                              <span className="font-semibold text-teal-400">
-                                {doctor.rating}
-                              </span>
-                            </div>
-
-                            <span className="font-bold text-teal-400">
-                              ${doctor.price}
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-teal-400 fill-current" />
+                            <span className="font-semibold text-teal-400">
+                              {doctor.rating}
                             </span>
                           </div>
+                          <span className="font-bold text-teal-400">
+                            ${doctor.price}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -328,21 +420,31 @@ export default function TelehealthPatientPage() {
           {/* My Wallet */}
           <div className="bg-white p-3 rounded-xl shadow-sm">
             <div className="flex justify-between items-center mb-4 md:mb-2">
-              <h2 className="text-lg font-semibold text-secondary">My Wallet</h2>
-              <button className="text-teal-500 text-sm font-medium hover:text-teal-600"  onClick={() => setShowAddFunds(true)}>
+              <h2 className="text-lg font-semibold text-secondary">
+                My Wallet
+              </h2>
+              <button
+                className="text-teal-500 text-sm font-medium hover:text-teal-600"
+                onClick={() => setShowAddFunds(true)}
+              >
                 Add Funds
               </button>
             </div>
 
             <div className="text-center flex justify-between items-center">
-              <p className="text-sm text-secondary/80 mb-2 md:mb-1">Current Balance</p>
+              <p className="text-sm text-secondary/80 mb-2 md:mb-1">
+                Current Balance
+              </p>
               <div className="bg-teal-500 text-white px-6 py-1 rounded-full inline-block">
-                <span className="text-xl font-bold">{user.patientProfile.telehealthWalletBalance} Birr</span>
+                <span className="text-xl font-bold">
+                  {user?.patientProfile?.telehealthWalletBalance || 0} Birr
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
+      
       {/* Add Funds Modal */}
       {showAddFunds && (
         <TelehealthAddFunds onClose={() => setShowAddFunds(false)} />

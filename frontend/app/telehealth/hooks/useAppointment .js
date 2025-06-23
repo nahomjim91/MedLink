@@ -10,7 +10,7 @@ import {
   GET_UPCOMING_APPOINTMENTS,
   SEARCH_APPOINTMENTS,
   GET_APPOINTMENT_STATS,
-  GET_APPOINTMENT_FINANCIAL_SUMMARY
+  GET_APPOINTMENT_FINANCIAL_SUMMARY,
 } from "../api/graphql/appointment/appointmentQueries";
 import {
   CREATE_APPOINTMENT,
@@ -24,7 +24,7 @@ import {
   MARK_NO_SHOW,
   RESCHEDULE_APPOINTMENT,
   DELETE_APPOINTMENT,
-  UPDATE_APPOINTMENT_PAYMENT_STATUS
+  UPDATE_APPOINTMENT_PAYMENT_STATUS,
 } from "../api/graphql/appointment/appointmentMutations";
 
 export const useAppointment = () => {
@@ -39,7 +39,9 @@ export const useAppointment = () => {
   const [getAppointmentsByStatus] = useLazyQuery(GET_APPOINTMENTS_BY_STATUS);
   const [getUpcomingAppointments] = useLazyQuery(GET_UPCOMING_APPOINTMENTS);
   const [searchAppointments] = useLazyQuery(SEARCH_APPOINTMENTS);
-    const [getAppointmentFinancialSummary] = useLazyQuery(GET_APPOINTMENT_FINANCIAL_SUMMARY);
+  const [getAppointmentFinancialSummary] = useLazyQuery(
+    GET_APPOINTMENT_FINANCIAL_SUMMARY
+  );
 
   const { data: appointmentStats, refetch: refetchStats } = useQuery(
     GET_APPOINTMENT_STATS
@@ -58,9 +60,10 @@ export const useAppointment = () => {
   const [completeAppointmentMutation] = useMutation(COMPLETE_APPOINTMENT);
   const [markNoShowMutation] = useMutation(MARK_NO_SHOW);
   const [rescheduleAppointmentMutation] = useMutation(RESCHEDULE_APPOINTMENT);
-  const [deleteAppointmentMutation] = useMutation(DELETE_APPOINTMENT); 
-  const [updateAppointmentPaymentStatusMutation] = useMutation(UPDATE_APPOINTMENT_PAYMENT_STATUS); 
-
+  const [deleteAppointmentMutation] = useMutation(DELETE_APPOINTMENT);
+  const [updateAppointmentPaymentStatusMutation] = useMutation(
+    UPDATE_APPOINTMENT_PAYMENT_STATUS
+  );
 
   // Helper function to handle errors
   const handleError = useCallback((error) => {
@@ -101,8 +104,23 @@ export const useAppointment = () => {
         const { data } = await getMyAppointments({
           variables: { limit, offset },
         });
+
+        // Sort appointments by closest scheduled time
+        const sortedAppointments =
+          data.myAppointments?.sort((a, b) => {
+            const timeA = new Date(a.scheduledStartTime);
+            const timeB = new Date(b.scheduledStartTime);
+            const now = new Date();
+
+            // Calculate absolute difference from current time
+            const diffA = Math.abs(timeA - now);
+            const diffB = Math.abs(timeB - now);
+
+            return diffA - diffB;
+          }) || [];
+
         handleSuccess();
-        return data.myAppointments;
+        return sortedAppointments;
       } catch (error) {
         handleError(error);
         throw error;
@@ -110,7 +128,6 @@ export const useAppointment = () => {
     },
     [getMyAppointments, handleError, handleSuccess]
   );
-
   const fetchPatientAppointments = useCallback(
     async (patientId, limit = 10, offset = 0) => {
       try {
@@ -182,7 +199,7 @@ export const useAppointment = () => {
     },
     [getUpcomingAppointments, handleError, handleSuccess]
   );
-   //  Fetch appointment financial summary
+  //  Fetch appointment financial summary
   const fetchAppointmentFinancialSummary = useCallback(
     async (appointmentId) => {
       try {
@@ -222,7 +239,6 @@ export const useAppointment = () => {
   // Mutation functions
   const createAppointment = useCallback(
     async (input) => {
-        
       try {
         setLoading(true);
         setError(null);
@@ -453,7 +469,12 @@ export const useAppointment = () => {
         throw error;
       }
     },
-    [updateAppointmentPaymentStatusMutation, handleError, handleSuccess, refetchStats]
+    [
+      updateAppointmentPaymentStatusMutation,
+      handleError,
+      handleSuccess,
+      refetchStats,
+    ]
   );
 
   // Clear error function
@@ -467,7 +488,7 @@ export const useAppointment = () => {
     error,
     appointmentStats: appointmentStats?.appointmentStats,
 
-    // Query functions 
+    // Query functions
     fetchAppointment,
     fetchMyAppointments,
     fetchPatientAppointments,

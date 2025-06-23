@@ -59,9 +59,7 @@ const AppointmentCard = ({ appointment, onClose }) => (
         <Button variant="outline" className="flex-1">
           Re-Schedule
         </Button>
-        <Button className="flex-1">
-          View Profile
-        </Button>
+        <Button className="flex-1">View Profile</Button>
       </div>
     </div>
   </div>
@@ -75,57 +73,7 @@ export default function CalendarAppointments({
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
-  // Default appointments if none provided
-  const defaultAppointments = [
-    {
-      id: 1,
-      doctorName: "Dr. Vinny Vong",
-      specialty: "Dentist",
-      date: new Date(2025, 5, 11), // June 11, 2025
-      time: "11am - 11:30am",
-      avatar:
-        "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
-    },
-    {
-      id: 2,
-      doctorName: "Dr. Sarah Johnson",
-      specialty: "Cardiologist",
-      date: new Date(2025, 5, 15), // June 15, 2025
-      time: "2pm - 2:30pm",
-      avatar:
-        "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face",
-    },
-    {
-      id: 3,
-      doctorName: "Dr. Michael Chen",
-      specialty: "Dermatologist",
-      date: new Date(2025, 5, 22), // June 22, 2025
-      time: "10am - 10:30am",
-      avatar:
-        "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=150&h=150&fit=crop&crop=face",
-    },
-    {
-      id: 4,
-      doctorName: "Dr. Vinny Vong",
-      specialty: "Dentist",
-      date: new Date(2025, 5, 22), // June 22, 2025 (same day as Dr. Chen)
-      time: "2pm - 2:30pm",
-      avatar:
-        "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
-    },
-    {
-      id: 5,
-      doctorName: "Dr. Emily Rodriguez",
-      specialty: "Pediatrician",
-      date: new Date(2025, 5, 22), // June 22, 2025 (same day)
-      time: "4pm - 4:30pm",
-      avatar:
-        "https://images.unsplash.com/photo-1594824694996-8c4b86e5e7e5?w=150&h=150&fit=crop&crop=face",
-    },
-  ];
-
-  const appointments =
-    propAppointments.length > 0 ? propAppointments : defaultAppointments;
+  const appointments = propAppointments;
 
   const monthNames = [
     "January",
@@ -156,12 +104,12 @@ export default function CalendarAppointments({
   // Process appointments with formatted dates
   const processedAppointments = appointments.map((apt) => ({
     ...apt,
-    formattedDate: apt.date.toLocaleDateString("en-US", {
+    formattedDate: new Date(apt.date).toLocaleDateString("en-US", {
       day: "numeric",
       month: "short",
       weekday: "long",
     }),
-    dateKey: apt.date.toDateString(),
+    dateKey: new Date(apt.date).toDateString(),
   }));
 
   const getCurrentMonthYear = () => {
@@ -211,7 +159,8 @@ export default function CalendarAppointments({
   };
 
   const getAppointmentCount = (dateKey) => {
-    return processedAppointments.filter((apt) => apt.dateKey === dateKey).length;
+    return processedAppointments.filter((apt) => apt.dateKey === dateKey)
+      .length;
   };
 
   const handleDateSelect = (dayObj) => {
@@ -263,11 +212,13 @@ export default function CalendarAppointments({
     const weekDays = generateWeekDays();
     const firstDay = weekDays[0].date;
     const lastDay = weekDays[6].date;
-    
+
     if (firstDay.getMonth() === lastDay.getMonth()) {
       return `${monthNames[firstDay.getMonth()]} ${firstDay.getFullYear()}`;
     } else {
-      return `${monthNames[firstDay.getMonth()]} - ${monthNames[lastDay.getMonth()]} ${firstDay.getFullYear()}`;
+      return `${monthNames[firstDay.getMonth()]} - ${
+        monthNames[lastDay.getMonth()]
+      } ${firstDay.getFullYear()}`;
     }
   };
 
@@ -275,7 +226,7 @@ export default function CalendarAppointments({
   const maxWeekOffset = Math.floor(365 / 7); // Rough estimate
 
   // Get appointments for selected date (mobile)
-  const selectedDateAppointments = selectedDate 
+  const selectedDateAppointments = selectedDate
     ? getAppointmentsForDay(selectedDate)
     : processedAppointments.slice(0, 3); // Show upcoming if no date selected
 
@@ -360,7 +311,9 @@ export default function CalendarAppointments({
                       <span className="text-xs font-medium">
                         {dayObj.shortDay}
                       </span>
-                      <span className="text-lg font-semibold">{dayObj.day}</span>
+                      <span className="text-lg font-semibold">
+                        {dayObj.day}
+                      </span>
                       {appointmentCount > 0 && (
                         <div className="flex gap-1">
                           {appointmentCount > 1 ? (
@@ -393,7 +346,9 @@ export default function CalendarAppointments({
 
               <div className="grid grid-cols-7 gap-1 mb-1">
                 {generateCalendarDays().map((dayObj, index) => {
-                  const appointmentCount = dayObj ? getAppointmentCount(dayObj.dateKey) : 0;
+                  const appointmentCount = dayObj
+                    ? getAppointmentCount(dayObj.dateKey)
+                    : 0;
                   return (
                     <button
                       key={index}
@@ -434,7 +389,9 @@ export default function CalendarAppointments({
           {/* Mobile Appointments List */}
           <div className="md:hidden border-t border-gray-100 p-4">
             <h3 className="font-semibold text-gray-900 mb-3">
-              {selectedDate ? 'Appointments for Selected Date' : 'Upcoming Appointments'}
+              {selectedDate
+                ? "Appointments for Selected Date"
+                : "Upcoming Appointments"}
             </h3>
             <div className="space-y-2">
               {selectedDateAppointments.length > 0 ? (
@@ -484,9 +441,9 @@ export default function CalendarAppointments({
             <div className="bg-white shadow-sm border border-gray-100 p-2 rounded-r-2xl">
               <div className="flex justify-between items-center mb-5">
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {selectedAppointmentsForDesktop.length > 1 
-                    ? `${selectedAppointmentsForDesktop.length} Appointments` 
-                    : 'Appointment Details'}
+                  {selectedAppointmentsForDesktop.length > 1
+                    ? `${selectedAppointmentsForDesktop.length} Appointments`
+                    : "Appointment Details"}
                 </h3>
                 <button
                   onClick={() => setSelectedDate(null)}
@@ -495,10 +452,15 @@ export default function CalendarAppointments({
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
- 
+
               <div className="space-y-3 h-[28vh] overflow-y-auto scrollbar-hide">
                 {selectedAppointmentsForDesktop.map((appointment, index) => (
-                  <div key={appointment.id} className={`${index > 0 ? 'border-t border-gray-100 pt-4' : ''}`}>
+                  <div
+                    key={appointment.id}
+                    className={`${
+                      index > 0 ? "border-t border-gray-100 pt-4" : ""
+                    }`}
+                  >
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
                         <img
@@ -547,9 +509,7 @@ export default function CalendarAppointments({
                       <Button variant="outline" className="flex-1 rounded-full">
                         Re-Schedule
                       </Button>
-                      <Button className="flex-1">
-                        View Profile
-                      </Button>
+                      <Button className="flex-1">View Profile</Button>
                     </div>
                   </div>
                 ))}

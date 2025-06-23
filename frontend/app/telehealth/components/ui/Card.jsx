@@ -75,6 +75,7 @@ export  function AboutMeCard({ doctor }) {
 
 
 export function UpcomingAppointmentCard({upcomingAppointment}) {
+  console.log(upcomingAppointment);
 return (
     <div className="w-full">
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">

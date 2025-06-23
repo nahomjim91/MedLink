@@ -465,6 +465,7 @@ const AppointmentModel = {
       }
 
       const snapshot = await query.limit(limit).get();
+      // console.log("Fetched appointments:", snapshot.docs.length);
       return snapshot.docs.map((doc) => formatDoc(doc));
     } catch (error) {
       console.error("Error getting patient appointments:", error);
