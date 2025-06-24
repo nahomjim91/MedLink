@@ -189,6 +189,7 @@ const AppointmentModel = {
    */
   async updateStatus(appointmentId, status, updatedBy, additionalData = {}) {
     try {
+      status = status.toUpperCase();
       const docRef = appointmentsRef.doc(appointmentId);
 
       // Check if appointment exists
@@ -282,7 +283,9 @@ const AppointmentModel = {
       const batch = db.batch();
 
       // Add amount to doctor's wallet
-      const doctorRef = db.collection("doctorProfiles").doc(appointmentData.doctorId);
+      const doctorRef = db
+        .collection("doctorProfiles")
+        .doc(appointmentData.doctorId);
       batch.update(doctorRef, {
         telehealthWalletBalance: FieldValue.increment(appointmentData.price),
         updatedAt: timestamp(),
@@ -323,6 +326,24 @@ const AppointmentModel = {
         return;
       }
 
+      // Find the original payment transaction
+      const originalTransactionQuery = await db
+        .collection("transactions")
+        .where("relatedAppointmentId", "==", appointmentData.appointmentId)
+        .where("type", "==", "DEBIT") // Assuming payment transactions are DEBIT
+        .where("status", "==", "SUCCESS")
+        .limit(1)
+        .get();
+
+      if (originalTransactionQuery.empty) {
+        throw new Error(
+          `Original payment transaction not found for appointment ${appointmentData.appointmentId}`
+        );
+      }
+
+      const originalTransaction = originalTransactionQuery.docs[0];
+      const originalTransactionId = originalTransaction.id;
+
       const batch = db.batch();
 
       // Refund amount to patient's wallet
@@ -334,7 +355,7 @@ const AppointmentModel = {
         updatedAt: timestamp(),
       });
 
-      // Create refund transaction record
+      // Create refund transaction record (YES, you should create this)
       const transactionRef = db.collection("transactions").doc();
       const transactionData = {
         transactionId: transactionRef.id,
@@ -348,12 +369,12 @@ const AppointmentModel = {
       };
       batch.set(transactionRef, transactionData);
 
-      // Create refund record
+      // Create refund record with originalWalletTransactionId
       const refundRef = db.collection("refunds").doc();
       const refundData = {
         refundId: refundRef.id,
         userId: appointmentData.patientId,
-        originalWalletTransactionId: null, // You might want to track the original transaction
+        originalWalletTransactionId: originalTransactionId, // Now properly set
         relatedAppointmentId: appointmentData.appointmentId,
         amount: appointmentData.price,
         status: "PROCESSED",

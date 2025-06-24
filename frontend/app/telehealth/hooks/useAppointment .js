@@ -97,37 +97,36 @@ export const useAppointment = () => {
   );
 
   const fetchMyAppointments = useCallback(
-    async (limit = 10, offset = 0) => {
-      try {
-        setLoading(true);
-        setError(null);
-        const { data } = await getMyAppointments({
-          variables: { limit, offset },
+  async (limit = 10, offset = 0) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data } = await getMyAppointments({
+        variables: { limit, offset },
+      });
+
+      const sortedAppointments =
+        [...(data.myAppointments || [])].sort((a, b) => {
+          const timeA = new Date(a.scheduledStartTime);
+          const timeB = new Date(b.scheduledStartTime);
+          const now = new Date();
+
+          const diffA = Math.abs(timeA - now);
+          const diffB = Math.abs(timeB - now);
+
+          return diffA - diffB;
         });
 
-        // Sort appointments by closest scheduled time
-        const sortedAppointments =
-          data.myAppointments?.sort((a, b) => {
-            const timeA = new Date(a.scheduledStartTime);
-            const timeB = new Date(b.scheduledStartTime);
-            const now = new Date();
+      handleSuccess();
+      return sortedAppointments;
+    } catch (error) {
+      handleError(error);
+      throw error;
+    }
+  },
+  [getMyAppointments, handleError, handleSuccess]
+);
 
-            // Calculate absolute difference from current time
-            const diffA = Math.abs(timeA - now);
-            const diffB = Math.abs(timeB - now);
-
-            return diffA - diffB;
-          }) || [];
-
-        handleSuccess();
-        return sortedAppointments;
-      } catch (error) {
-        handleError(error);
-        throw error;
-      }
-    },
-    [getMyAppointments, handleError, handleSuccess]
-  );
   const fetchPatientAppointments = useCallback(
     async (patientId, limit = 10, offset = 0) => {
       try {

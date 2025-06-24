@@ -21,7 +21,7 @@ const transactionTypeDefs = gql`
   type Refund {
     refundId: ID!
     userId: String!
-    originalWalletTransactionId: String!
+    originalWalletTransactionId: String
     relatedAppointmentId: String!
     amount: Float!
     status: RefundStatus!
@@ -37,6 +37,8 @@ const transactionTypeDefs = gql`
     DEPOSIT
     PAYMENT
     REFUND
+    DEBIT
+    CREDIT
   }
 
   enum TransactionStatus {

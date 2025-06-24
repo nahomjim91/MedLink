@@ -126,10 +126,10 @@ const TransactionModel = {
 
       // Handle status-specific logic
       switch (status) {
-        case 'success':
+        case 'SUCCESS':
           updateData.completedAt = timestamp();
           break;
-        case 'failed':
+        case 'FAILED':
           updateData.failedAt = timestamp();
           break;
       }
@@ -220,6 +220,7 @@ const TransactionModel = {
    */
   async getByStatus(status, limit = 20, offset = 0) {
     try {
+      status = status.toLocaleUpperCase();
       let query = transactionsRef
         .where('status', '==', status)
         .orderBy('createdAt', 'desc');
@@ -289,9 +290,9 @@ const TransactionModel = {
       
       if (filters.status) {
         if (Array.isArray(filters.status)) {
-          query = query.where('status', 'in', filters.status);
+          query = query.where('status', 'in', filters.status.toLocaleUpperCase());
         } else {
-          query = query.where('status', '==', filters.status);
+          query = query.where('status', '==', filters.status.toLocaleUpperCase());
         }
       }
 
@@ -358,9 +359,9 @@ const TransactionModel = {
 
       const [totalSnapshot, successSnapshot, pendingSnapshot, failedSnapshot] = await Promise.all([
         baseQuery.get(),
-        baseQuery.where('status', '==', 'success').get(),
-        baseQuery.where('status', '==', 'pending').get(),
-        baseQuery.where('status', '==', 'failed').get()
+        baseQuery.where('status', '==', 'SUCCESS').get(),
+        baseQuery.where('status', '==', 'PENDING').get(),
+        baseQuery.where('status', '==', 'FAILED').get()
       ]);
 
       // Calculate amounts
@@ -577,6 +578,8 @@ const RefundModel = {
    */
   async getByStatus(status, limit = 20, offset = 0) {
     try {
+      status = status.toLocaleUpperCase();
+
       let query = refundsRef
         .where('status', '==', status)
         .orderBy('requestedAt', 'desc');
@@ -638,9 +641,9 @@ const RefundModel = {
       
       if (filters.status) {
         if (Array.isArray(filters.status)) {
-          query = query.where('status', 'in', filters.status);
+          query = query.where('status', 'in', filters.status.toLocaleUpperCase());
         } else {
-          query = query.where('status', '==', filters.status);
+          query = query.where('status', '==', filters.status.toLocaleUpperCase());
         }
       }
 
@@ -707,10 +710,10 @@ const RefundModel = {
 
       const [totalSnapshot, requestedSnapshot, approvedSnapshot, processedSnapshot, rejectedSnapshot] = await Promise.all([
         baseQuery.get(),
-        baseQuery.where('status', '==', 'requested').get(),
-        baseQuery.where('status', '==', 'approved').get(),
-        baseQuery.where('status', '==', 'processed').get(),
-        baseQuery.where('status', '==', 'rejected').get()
+        baseQuery.where('status', '==', 'REQUESTED').get(),
+        baseQuery.where('status', '==', 'APPROVED').get(),
+        baseQuery.where('status', '==', 'PROCESSED').get(),
+        baseQuery.where('status', '==', 'REJECTED').get()
       ]);
 
       // Calculate amounts

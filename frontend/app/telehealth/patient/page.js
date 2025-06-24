@@ -162,8 +162,8 @@ export default function TelehealthPatientPage() {
 
   // Enhanced doctor data transformation with better error handling
   const getDisplayDoctors = useMemo(() => {
-    console.log("Processing doctors - Selected specialty:", selectedSpecialty);
-    console.log("Raw doctors data:", doctors);
+    // console.log("Processing doctors - Selected specialty:", selectedSpecialty);
+    // console.log("Raw doctors data:", doctors);
 
     if (!doctors || !Array.isArray(doctors) || doctors.length === 0) {
       console.log("No valid doctors data available");
@@ -203,7 +203,7 @@ export default function TelehealthPatientPage() {
           gender: doctor?.user?.gender || doctor?.gender || "Not specified",
         };
 
-        console.log(`Processed doctor ${index + 1}:`, processedDoctor);
+        // console.log(`Processed doctor ${index + 1}:`, processedDoctor);
         return processedDoctor;
       } catch (error) {
         console.error(
@@ -231,6 +231,7 @@ export default function TelehealthPatientPage() {
   // Enhanced upcoming appointment getter with better error handling
   const getUpcomingAppointment = useMemo(() => {
     if (!appointments || appointments.length === 0) return null;
+    console.log("Getting upcoming appointment:", appointments);
 
     try {
       const upcomingAppointments = appointments.filter(
@@ -533,7 +534,7 @@ export default function TelehealthPatientPage() {
         <div className="lg:col-span-2 bg-white p-3 rounded-xl shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-semibold text-secondary">History</h2>
-            <Link href="/telehealth/patient/history" className="text-primary/70 text-sm font-medium hover:text-primary">
+            <Link href="/telehealth/patient/appointments" className="text-primary/70 text-sm font-medium hover:text-primary">
               See All
             </Link>
           </div>

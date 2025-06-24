@@ -174,7 +174,7 @@ router.post('/wallet/add-funds/verify', async (req, res) => {
             type: 'DEPOSIT',
             amount: amount,
             reason: 'Telehealth wallet funding',
-            status: 'success',
+            status: 'SUCCESS',
             relatedAppointmentId: null, // No appointment related to wallet funding
             chapaRef: txRef // Chapa transaction reference
           });

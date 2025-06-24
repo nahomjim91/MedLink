@@ -1,5 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { Calendar, Clock, User, DollarSign, X, Check, AlertTriangle, CreditCard } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  User,
+  DollarSign,
+  X,
+  Check,
+  AlertTriangle,
+  CreditCard,
+  Phone, 
+  Mail, 
+  MapPin, 
+  FileText, 
+  Stethoscope,
+  Users,
+  CheckCircle,
+  XCircle,
+  AlertCircle
+  
+} from "lucide-react";
+
+
 import { TextAreaInput } from "../Input";
 import { Button } from "../Button";
 
@@ -298,16 +319,26 @@ export default function AppointmentModal({
           </div>
 
           {/* Consultation Fee */}
-          <div className={`flex items-center justify-between p-3 rounded-lg border ${
-            hasSufficientFunds
-              ? "bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-200"
-              : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
-          }`}>
+          <div
+            className={`flex items-center justify-between p-3 rounded-lg border ${
+              hasSufficientFunds
+                ? "bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-200"
+                : "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
+            }`}
+          >
             <div className="flex items-center space-x-2">
-              <DollarSign className={`w-5 h-5 ${hasSufficientFunds ? "text-teal-600" : "text-red-600"}`} />
+              <DollarSign
+                className={`w-5 h-5 ${
+                  hasSufficientFunds ? "text-teal-600" : "text-red-600"
+                }`}
+              />
               <span className="text-sm text-gray-600">Consultation Fee</span>
             </div>
-            <span className={`text-xl font-bold ${hasSufficientFunds ? "text-teal-600" : "text-red-600"}`}>
+            <span
+              className={`text-xl font-bold ${
+                hasSufficientFunds ? "text-teal-600" : "text-red-600"
+              }`}
+            >
               ${doctorInfo.fee}
             </span>
           </div>
@@ -322,8 +353,8 @@ export default function AppointmentModal({
                     Insufficient Funds
                   </h4>
                   <p className="text-sm text-red-700 mb-3">
-                    You need ${balanceDeficit.toFixed(2)} more to book this appointment.
-                    Current balance: ${userBalance.toFixed(2)}
+                    You need ${balanceDeficit.toFixed(2)} more to book this
+                    appointment. Current balance: ${userBalance.toFixed(2)}
                   </p>
                   <button
                     onClick={handleAddFunds}
@@ -343,7 +374,8 @@ export default function AppointmentModal({
               <div className="flex items-center space-x-2">
                 <Check className="w-5 h-5 text-green-600" />
                 <p className="text-sm text-green-700">
-                  Remaining balance after appointment: ${(userBalance - consultationFee).toFixed(2)}
+                  Remaining balance after appointment: $
+                  {(userBalance - consultationFee).toFixed(2)}
                 </p>
               </div>
             </div>
@@ -388,10 +420,11 @@ export default function AppointmentModal({
               Please provide a reason for your appointment
             </p>
           )}
-          
+
           {!hasSufficientFunds && isFormValid && (
             <p className="text-sm text-red-500 mt-2 text-center">
-              Add ${balanceDeficit.toFixed(2)} to your wallet to book this appointment
+              Add ${balanceDeficit.toFixed(2)} to your wallet to book this
+              appointment
             </p>
           )}
         </div>
@@ -468,3 +501,323 @@ export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
   );
 };
 
+export const AppointmentDetailModal = ({
+  isOpen,
+  onClose,
+  appointment,
+  userRole = "PATIENT", // "PATIENT" or "DOCTOR"
+  formatAppointmentTime,
+  formatAppointmentDate,
+  getStatusBadgeClass
+}) => {
+  if (!isOpen || !appointment) return null;
+
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  console.log("appointment", appointment);
+
+  // Payment status styling
+  const getPaymentStatusClass = (status) => {
+    switch (status) {
+      case "PAID":
+      case "COMPLETED":
+        return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-700 border border-yellow-200";
+      case "FAILED":
+      case "CANCELLED":
+        return "bg-red-100 text-red-700 border border-red-200";
+      default:
+        return "bg-gray-100 text-gray-700 border border-gray-200";
+    }
+  };
+
+  // Get the other person's details based on user role
+  const otherPerson =
+    userRole === "DOCTOR" ? appointment.patient : appointment.doctor;
+  const otherPersonTitle = userRole === "DOCTOR" ? "Patient" : "Doctor";
+
+  return (
+    <div
+      onClick={handleOverlayClick}
+      className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4 transition-opacity duration-300"
+    >
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 animate-modal-enter">
+        {/* Header */}
+        <div className="p-4 md:p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl">
+          <div>
+            <h3 className="text-xl md:text-2xl font-bold text-secondary/70">
+              Appointment Details
+            </h3>
+            <p className="text-sm text-secondary/60 mt-1">
+              ID: #{appointment.appointmentId}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5 text-secondary" />
+          </button>
+        </div>
+
+        <div className="p-4 md:p-6">
+          {/* Status and Payment Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-secondary/80">
+                  Status
+                </span>
+                <span
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full ${getStatusBadgeClass(
+                    appointment.status
+                  )}`}
+                >
+                  {appointment.status.replace("_", " ")}
+                </span>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-secondary/80">
+                  Payment Status
+                </span>
+                <span
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full ${getPaymentStatusClass(
+                    appointment.paymentStatus
+                  )}`}
+                >
+                  {appointment.paymentStatus}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Date & Time Card */}
+                            <div className="bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl p-4 md:p-6 border border-primary/20">
+
+                <h4 className="font-semibold text-secondary/80 mb-4 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-primary" />
+                  Schedule
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="font-medium text-secondary/70">
+                        {formatAppointmentDate(appointment.scheduledStartTime)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <div>
+                      <p className="font-medium text-secondary/70">
+                        {formatAppointmentTime(appointment.scheduledStartTime)}{" "}
+                        - {formatAppointmentTime(appointment.scheduledEndTime)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className="bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl p-4 md:p-6 border border-blue-100">
+                <h4 className="font-semibold text-secondary/80 mb-4 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2 text-primary/60" />
+                  Payment Information
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-secondary/60">Consultation Fee:</span>
+                    <span className="font-semibold text-secondary/70">
+                      ${appointment.price}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-secondary/60">Payment Method:</span>
+                    <div className="flex items-center space-x-2">
+                      <CreditCard className="w-4 h-4 text-primary/60" />
+                      <span className="font-medium text-secondary/70">
+                        Online Payment
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reason/Notes */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 md:p-6 border border-purple-100">
+                <h4 className="font-semibold text-secondary/80 mb-3 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-purple-600" />
+                  Reason for Visit
+                </h4>
+                <p className="text-secondary/70 leading-relaxed">
+                  {appointment.reasonNote || "No specific reason provided"}
+                </p>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Other Person's Profile */}
+              <div className="bg-white rounded-xl p-4 md:p-6 border-2 border-gray-100 shadow-sm">
+                <h4 className="font-semibold text-secondary/80 mb-4 flex items-center">
+                  {userRole === "DOCTOR" ? (
+                    <Users className="w-5 h-5 mr-2 text-gray-600" />
+                  ) : (
+                    <Stethoscope className="w-5 h-5 mr-2 text-gray-600" />
+                  )}
+                  {otherPersonTitle} Information
+                </h4>
+
+                <div className="flex jusc items-center space-x-4">
+                  <img
+                    src={
+                      otherPerson?.profileImageUrl ||
+                      `https://placehold.co/80x80/E2E8F0/4A5568?text=${otherPersonTitle.charAt(
+                        0
+                      )}`
+                    }
+                    alt={`${otherPerson?.firstName} ${otherPerson?.lastName}`}
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-full border-3 border-gray-200 object-cover"
+                    onError={(e) => {
+                      e.target.src = `https://placehold.co/80x80/E2E8F0/4A5568?text=${otherPersonTitle.charAt(
+                        0
+                      )}`;
+                    }}
+                  />
+                  <div className="flex-1">
+                    <h5 className="font-bold text-lg text-secondary/70 mb-1">
+                      {userRole === "DOCTOR"
+                        ? `${otherPerson?.firstName} ${otherPerson?.lastName}`
+                        : `Dr. ${otherPerson?.firstName} ${otherPerson?.lastName}`}
+                    </h5>
+                    {userRole === "PATIENT" && (
+                      <p className="text-secondary/60 font-medium mb-2">
+                        {otherPerson?.doctorProfile?.specialization ||
+                          "General Practitioner"}
+                      </p>
+                    )}
+
+                    <div className="space-y-2 text-sm">
+                      {otherPerson?.email && (
+                        <div className="flex items-center space-x-2">
+                          <Mail className="w-4 h-4 text-gray-500" />
+                          <span className="text-secondary/60">
+                            {otherPerson.email}
+                          </span>
+                        </div>
+                      )}
+                      {otherPerson?.phoneNumber && (
+                        <div className="flex items-center space-x-2">
+                          <Phone className="w-4 h-4 text-gray-500" />
+                          <span className="text-secondary/60">
+                            {otherPerson.phoneNumber}
+                          </span>
+                        </div>
+                      )}
+                      {otherPerson?.address && (
+                        <div className="flex items-start space-x-2">
+                          <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
+                          <span className="text-secondary/60">
+                            {otherPerson.address}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-4 md:p-6 border border-gray-200">
+                <h4 className="font-semibold text-secondary/80 mb-4 flex items-center">
+                  <AlertCircle className="w-5 h-5 mr-2 text-gray-600" />
+                  Additional Information
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-secondary/60">Appointment Type:</span>
+                    <span className="font-medium text-secondary/70">
+                      {appointment.appointmentType || "Consultation"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-secondary/60">Created On:</span>
+                    <span className="font-medium text-secondary/70">
+                      {appointment.createdAt
+                        ? new Date(appointment.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-secondary/60">Last Updated:</span>
+                    <span className="font-medium text-secondary/70">
+                      {appointment.updatedAt
+                        ? new Date(appointment.updatedAt).toLocaleDateString()
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="bg-white rounded-xl p-4 md:p-6 border border-gray-200">
+                <h4 className="font-semibold text-secondary/80 mb-4">
+                  Quick Actions
+                </h4>
+                <div className="space-y-3">
+                  {appointment.status === "UPCOMING" ||
+                  appointment.status === "CONFIRMED" ? (
+                    <>
+                      <button className="w-full px-4 py-3 bg-gradient-to-r from-teal-500 to-blue-600 hover:from-teal-600 hover:to-blue-700 text-white rounded-xl font-semibold transition-all shadow-lg">
+                        Join Video Call
+                      </button>
+                      <button className="w-full px-4 py-3 border-2 border-red-300 text-red-600 hover:bg-red-50 rounded-xl font-semibold transition-all">
+                        Cancel Appointment
+                      </button>
+                    </>
+                  ) : appointment.status === "COMPLETED" ? (
+                    <button className="w-full px-4 py-3 border-2 border-blue-300 text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all">
+                      View Medical Records
+                    </button>
+                  ) : null}
+
+                  <button className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all">
+                    Contact {otherPersonTitle}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes modal-enter {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        .animate-modal-enter {
+          animation: modal-enter 0.2s ease-out forwards;
+        }
+      `}</style>
+    </div>
+  );
+};

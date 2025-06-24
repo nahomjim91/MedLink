@@ -1,463 +1,624 @@
-// "use client";
-// import { useState, useEffect } from "react";
-// import { useQuery } from "@apollo/client";
-// import {
-//   GET_MY_PRODUCTS,
-//   GET_MY_PRODUCTS_WITH_BATCHES,
-// } from "../../api/graphql/product/productQueries";
-// import { StatCard } from "../../components/ui/Cards";
-// import { TableCard } from "../../components/ui/Cards";
-// import AddProductMultiSteps from "../../components/ui/product/AddProductMultiSteps";
-// import { useRouter } from "next/navigation";
-// import { useMSAuth } from "../../../../hooks/useMSAuth";
-// // import icons from '../lib/icons';
+"use client";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Star } from "lucide-react";
+import { Button } from "../components/ui/Button";
+import { UpcomingAppointmentCard } from "../components/ui/Card";
+import CalendarAppointments from "../components/ui/CalendarAppointments";
+import TelehealthAddFunds from "../components/ui/AddFound";
+import { useAuth } from "../hooks/useAuth";
+import {
+  GET_DOCTOR_SPECIALIZATIONS,
+  GET_DOCTORS_BY_SPECIALIZATION,
+} from "../api/graphql/queries";
+import { useQuery } from "@apollo/client";
+import { useAppointment } from "../hooks/useAppointment ";
+import Link from "next/link";
 
-// const icons = {
-//   categories: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-//   <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-//   <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-//   <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-//   <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-// </svg>`,
+export default function TelehealthPatientPage() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showAddFunds, setShowAddFunds] = useState(false);
+  const [appointments, setAppointments] = useState([]);
+  const [historyAppointments, setHistoryAppointments] = useState([]);
+  const [selectedSpecialty, setSelectedSpecialty] = useState("");
 
-//   // Top Product Icon - star with product box
-//   topProduct: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-//   <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2z"></path>
-//   <rect x="8" y="10" width="8" height="8" rx="1" stroke-dasharray="2"></rect>
-// </svg>`,
+  const { user } = useAuth();
+  const {
+    fetchMyAppointments,
+    cancelAppointment,
+    loading: appointmentsLoading,
+  } = useAppointment();
 
-//   // Top Selling Icon - upward trending chart with dollar sign
-//   topSelling: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-//   <path d="M22 12L18 8L15 11L9 5L2 12"></path>
-//   <path d="M9 5L9 19"></path>
-//   <circle cx="9" cy="19" r="2"></circle>
-//   <path d="M14.5 14.5C14.5 12 16.5 11 16.5 11C16.5 11 18.5 12 18.5 14.5C18.5 17 16.5 18 16.5 18C16.5 18 14.5 17 14.5 14.5Z"></path>
-//   <path d="M16.5 13V16"></path>
-//   <path d="M15 14.5H18"></path>
-// </svg>`,
+  // Fetch specializations
+  const { data: specializationsData, loading: specializationsLoading } =
+    useQuery(GET_DOCTOR_SPECIALIZATIONS, {
+      onCompleted: (data) => {
+        // This code runs only ONCE when the query successfully finishes
+        const fetchedSpecialties =
+          data?.getDoctorSpecializations || data?.doctorSpecializations || [];
+        // If we have specialties and none is selected yet, set the first one as default
+        if (fetchedSpecialties.length > 0 && !selectedSpecialty) {
+          console.log(
+            "Setting default specialty from onCompleted:",
+            fetchedSpecialties[0]
+          );
+          setSelectedSpecialty(fetchedSpecialties[0]);
+        }
+      },
+      errorPolicy: "all",
+      notifyOnNetworkStatusChange: true,
+    });
 
-//   // Low Stock Icon - depleted inventory with warning
-//   lowStock: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-//   <path d="M4 20H20"></path>
-//   <rect x="5" y="14" width="4" height="6"></rect>
-//   <rect x="15" y="16" width="4" height="4"></rect>
-//   <rect x="10" y="12" width="4" height="8"></rect>
-//   <path d="M12 7V9"></path>
-//   <path d="M12 3V5"></path>
-// </svg>`,
-// };
+  // Memoize specialties as before
+  const specialties = useMemo(() => {
+    return (
+      specializationsData?.getDoctorSpecializations ||
+      specializationsData?.doctorSpecializations ||
+      []
+    );
+  }, [specializationsData]);
 
-// export default function InventoryPage() {
-//   const [productsPage, setProductsPage] = useState(1);
-//   const [isAddingProduct, setIsAddingProduct] = useState(false);
-//   const [productType, setProductType] = useState(""); // For filtering by product type
-//   const [activeTab, setActiveTab] = useState("all"); // Default active tab
-//   const router = useRouter();
-//   const {user} = useMSAuth();
-//   const role = user.role;
+  // Fetch doctors by specialization
+  const {
+    data: doctorsData,
+    loading: doctorsLoading,
+    error: doctorsError,
+  } = useQuery(GET_DOCTORS_BY_SPECIALIZATION, {
+    variables: { specialization: selectedSpecialty },
+    skip: !selectedSpecialty, // This is the key part
+    fetchPolicy: "cache-and-network",
+  });
 
-//   // Pagination
-//   const ITEMS_PER_PAGE = 10;
-//   const offset = (productsPage - 1) * ITEMS_PER_PAGE;
+  // Memoize doctors to handle different response structures
+  const doctors = useMemo(() => {
+    if (!doctorsData) return [];
 
-//   // Fetch products from GraphQL API
-//   const { loading, error, data, refetch } = useQuery(
-//     GET_MY_PRODUCTS_WITH_BATCHES,
-//     {
-//       variables: {
-//         productType: productType,
-//         limit: ITEMS_PER_PAGE,
-//         offset: offset,
-//       },
-//       fetchPolicy: "cache-and-network",
-//     }
-//   );
+    // Handle different possible response structures
+    return (
+      doctorsData.getDoctorsBySpecialization ||
+      doctorsData.doctorsBySpecialization ||
+      []
+    );
+  }, [doctorsData]);
 
-//   // Helper function to format currency
-//   const formatCurrency = (amount) => {
-//     return `$${parseFloat(amount).toFixed(2)}`;
-//   };
+  // Set default specialty when specialties are loaded
 
-//   // Helper function to format date
-//   const formatDate = (dateString) => {
-//     if (!dateString) return "N/A";
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString();
-//   };
+  // Memoized function to load appointments
+  const loadAppointments = useCallback(async () => {
+    try {
+      console.log("Loading appointments...");
+      const appointmentsData = await fetchMyAppointments();
 
-//   // Find closest expiry batch for a product
-//   const getClosestExpiryBatch = (batches) => {
-//     if (!batches || batches.length === 0) return null;
+      if (!appointmentsData) {
+        console.log("No appointments data received");
+        setAppointments([]);
+        setHistoryAppointments([]);
+        return;
+      }
 
-//     // Filter out batches without expiry dates
-//     const batchesWithExpiry = batches.filter(
-//       (batch) => batch.__typename === "DrugBatch" && batch.expiryDate
-//     );
+      console.log("Loaded appointments:", appointmentsData);
+      setAppointments(appointmentsData);
 
-//     if (batchesWithExpiry.length === 0) return null;
+      // Filter appointments for history (cancelled and finished)
+      const historyData = appointmentsData.filter(
+        (appointment) =>
+          appointment.status === "CANCELLED_DOCTOR" ||
+          appointment.status === "CANCELLED_PATIENT" ||
+          appointment.status === "COMPLETED"
+      );
 
-//     // Sort by expiry date (ascending)
-//     return batchesWithExpiry.sort(
-//       (a, b) => new Date(a.expiryDate) - new Date(b.expiryDate)
-//     )[0];
-//   };
+      console.log("History appointments:", historyData);
+      setHistoryAppointments(historyData);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+      // Set empty arrays on error to prevent UI issues
+      setAppointments([]);
+      setHistoryAppointments([]);
+    }
+  }, [fetchMyAppointments]);
 
-//   // Calculate total quantity across all batches for a product
-//   const calculateTotalQuantity = (batches) => {
-//     if (!batches || batches.length === 0) return 0;
-//     return batches.reduce((sum, batch) => sum + (batch.quantity || 0), 0);
-//   };
+  // Fetch appointments on component mount
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
 
-//   // Determine stock level status
-//   const getStockLevelStatus = (quantity) => {
-//     // Define thresholds based on your business logic
-//     if (quantity <= 0) return "Out of stock";
-//     if (quantity < 5) return "Low stock";
-//     if (quantity < 10) return "Medium stock";
-//     return "High stock";
-//   };
+  // Enhanced appointment cancellation handler
+  const handleCancelAppointment = useCallback(
+    async (appointmentId, reason) => {
+      if (!appointmentId) {
+        console.error("No appointment ID provided for cancellation");
+        throw new Error("Invalid appointment ID");
+      }
 
-//   // Format products data for the table
-//   const formatProductsData = (products) => {
-//     if (!products) return [];
+      try {
+        console.log(
+          "Canceling appointment with ID:",
+          appointmentId,
+          "Reason:",
+          reason
+        );
+        await cancelAppointment(appointmentId, reason);
 
-//     return products.map((product) => {
-//       const totalQuantity = calculateTotalQuantity(product.batches);
-//       const closestExpiryBatch = getClosestExpiryBatch(product.batches);
-//       const stockLevel = getStockLevelStatus(totalQuantity);
+        // Refresh appointments after cancellation
+        await loadAppointments();
 
-//       // Get the first batch's cost price for buying price
-//       const firstBatch =
-//         product.batches && product.batches.length > 0
-//           ? product.batches[0]
-//           : null;
-//       const buyingPrice = firstBatch
-//         ? formatCurrency(firstBatch.costPrice)
-//         : "N/A";
+        console.log("Appointment cancelled successfully");
+      } catch (error) {
+        console.error("Failed to cancel appointment:", error);
+        throw error; // Re-throw to let the component handle the error display
+      }
+    },
+    [cancelAppointment, loadAppointments]
+  );
 
-//       // Format expiry date
-//       const closestExpiry = closestExpiryBatch
-//         ? formatDate(closestExpiryBatch.expiryDate)
-//         : product.__typename === "DrugProduct"
-//         ? "No expiry data"
-//         : "N/A";
+  // Enhanced specialty selection handler
+  const handleSpecialtySelect = useCallback((specialty) => {
+    if (!specialty) {
+      console.warn("No specialty provided");
+      return;
+    }
 
-//       // Determine availability based on quantity and isActive
-//       const availability =
-//         product.isActive && totalQuantity > 0 ? "In-stock" : "Out of stock";
+    console.log("Selecting specialty:", specialty);
+    setSelectedSpecialty(specialty);
+  }, []);
 
-//       return {
-//         id: product.productId,
-//         name: product.name,
-//         buyingPrice: buyingPrice,
-//         quantity: `${totalQuantity} ${
-//           product.__typename === "DrugProduct" ? "Units" : "Items"
-//         }`,
-//         stockLevel: stockLevel,
-//         closestExpiry: closestExpiry,
-//         availability: availability,
-//         category: product.category,
-//         productType: product.productType,
-//       };
-//     });
-//   };
+  // Enhanced doctor data transformation with better error handling
+  const getDisplayDoctors = useMemo(() => {
+    console.log("Processing doctors - Selected specialty:", selectedSpecialty);
+    console.log("Raw doctors data:", doctors);
 
-//   const allProductsData = data ? formatProductsData(data.myProducts) : [];
-//   const totalCount = data?.myProducts?.length || 0;
-//   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+    if (!doctors || !Array.isArray(doctors) || doctors.length === 0) {
+      console.log("No valid doctors data available");
+      return [];
+    }
 
-//   // Prepare data for tabs
-//   const prepareTabData = () => {
-//     if (!allProductsData) return {};
+    console.log("Processing doctors data:", doctors);
 
-//     // All products tab (unfiltered)
-//     const all = allProductsData;
+    return doctors.map((doctor, index) => {
+      try {
+        // Enhanced null checks for nested properties
+        const firstName = doctor?.user?.firstName || doctor?.firstName || "";
+        const lastName = doctor?.user?.lastName || doctor?.lastName || "";
+        const fullName = `Dr. ${firstName} ${lastName}`.trim();
 
-//     // In stock products
-//     const inStock = allProductsData.filter(
-//       (product) => product.availability === "In-stock"
-//     );
+        // Handle specialization - it might be an array or string
+        let doctorSpecialty = selectedSpecialty;
+        if (doctor.specialization) {
+          doctorSpecialty = Array.isArray(doctor.specialization)
+            ? doctor.specialization[0]
+            : doctor.specialization;
+        }
 
-//     // Out of stock products
-//     const outOfStock = allProductsData.filter(
-//       (product) => product.availability === "Out of stock"
-//     );
+        const processedDoctor = {
+          id: doctor.doctorId || doctor.id || `doctor-${index}`,
+          name: fullName === "Dr." ? "Dr. Unknown" : fullName,
+          specialty: doctorSpecialty || "General",
+          rating: Math.max(0, parseFloat(doctor.averageRating || 0)),
+          ratingCount: Math.max(0, parseInt(doctor.ratingCount || 0)),
+          price: Math.max(0, parseFloat(doctor.pricePerSession || 0)),
+          avatar:
+            doctor?.user?.profileImageUrl ||
+            doctor?.profileImageUrl ||
+            "/api/placeholder/60/60",
+          experience: Math.max(0, parseInt(doctor.experienceYears || 0)),
+          isApproved: Boolean(doctor.isApproved),
+          gender: doctor?.user?.gender || doctor?.gender || "Not specified",
+        };
 
-//     // Low stock products
-//     const lowStock = allProductsData.filter(
-//       (product) => product.stockLevel === "Low stock"
-//     );
+        console.log(`Processed doctor ${index + 1}:`, processedDoctor);
+        return processedDoctor;
+      } catch (error) {
+        console.error(
+          `Error processing doctor at index ${index}:`,
+          error,
+          doctor
+        );
+        // Return a fallback doctor object
+        return {
+          id: `doctor-error-${index}`,
+          name: "Dr. Unknown",
+          specialty: selectedSpecialty || "General",
+          rating: 0,
+          ratingCount: 0,
+          price: 0,
+          avatar: "/api/placeholder/60/60",
+          experience: 0,
+          isApproved: false,
+          gender: "Not specified",
+        };
+      }
+    });
+  }, [doctors, selectedSpecialty]);
 
-//     // Drug products
-//     const drugs = allProductsData.filter(
-//       (product) => product.productType === "DRUG"
-//     );
+  // Enhanced upcoming appointment getter with better error handling
+  const getUpcomingAppointment = useMemo(() => {
+    if (!appointments || appointments.length === 0) return null;
 
-//     // Equipment products
-//     const equipment = allProductsData.filter(
-//       (product) => product.productType === "EQUIPMENT"
-//     );
+    try {
+      const upcomingAppointments = appointments.filter(
+        (appointment) =>
+          appointment?.status === "CONFIRMED" ||
+          appointment?.status === "PENDING" ||
+          appointment?.status === "REQUESTED" ||
+          appointment?.status === "SCHEDULED"
+      );
 
-//     return {
-//       all,
-//       inStock,
-//       outOfStock,
-//       lowStock,
-//       drugs,
-//       equipment,
-//     };
-//   };
+      if (upcomingAppointments.length === 0) return null;
 
-//   const tabData = prepareTabData();
+      // Sort by scheduled start time and get the closest one
+      const sortedAppointments = upcomingAppointments.sort((a, b) => {
+        const timeA = new Date(a.scheduledStartTime);
+        const timeB = new Date(b.scheduledStartTime);
+        return timeA - timeB;
+      });
 
-//   // Calculate stats for cards
-//   const calculateStats = () => {
-//     if (!data || !data.myProducts)
-//       return {
-//         drugCount: 0,
-//         equipmentCount: 0,
-//         activeCount: 0,
-//         lowStockCount: 0,
-//         outOfStockCount: 0,
-//         topSellingProduct: "N/A",
-//         topSellingRevenue: "N/A",
-//       };
+      const closest = sortedAppointments[0];
+      if (!closest) return null;
 
-//     const formattedProducts = formatProductsData(data.myProducts);
+      // Enhanced doctor name extraction
+      const getDoctorName = (appointment) => {
+        const doctor = appointment.doctor;
+        if (!doctor) return "Unknown Doctor";
 
-//     return {
-//       drugCount: data.myProducts.filter((p) => p.__typename === "DrugProduct")
-//         .length,
-//       equipmentCount: data.myProducts.filter(
-//         (p) => p.__typename === "EquipmentProduct"
-//       ).length,
-//       activeCount: formattedProducts.filter(
-//         (p) => p.availability === "In-stock"
-//       ).length,
-//       lowStockCount: formattedProducts.filter(
-//         (p) => p.stockLevel === "Low stock"
-//       ).length,
-//       outOfStockCount: formattedProducts.filter(
-//         (p) => p.availability === "Out of stock"
-//       ).length,
-//       // Placeholder for top selling - would need sales data
-//       topSellingProduct: "N/A",
-//       topSellingRevenue: "N/A",
-//     };
-//   };
+        const firstName = doctor.firstName || doctor.user?.firstName || "";
+        const lastName = doctor.lastName || doctor.user?.lastName || "";
 
-//   const stats = calculateStats();
+        return firstName || lastName
+          ? `Dr. ${firstName} ${lastName}`.trim()
+          : "Unknown Doctor";
+      };
 
-//   // Define table tabs
-//   const productTabs = [
-//     { id: "all", label: "All Products", count: tabData.all?.length || 0 },
-//     { id: "inStock", label: "In Stock", count: tabData.inStock?.length || 0 },
-//     {
-//       id: "outOfStock",
-//       label: "Out of Stock",
-//       count: tabData.outOfStock?.length || 0,
-//     },
-//     {
-//       id: "lowStock",
-//       label: "Low Stock",
-//       count: tabData.lowStock?.length || 0,
-//     },
-//     { id: "drugs", label: "Drugs", count: tabData.drugs?.length || 0 },
-//     {
-//       id: "equipment",
-//       label: "Equipment",
-//       count: tabData.equipment?.length || 0,
-//     },
-//   ];
+      // Enhanced specialty extraction
+      const getSpecialty = (appointment) => {
+        const doctor = appointment.doctor;
+        if (!doctor) return "General";
 
-//   const productsColumns = [
-//     { key: "name", label: "Products" },
-//     { key: "category", label: "Category" },
-//     { key: "buyingPrice", label: "Buying Price" },
-//     { key: "quantity", label: "Quantity" },
-//     { key: "stockLevel", label: "Stock Level" },
-//     { key: "closestExpiry", label: "Closest Expiry" },
-//     { key: "availability", label: "Availability" },
-//   ];
+        const specialization = doctor.doctorProfile?.specialization;
+        if (Array.isArray(specialization) && specialization.length > 0) {
+          return specialization.join(", ");
+        }
+        return specialization || "General";
+      };
 
-//   // Handle product type filter
-//   const handleFilter = (type) => {
-//     setProductType(type);
-//     setProductsPage(1); // Reset to first page when filtering
-//     refetch({ productType: type, limit: ITEMS_PER_PAGE, offset: 0 });
-//   };
+      // Transform to match UpcomingAppointmentCard expected format
+      return {
+        id: closest.appointmentId,
+        doctorName: getDoctorName(closest),
+        specialty: getSpecialty(closest),
+        date: new Date(closest.scheduledStartTime).toLocaleDateString("en-US", {
+          day: "numeric",
+          month: "short",
+          weekday: "long",
+        }),
+        time: `${new Date(closest.scheduledStartTime).toLocaleTimeString(
+          "en-US",
+          {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          }
+        )} - ${new Date(closest.scheduledEndTime).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })}`,
+        avatar:
+          closest.doctor?.profilePicture ||
+          closest.doctor?.user?.profileImageUrl ||
+          "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
+        status: closest.status,
+      };
+    } catch (error) {
+      console.error("Error getting upcoming appointment:", error);
+      return null;
+    }
+  }, [appointments]);
 
-//   // Handle product add form submission
-//   const handleAddProduct = (newProduct) => {
-//     // In a real implementation, you'd call a mutation to add the product
-//     // Then refetch to update the list
-//     refetch();
-//     setIsAddingProduct(false);
-//   };
+  // Enhanced calendar appointments transformation
+  const getCalendarAppointments = useMemo(() => {
+    if (!appointments || appointments.length === 0) return [];
 
-//   // Handle tab change
-//   const handleTabChange = (tabId) => {
-//     setActiveTab(tabId);
-//     setProductsPage(1); // Reset to first page when changing tabs
-//   };
+    return appointments.map((appointment, index) => {
+      try {
+        const getDoctorName = (appt) => {
+          const doctor = appt.doctor;
+          if (!doctor) return "Unknown Doctor";
 
-//   const onClikeRow = (product) => {
-//     // console.log("Product clicked:", product);
-//   router.push(`/medical-supplies/${role}/inventory/product?id=${product.id}`);
-//   };
+          const firstName = doctor.firstName || doctor.user?.firstName || "";
+          const lastName = doctor.lastName || doctor.user?.lastName || "";
 
+          return firstName || lastName
+            ? `Dr. ${firstName} ${lastName}`.trim()
+            : "Unknown Doctor";
+        };
 
-//   return (
-//     <div className="flex flex-col gap-2">
-//       <div className="w-full flex gap-4">
-//         <StatCard
-//           title="Categories"
-//           metrics={[
-//             { value: "Drugs", label: `${stats.drugCount} items` },
-//             { value: "Equipment", label: `${stats.equipmentCount} items` },
-//           ]}
-//           icon={
-//             <div
-//               dangerouslySetInnerHTML={{ __html: icons.categories }}
-//               className="text-primary"
-//             />
-//           }
-//           subtitle="Product Categories"
-//         />
+        const getSpecialty = (appt) => {
+          const doctor = appt.doctor;
+          if (!doctor) return "General";
 
-//         <StatCard
-//           title="Total Products"
-//           metrics={[
-//             { value: totalCount.toString(), label: "All Products" },
-//             { value: "Active", label: `${stats.activeCount} items` },
-//           ]}
-//           icon={
-//             <div
-//               dangerouslySetInnerHTML={{ __html: icons.topProduct }}
-//               className="text-primary"
-//             />
-//           }
-//         />
+          const specialization = doctor.doctorProfile?.specialization;
+          if (Array.isArray(specialization) && specialization.length > 0) {
+            return specialization.join(", ");
+          }
+          return specialization || "General";
+        };
 
-//         <StatCard
-//           title="Top Selling"
-//           metrics={[
-//             { value: stats.topSellingProduct, label: "Last 7 days" },
-//             { value: stats.topSellingRevenue, label: "Revenue" },
-//           ]}
-//           icon={
-//             <div
-//               dangerouslySetInnerHTML={{ __html: icons.topSelling }}
-//               className="text-primary"
-//             />
-//           }
-//         />
+        return {
+          id: appointment.appointmentId || `appointment-${index}`,
+          doctorName: getDoctorName(appointment),
+          specialty: getSpecialty(appointment),
+          date: new Date(appointment.scheduledStartTime),
+          time: `${new Date(appointment.scheduledStartTime).toLocaleTimeString(
+            "en-US",
+            {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }
+          )} - ${new Date(appointment.scheduledEndTime).toLocaleTimeString(
+            "en-US",
+            {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }
+          )}`,
+          status: appointment.status,
+          avatar:
+            appointment.doctor?.profilePicture ||
+            appointment.doctor?.user?.profileImageUrl ||
+            "/api/placeholder/60/60",
+        };
+      } catch (error) {
+        console.error(
+          `Error processing calendar appointment at index ${index}:`,
+          error
+        );
+        return {
+          id: `appointment-error-${index}`,
+          doctorName: "Unknown Doctor",
+          specialty: "General",
+          date: new Date(),
+          time: "Time not available",
+          status: "UNKNOWN",
+          avatar: "/api/placeholder/60/60",
+        };
+      }
+    });
+  }, [appointments]);
 
-//         <StatCard
-//           title="Low Stocks"
-//           metrics={[
-//             { value: stats.lowStockCount.toString(), label: "Below threshold" },
-//             { value: stats.outOfStockCount.toString(), label: "Out of stock" },
-//           ]}
-//           icon={
-//             <div
-//               dangerouslySetInnerHTML={{ __html: icons.lowStock }}
-//               className="text-primary"
-//             />
-//           }
-//         />
-//       </div>
-//       <div className="w-full">
-//         {loading ? (
-//           <div className="text-center py-10">Loading products...</div>
-//         ) : error ? (
-//           <div className="text-center py-10 text-red-500">
-//             Error loading products: {error.message}
-//           </div>
-//         ) : (
-//           <TableCard
-//             title="Products"
-//             data={allProductsData} // This becomes fallback data
-//             columns={productsColumns}
-//             page={productsPage}
-//             totalPages={totalPages}
-//             onPageChange={(page) => {
-//               setProductsPage(page);
-//               refetch({
-//                 productType: productType,
-//                 limit: ITEMS_PER_PAGE,
-//                 offset: (page - 1) * ITEMS_PER_PAGE,
-//               });
-//             }}
-//             onAddItem={() => setIsAddingProduct(true)}
-//             onFilter={() =>
-//               setProductType(
-//                 productType === "DRUG"
-//                   ? "EQUIPMENT"
-//                   : productType === "EQUIPMENT"
-//                   ? null
-//                   : "DRUG"
-//               )
-//             }
-//             onDownload={() => {
-//              router.push(`/medical-supplies/${role}/orders`);
-//             }}
-//             isLoading={loading}
-//             // New tab properties
-//             tabs={productTabs}
-//             activeTab={activeTab}
-//             onTabChange={handleTabChange}
-//             tabData={tabData}
-//             isClickable={true}
-//             onClickRow={onClikeRow}
-//             isFilterButton={false}
-//           />
-//         )}
-      
-//       </div>
-//     </div>
-//   );
-// }
+  // Enhanced history appointments transformation
+  const getHistoryAppointments = useMemo(() => {
+    if (!historyAppointments || historyAppointments.length === 0) return [];
 
-// export const StatCard = ({
-//   title,
-//   metrics = [],
-//   subtitle = "",
-//   icon = null,
-//   className = "",
-// }) => {
-//   // Custom styling based on theme
+    return historyAppointments.map((appointment, index) => {
+      try {
+        const getDoctorName = (appt) => {
+          const doctor = appt.doctor;
+          if (!doctor) return "Unknown Doctor";
 
-//   return (
-//     <div
-//       className={`bg-white rounded-xl px-4 py-2 ${className} w-full shadow-md `}
-//     >
-//       <div className="flex items-center mb-3">
-//         <div className={`bg-primary/10 p-2 rounded-full mr-3`}>{icon}</div>
+          const firstName = doctor.firstName || doctor.user?.firstName || "";
+          const lastName = doctor.lastName || doctor.user?.lastName || "";
 
-//         <h3 className="text-secondary/70 font-bold text-lg">{title}</h3>
-//       </div>
+          return firstName || lastName
+            ? `Dr. ${firstName} ${lastName}`.trim()
+            : "Unknown Doctor";
+        };
 
-//       <div
-//         className={`grid${
-//           metrics.length >= 2 ? " md:grid-cols-3" : "grid-cols-2"
-//         }  gap-x-8 gap-y-2 mb-2 `}
-//       >
-//         {metrics.map((metric, index) => (
-//           <div key={index} className="flex flex-col items-center  ">
-//             <span className="text-2xl font-medium text-secondary/80">
-//               {metric.value}
-//             </span>
-//             {metric.label && (
-//               <span className="text-sm text-secondary/50">{metric.label}</span>
-//             )}
-//           </div>
-//         ))}
-//       </div>
+        const getSpecialty = (appt) => {
+          const doctor = appt.doctor;
+          if (!doctor || !doctor.doctorProfile) return "General";
 
-//       {subtitle && (
-//         <div className="text-xs text-secondary/50 mt-1">{subtitle}</div>
-//       )}
-//     </div>
-//   );
-// };
+          const specialization = doctor.doctorProfile.specialization;
+          if (Array.isArray(specialization) && specialization.length > 0) {
+            return specialization[0];
+          }
+          return specialization || "General";
+        };
+
+        const getDiagnosis = (appt) => {
+          if (appt.diagnosis) return appt.diagnosis;
+          if (appt.notes) return appt.notes;
+
+          switch (appt.status) {
+            case "CANCELLED_DOCTOR":
+              return "Cancelled by Doctor";
+            case "CANCELLED_PATIENT":
+              return "Cancelled";
+            case "COMPLETED":
+              return "Completed";
+            default:
+              return "No diagnosis available";
+          }
+        };
+
+        return {
+          id: appointment.appointmentId || `history-${index}`,
+          doctor: getDoctorName(appointment),
+          specialty: getSpecialty(appointment),
+          date: new Date(appointment.scheduledStartTime).toLocaleDateString(
+            "en-US",
+            {
+              day: "numeric",
+              month: "short",
+              weekday: "long",
+            }
+          ),
+          diagnosis: getDiagnosis(appointment),
+          status: appointment.status,
+          avatar:
+            appointment.doctor?.profilePicture ||
+            appointment.doctor?.user?.profileImageUrl ||
+            "/api/placeholder/60/60",
+        };
+      } catch (error) {
+        console.error(
+          `Error processing history appointment at index ${index}:`,
+          error
+        );
+        return {
+          id: `history-error-${index}`,
+          doctor: "Unknown Doctor",
+          specialty: "General",
+          date: "Date not available",
+          diagnosis: "Information not available",
+          status: "UNKNOWN",
+          avatar: "/api/placeholder/60/60",
+        };
+      }
+    });
+  }, [historyAppointments]);
+
+  // Memoize computed values
+  const upcomingAppointment = getUpcomingAppointment;
+  const calendarAppointments = getCalendarAppointments;
+  const historyData = getHistoryAppointments;
+  const displayDoctors = getDisplayDoctors;
+
+  return (
+    <div className="">
+      {/* Header with New Appointment button */}
+      <div className="flex justify-between md:justify-end items-center mb-6 md:mb-2">
+        <div className="md:hidden">
+          <h1 className="text-2xl font-bold text-gray-900">Hello, Ms X</h1>
+        </div>
+        <Button className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          New Appointment
+        </Button>
+      </div>
+
+      {/* Upcoming Appointments and Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+        {/* Upcoming Appointments */}
+        {appointmentsLoading ? (
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : upcomingAppointment ? (
+          <UpcomingAppointmentCard
+            upcomingAppointment={upcomingAppointment}
+            onCancelAppointment={handleCancelAppointment}
+            loading={appointmentsLoading}
+          />
+        ) : (
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-4">
+              Upcoming Appointment
+            </h2>
+            <p className="text-gray-500 text-center">
+              No upcoming appointments
+            </p>
+          </div>
+        )}
+
+        {/* Calendar with methods passed */}
+        <CalendarAppointments
+          appointments={calendarAppointments}
+          onCancelAppointment={handleCancelAppointment}
+          loading={appointmentsLoading}
+        />
+      </div>
+
+      {/* Bottom Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* History Table */}
+        <div className="lg:col-span-2 bg-white p-3 rounded-xl shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-lg font-semibold text-secondary">History</h2>
+            <Link
+              href="/telehealth/patient/history"
+              className="text-primary/70 text-sm font-medium hover:text-primary"
+            >
+              See All
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-4 gap-4 text-sm font-medium text-secondary/80 pb-2 border-b">
+              <div>Doctor</div>
+              <div>Speciality</div>
+              <div>Date of Visit</div>
+              <div>Status/Diagnosis</div>
+            </div>
+
+            {appointmentsLoading ? (
+              // Loading skeleton
+              Array.from({ length: 5 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-4 gap-4 py-3 animate-pulse"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="hidden md:block w-8 h-8 rounded-full bg-gray-200"></div>
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  <div className="h-4 bg-gray-200 rounded w-18"></div>
+                </div>
+              ))
+            ) : historyData.length > 0 ? (
+              historyData.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="grid grid-cols-4 gap-4 py-3 text-sm border-b border-gray-100 last:border-b-0 text-secondary/60"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="hidden md:block w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
+                      <img
+                        src={appointment.avatar}
+                        alt={appointment.doctor}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <span className="font-medium text-gray-900">
+                      {appointment.doctor}
+                    </span>
+                  </div>
+                  <div className="">{appointment.specialty}</div>
+                  <div className="">{appointment.date}</div>
+                  <div
+                    className={`flex items-center gap-1 ${
+                      appointment.status === "CANCELLED"
+                        ? "text-red-600"
+                        : appointment.status === "COMPLETED"
+                        ? "text-green-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        appointment.status === "CANCELLED"
+                          ? "bg-red-400"
+                          : appointment.status === "COMPLETED"
+                          ? "bg-green-400"
+                          : "bg-gray-400"
+                      }`}
+                    ></span>
+                    {appointment.diagnosis}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="py-8 text-center text-gray-500">
+                No appointment history found
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

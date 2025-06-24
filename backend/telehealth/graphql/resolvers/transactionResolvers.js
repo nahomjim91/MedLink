@@ -51,8 +51,7 @@ const canAccessTransaction = async (transactionId, context) => {
     return { transaction, user: userDoc };
   }
   
-  // Patients can only access their own transactions
-  if (userDoc.role === "patient" && transaction.userId !== user.uid) {
+  if (transaction.userId !== user.uid) {
     throw new ForbiddenError("Access denied");
   }
   
@@ -126,7 +125,7 @@ const transactionResolvers = {
 
     // Get transactions for current user
     myTransactions: async (_, { limit = 20, offset = 0 }, context) => {
-      const user = await isPatient(context);
+      const user = await UserModel.getById(context.user.uid); 
       return await TransactionModel.getByPatientId(user.uid, limit, offset);
     },
 
@@ -178,7 +177,7 @@ const transactionResolvers = {
       
       const userDoc = await UserModel.getById(user.uid);
       if (userDoc.role !== "admin" && 
-          appointment.userId !== user.uid && 
+          appointment.patientId!== user.uid && 
           appointment.doctorId !== user.uid) {
         throw new ForbiddenError("Access denied");
       }
@@ -198,7 +197,7 @@ const transactionResolvers = {
       
       const userDoc = await UserModel.getById(user.uid);
       if (userDoc.role !== "admin" && 
-          appointment.userId !== user.uid && 
+          appointment.patientId!== user.uid && 
           appointment.doctorId !== user.uid) {
         throw new ForbiddenError("Access denied");
       }
@@ -214,7 +213,7 @@ const transactionResolvers = {
       // Apply user-specific filters based on role
       let searchFilter = { ...filter };
       
-      if (userDoc.role === "patient") {
+      if (userDoc.role === "patient" || userDoc.role === "doctor") {
         searchFilter.userId = user.uid;
       }
       // Admin can search without restrictions
@@ -243,7 +242,7 @@ const transactionResolvers = {
       // Apply user-specific filters based on role
       let searchFilter = { ...filter };
       
-      if (userDoc.role === "patient") {
+      if (userDoc.role === "patient" ) {
         searchFilter.userId = user.uid;
       }
       // Admin can search without restrictions
@@ -260,7 +259,7 @@ const transactionResolvers = {
 
     // Get transaction statistics for current user
     transactionStats: async (_, __, context) => {
-      const user = await isPatient(context);
+        const user = await UserModel.getById(context.user.uid); 
       return await TransactionModel.getTransactionStats(user.uid);
     },
 
@@ -286,12 +285,11 @@ const transactionResolvers = {
   Mutation: {
     // Create new transaction (patient only)
     createTransaction: async (_, { input }, context) => {
-      const user = await isPatient(context);
-      
+  const user = await UserModel.getById(context.user.uid);       
       const transactionData = {
         ...input,
         userId: user.uid,
-        status: 'pending'
+        status: 'PENDING'
       };
       
       return await TransactionModel.create(transactionData);
@@ -324,14 +322,14 @@ const transactionResolvers = {
       }
       
       // Check if original transaction is successful
-      if (originalTransaction.status !== 'success') {
+      if (originalTransaction.status !== 'SUCCESS') {
         throw new UserInputError("Can only refund successful transactions");
       }
       
       const refundData = {
         ...input,
         userId: user.uid,
-        status: 'requested'
+        status: 'REQUESTED'
       };
       
       return await RefundModel.create(refundData);
@@ -423,7 +421,7 @@ const transactionResolvers = {
         telehealthWalletBalance: newBalance
       });
       
-      return await TransactionModel.updateStatus(transactionId, 'success', {
+      return await TransactionModel.updateStatus(transactionId, 'SUCCESS', {
         chapaRef,
         amount
       });
@@ -448,11 +446,11 @@ const transactionResolvers = {
       // Create payment transaction
       const transactionData = {
         userId: appointment.userId,
-        type: 'payment',
+        type: 'PAYMENT',
         amount,
         reason: `Payment for appointment with Dr. ${appointment.doctorName}`,
         relatedAppointmentId: appointmentId,
-        status: 'success'
+        status: 'SUCCESS'
       };
       
       const transaction = await TransactionModel.create(transactionData);
@@ -465,7 +463,7 @@ const transactionResolvers = {
       
       // Update appointment payment status
       await AppointmentModel.update(appointmentId, {
-        paymentStatus: 'paid'
+        paymentStatus: 'PAID'
       });
       
       return transaction;
@@ -483,11 +481,11 @@ const transactionResolvers = {
       // Create refund transaction
       const transactionData = {
         userId: refund.userId,
-        type: 'refund',
+        type: 'REFUND',
         amount: refund.amount,
         reason: `Refund for ${refund.reason}`,
         relatedAppointmentId: refund.relatedAppointmentId,
-        status: 'success',
+        status: 'SUCCESS',
         chapaRef: transactionRef
       };
       
@@ -505,10 +503,10 @@ const transactionResolvers = {
       // Create pending deposit transaction
       const transactionData = {
         userId: user.uid,
-        type: 'deposit',
+        type: 'DEPOSIT',
         amount,
         reason: 'Wallet deposit',
-        status: 'pending'
+        status: 'PENDING'
       };
       
       const transaction = await TransactionModel.create(transactionData);
@@ -540,7 +538,7 @@ const transactionResolvers = {
       
       for (const transactionId of transactionIds) {
         try {
-          const transaction = await TransactionModel.updateStatus(transactionId, 'success');
+          const transaction = await TransactionModel.updateStatus(transactionId, 'SUCCESS');
           results.push(transaction);
         } catch (error) {
           console.error(`Error processing transaction ${transactionId}:`, error);

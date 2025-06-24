@@ -804,6 +804,7 @@ const handleBookAppointment = () => {
           onUpdate={handleUpdate}
           isLowFounds={user.patientProfile.telehealthWalletBalance < doctor.pricePerSession}
           openAddfoundsModal={() => setShowAddFundsModal(true)}
+          userBalance={user.patientProfile.telehealthWalletBalance}
           
         />
       )}

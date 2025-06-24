@@ -18,10 +18,12 @@ import {
   Users,
   LogOut,
   Bell,
+  CalendarCheck,
+  ClipboardListIcon,
 } from "lucide-react";
 import { SearchBar } from "../ui/Input";
 import { IconButton, ImageIconButton } from "../ui/Button";
-import { FaQuestion } from "react-icons/fa";
+import { FaMoneyBill, FaQuestion } from "react-icons/fa";
 
 export default function SharedLayout({ children, allowedRoles = [] }) {
   const { user, logout } = useAuth();
@@ -78,12 +80,12 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       {
         name: "Availability",
         path: "/telehealth/doctor/availability",
-        icon: <Clock />,
+        icon: <CalendarCheck />,
       },
       {
         name: "Appointments",
         path: "/telehealth/doctor/appointments",
-        icon: <Calendar />,
+        icon: <ClipboardListIcon />,
       },
       {
         name: "Chats",
@@ -91,10 +93,11 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         icon: <MessageCircle />,
       },
       {
-        name: "Calendar",
-        path: "/telehealth/doctor/calendar",
-        icon: <Calendar />,
+        name: "Transaction",
+        path: "/telehealth/doctor/transactions",
+        icon: <FaMoneyBill />,
       },
+      
       {
         name: "Settings",
         path: "/telehealth/doctor/settings",
@@ -114,20 +117,21 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         path: "/telehealth/patient/doctors",
         icon: <Users />,
       },
-      {
-        name: "History",
-        path: "/telehealth/patient/history",
-        icon: <Clock />,
-      },
+      
       {
         name: "Appointments",
         path: "/telehealth/patient/appointments",
-        icon: <Calendar />,
+        icon: <ClipboardListIcon />,
       },
       {
         name: "Chats",
         path: "/telehealth/patient/chats",
         icon: <MessageCircle />,
+      },
+       {
+        name: "Transaction",
+        path: "/telehealth/patient/transactions",
+        icon: <FaMoneyBill />,
       },
       {
         name: "Settings",

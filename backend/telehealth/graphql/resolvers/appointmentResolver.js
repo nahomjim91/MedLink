@@ -330,7 +330,7 @@ const appointmentResolvers = {
       }
 
       // Can only update if appointment is still in requested status
-      if (appointment.status !== "requested") {
+      if (appointment.status !== "REQUESTED") {
         throw new UserInputError(
           "Cannot update appointment after it has been processed"
         );
@@ -489,7 +489,7 @@ const appointmentResolvers = {
         context
       );
 
-      if (appointment.status !== "requested") {
+      if (appointment.status !== "REQUESTED") {
         throw new UserInputError("Can only confirm requested appointments");
       }
 
@@ -507,7 +507,7 @@ const appointmentResolvers = {
         context
       );
 
-      if (appointment.status !== "requested") {
+      if (appointment.status !== "REQUESTED") {
         throw new UserInputError("Can only reject requested appointments");
       }
 
@@ -538,7 +538,7 @@ const appointmentResolvers = {
         context
       );
 
-      if (appointment.status !== "upcoming") {
+      if (appointment.status !== "UPCOMING") {
         throw new UserInputError("Can only start upcoming appointments");
       }
 
@@ -556,7 +556,7 @@ const appointmentResolvers = {
         context
       );
 
-      if (appointment.status !== "in_progress") {
+      if (appointment.status !== "IN_PROGRESS") {
         throw new UserInputError(
           "Can only complete appointments that are in progress"
         );
