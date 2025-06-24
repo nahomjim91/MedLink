@@ -11,12 +11,12 @@ import {
   sendPasswordResetEmail,
   reload,
 } from "firebase/auth";
-import { auth } from "../app/medical-supplies/api/firebase/config";
+import { auth } from "../api/firebase/config";
 import { usePathname, useRouter } from "next/navigation";
-import { GET_MS_ME } from "../app/medical-supplies/api/graphql/queries";
-import { GET_MY_CART } from "../app/medical-supplies/api/graphql/cart/cartQuery";
-import { INITIALIZE_MS_USER_PROFILE } from "../app/medical-supplies/api/graphql/mutations";
-import client from "../app/medical-supplies/api/graphql/client";
+import { GET_MS_ME } from "../api/graphql/queries";
+import { GET_MY_CART } from "../api/graphql/cart/cartQuery";
+import { INITIALIZE_MS_USER_PROFILE } from "../api/graphql/mutations";
+import client from "../api/graphql/client";
 import { useMutation } from "@apollo/client";
 import {
   ADD_TO_CART,
@@ -25,7 +25,7 @@ import {
   REMOVE_PRODUCT_FROM_CART,
   REMOVE_BATCH_FROM_CART,
   CLEAR_CART,
-} from "../app/medical-supplies/api/graphql/cart/cartMutation";
+} from "../api/graphql/cart/cartMutation";
 
 const MSAuthContext = createContext();
 

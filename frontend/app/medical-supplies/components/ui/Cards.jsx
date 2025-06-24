@@ -153,7 +153,7 @@ export const DynamicMinOrderCard = ({ orders, userRole  }) => {
       <div className="flex items-center">
         <div className="mr-3 text-right">
           <p className="font-medium text-secondary/80">
-            {userRole === "health-facilities"
+            {userRole === "healthcare-facility"
               ? order.sellerName
               : order.buyerName}
           </p>
@@ -163,7 +163,7 @@ export const DynamicMinOrderCard = ({ orders, userRole  }) => {
         </div>
         <div className="w-10 h-10 rounded-full overflow-hidden">
           <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
-            {(userRole === "health-facilities"
+            {(userRole === "healthcare-facility"
               ? order.sellerName
               : order.buyerName
             )?.charAt(0) || "?"}
@@ -331,26 +331,23 @@ export function TableCard({
   isAddButton = true,
   isOrderButton = true,
   isFilterButton = true,
-  isEditable = false, // NEW: Enable editing mode
-  editableColumns = [], // NEW: Which columns are editable
-  onUpdateItem, // NEW: Callback for updating items
-  onEditToggle, // NEW: Callback for edit mode toggle
+  isEditable = false, //  Enable editing mode
+  editableColumns = [], //  Which columns are editable
+  onUpdateItem, //  Callback for updating items
+  onEditToggle, //  Callback for edit mode toggle
   editingRowId = null,
 }) {
   const [expandedRows, setExpandedRows] = useState({});
-  const [currentTab, setCurrentTab] = useState(activeTab);
 
   // Handle tab change
-  const handleTabChange = (tabId) => {
-    setCurrentTab(tabId);
-    if (onTabChange) {
-      onTabChange(tabId);
-    }
-  };
-  console.log("currentTab", tabData[currentTab]);
+ const handleTabChange = (tabId) => {
+  if (onTabChange) {
+    onTabChange(tabId);
+  }
+};
 
   // Determine which data to display based on active tab
-  const displayData = data;
+const displayData = tabData[activeTab] || data || [];
 
   const toggleRowExpand = (index) => {
     setExpandedRows((prev) => ({
@@ -475,36 +472,36 @@ export function TableCard({
       </div>
 
       {/* Tab navigation */}
-      {tabs && tabs.length > 0 && (
-        <div className="border-b border-gray-200">
-          <nav className="flex px-4 -mb-px">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`py-3 px-4 text-sm font-medium relative ${
-                  currentTab === tab.id
-                    ? "text-primary border-b-2 border-primary"
-                    : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {tab.label}
-                {tab.count !== undefined && (
-                  <span
-                    className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                      currentTab === tab.id
-                        ? "bg-primary text-white"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
+     {tabs && tabs.length > 0 && (
+  <div className="border-b border-gray-200">
+    <nav className="flex px-4 -mb-px">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => handleTabChange(tab.id)}
+          className={`py-3 px-4 text-sm font-medium relative ${
+            activeTab === tab.id // Changed from currentTab to activeTab
+              ? "text-primary border-b-2 border-primary"
+              : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+        >
+          {tab.label}
+          {tab.count !== undefined && (
+            <span
+              className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                activeTab === tab.id // Changed from currentTab to activeTab
+                  ? "bg-primary text-white"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {tab.count}
+            </span>
+          )}
+        </button>
+      ))}
+    </nav>
+  </div>
+)}
 
       <div className="overflow-x-auto">
         {isLoading ? (

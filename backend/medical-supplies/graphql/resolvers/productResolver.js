@@ -165,6 +165,7 @@ const productResolvers = {
     searchProducts: async (_, { searchInput }, context) => {
       const user = await isAuthenticated(context);
       try {
+        
         return ProductModel.searchProducts(searchInput, user.uid);
       } catch (error) {
         console.error("Error in searchProducts resolver:", error);

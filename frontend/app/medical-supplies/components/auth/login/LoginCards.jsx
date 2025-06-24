@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, OAuthButton} from "../../ui/Button" 
 import { EmailInput, PasswordInput, TextDivider } from "../../ui/Input" 
-import { useMSAuth } from "../../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 
 export function MSLogInFormCard() {
   const router = useRouter();

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import {
   Menu,
   X,
@@ -33,7 +33,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   const { user, logout, cart } = useMSAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userType, setUserType] = useState("healthFacility"); // Default to patient
+  const [userType, setUserType] = useState("healthcare-facility"); // Default to patient
   const { notificationCount, unreadCount:unseenChats} = useSocketContext();
   const [showDropdown, setShowDropdown] = useState(false);
   const triggerRef = useRef(null);
@@ -46,7 +46,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       const role =
         user.role?.toLowerCase() ||
         user.type?.toLowerCase() ||
-        "healthFacility";
+        "healthcare-facility";
 
       // Map role to user type
       if (role.includes("admin")) {
@@ -56,7 +56,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       } else if (role.includes("supplier")) {
         setUserType("supplier");
       } else {
-        setUserType("healthFacility");
+        setUserType("healthcare-facility");
       }
     }
   }, [user]);
@@ -173,7 +173,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         icon: <FaQuestion />,
       },
     ],
-    healthFacility: [
+    "healthcare-facility": [
       {
         name: "Home",
         path: "/medical-supplies/" + user.role + "/",
@@ -255,7 +255,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
   // Get current nav items based on user type
   const currentNavItems =
-    navigationItems[userType] || navigationItems.healthFacility;
+    navigationItems[userType] || navigationItems.healthcare-facility;
 
   // Check if a path is active
   const isActive = (path) => {

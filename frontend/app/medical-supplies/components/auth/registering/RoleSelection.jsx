@@ -34,8 +34,8 @@ export default function RoleSelection({ selectedRole, onRoleSelect, onNext }) {
          <IconCard
           icon={<Hospital size={52} />}
           label="Health Facility"
-          onClick={() => onRoleSelect("health Facility")}
-          isSelected={selectedRole === "health Facility"}
+          onClick={() => onRoleSelect("healthcare-facility")}
+          isSelected={selectedRole === "healthcare-facility"}
         />
       </div>
 

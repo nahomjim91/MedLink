@@ -205,7 +205,7 @@ const orderResolvers = {
     // Get my orders (as buyer)
     myOrders: async (_, {  status }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier" ,]);
         
         const options = { };
         if (status) {
@@ -223,7 +223,7 @@ const orderResolvers = {
     // Get orders I need to fulfill (as seller)
     ordersToFulfill: async (_, { status }, context) => {
       try {
-        const user = await hasRole(context, ["importer", "supplier"]);
+        const user = await hasRole(context, ["importer", "supplier" , "healthcare-facility"]);
         
         const options = {  };
         if (status) {
@@ -290,7 +290,7 @@ const orderResolvers = {
     // Create order directly with complete data (new method)
     createOrderDirect: async (_, { input }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier" , "healthcare-facility"]);
         
         // Validate that the user can create this order (must be the buyer)
         if (input.buyerId !== user.uid) {
@@ -341,7 +341,7 @@ const orderResolvers = {
     // Create order from cart (legacy method)
     createOrderFromCart: async (_, { input }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier" , "healthcare-facility"]);
         
         const { sellerId, notes, pickupScheduledDate } = input;
         

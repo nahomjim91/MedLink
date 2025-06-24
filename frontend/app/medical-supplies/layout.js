@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import { ApolloWrapper } from "./api/apolloProvider";
 import RouteProtection from "./components/auth/RouteProtection";
 import Navbar from "../layout/Navbar";
-import { MSAuthProvider } from "../../hooks/useMSAuth";
+import { MSAuthProvider } from "./hooks/useMSAuth";
 const NavbarWrapper = ({ children }) => {
   const pathname = usePathname();
 

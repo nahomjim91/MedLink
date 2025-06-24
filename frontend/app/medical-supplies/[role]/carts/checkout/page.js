@@ -1,5 +1,5 @@
 "use client";
-import { useMSAuth } from "../../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 import { useMemo, useState, useEffect } from "react";
 import { DateInput } from "../../../components/ui/Input";
 import { Button, StepButtons } from "../../../components/ui/Button";

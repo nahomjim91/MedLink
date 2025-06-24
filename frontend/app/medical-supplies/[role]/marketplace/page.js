@@ -17,6 +17,7 @@ import Image from "next/image";
 import { Button } from "../../components/ui/Button";
 import { SelectInput } from "../../components/ui/Input";
 import { useRouter } from "next/navigation";
+import { useMSAuth } from "../../hooks/useMSAuth";
 
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -53,7 +54,9 @@ const categories = [
 const Marketplace = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
-  
+    const {user} = useMSAuth();
+
+
   // Initialize filters with a stable object to prevent recreation
   const [filters, setFilters] = useState(() => ({
     productType: "",
@@ -120,7 +123,7 @@ const Marketplace = () => {
   }, []);
  
   const handleProductClick = useCallback((product) => {
-    router.push(`/marketplace/product?id=${product.productId}`);
+    router.push(`/medical-supplies/${user.role}/marketplace/product?id=${product.productId}`);
   }, [router]);
 
   // Clear all filters

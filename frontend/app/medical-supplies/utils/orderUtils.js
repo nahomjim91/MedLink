@@ -85,7 +85,7 @@ export const getRoleBasedTabs = (userRole, orders = [], ordersToFulfill = []) =>
         { id: 'completed', label: 'Completed' }
       ];
     
-    case 'health_facility':
+    case 'healthcare-facility':
       return [
         { id: 'all', label: 'All Orders', count: orders.length },
         { id: 'pending', label: 'Pending' },

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../../components/ui/Button";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import { Mail, Clock, CheckCircle, RefreshCw } from "lucide-react";
 
 export default function MSEmailVerificationPage() {

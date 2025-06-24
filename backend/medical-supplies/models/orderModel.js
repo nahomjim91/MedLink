@@ -432,7 +432,7 @@ const OrderModel = {
       const productRef = productsRef.doc(originalProduct.productId);
       const now = timestamp();
 
-      // Check if buyer is a health facility
+      // Check if buyer is a health healthcare-facility
       const isHealthFacility =
         buyer.role === "HEALTH_FACILITY" ||
         buyer.userType === "HEALTH_FACILITY" ||
@@ -446,14 +446,14 @@ const OrderModel = {
 
       if (isHealthFacility) {
         console.log(
-          `Deactivating original product ${originalProduct.productId} - buyer is health facility`
+          `Deactivating original product ${originalProduct.productId} - buyer is health healthcare-facility`
         );
 
         // Deactivate the original product for health facilities
         batch.update(productRef, {
           isActive: false,
           lastUpdatedAt: now,
-          deactivatedReason: `Transferred to health facility: ${buyer.name} via ${transferType}`,
+          deactivatedReason: `Transferred to health healthcare-facility: ${buyer.name} via ${transferType}`,
           deactivatedAt: now,
           deactivatedByOrder: orderItem.orderId,
           transferredToHealthFacility: true,
@@ -891,6 +891,7 @@ const OrderModel = {
       }
 
       const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
+      console.log("ordersSnapshot: ", ordersSnapshot.docs)
 
       return await Promise.all(
         formatDocs(ordersSnapshot.docs).map(async (order) => {

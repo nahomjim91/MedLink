@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { MinTableCard } from "../../components/ui/Cards";
 import { useQuery } from "@apollo/client";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import { GET_MY_PRODUCTS_WITH_BATCHES } from "../../api/graphql/product/productQueries";
 import {
   GET_MY_ORDERS,
@@ -56,7 +56,7 @@ function ProfitRevenueChart({ chartData, userRole }) {
       case "importer":
       case "supplier":
         return "Sales & Profit";
-      case "health-facilities":
+      case "healthcare-facility":
         return "Purchases & Expenses";
       default:
         return "Financial Overview";
@@ -137,13 +137,13 @@ function ProfitRevenueChart({ chartData, userRole }) {
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-primary"></div>
           <span className="text-sm text-secondary/60">
-            {userRole === "health-facilities" ? "Purchases" : "Revenue"}
+            {userRole === "healthcare-facility" ? "Purchases" : "Revenue"}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-amber-200"></div>
           <span className="text-sm text-secondary/60">
-            {userRole === "health-facilities" ? "Savings" : "Profit"}
+            {userRole === "healthcare-facility" ? "Savings" : "Profit"}
           </span>
         </div>
       </div>
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
   const userRole = userData?.role;
 
   // Determine which queries to run based on user role
-  const shouldFetchBuyerData = ["supplier", "health-facilities"].includes(
+  const shouldFetchBuyerData = ["supplier", "healthcare-facility"].includes(
     userRole
   );
   const shouldFetchSellerData = ["importer", "supplier"].includes(userRole);
@@ -292,7 +292,7 @@ export default function AnalyticsPage() {
 
       return last12Months.map((monthInfo) => {
         const monthOrders =
-          userRole === "health-facilities"
+          userRole === "healthcare-facility"
             ? buyerOrders.filter((order) => {
                 if (!order.orderDate) return false;
                 const orderDate = new Date(order.orderDate);
@@ -318,7 +318,7 @@ export default function AnalyticsPage() {
 
         // Calculate actual profit for the month
         let monthProfit = 0;
-        if (userRole !== "health-facilities") {
+        if (userRole !== "healthcare-facility") {
           monthOrders.forEach((order) => {
             if (order.items && Array.isArray(order.items)) {
               order.items.forEach((item) => {
@@ -353,7 +353,7 @@ export default function AnalyticsPage() {
     const getProductStats = () => {
       const productMap = new Map();
       const ordersToProcess =
-        userRole === "health-facilities" ? buyerOrders : sellerOrders;
+        userRole === "healthcare-facility" ? buyerOrders : sellerOrders;
 
       ordersToProcess.forEach((order) => {
         if (order.items && Array.isArray(order.items)) {
@@ -432,7 +432,7 @@ export default function AnalyticsPage() {
 
     return {
       totalRevenue:
-        userRole === "health-facilities" ? totalPurchases : totalRevenue,
+        userRole === "healthcare-facility" ? totalPurchases : totalRevenue,
       totalProfit,
       totalPurchases,
       totalProducts,
@@ -503,7 +503,7 @@ export default function AnalyticsPage() {
           { "Total Purchases": analyticsData.totalPurchases },
           { "Net Profit": analyticsData.totalProfit },
         ];
-      case "health-facilities":
+      case "healthcare-facility":
         return [
           { "Total Purchases": analyticsData.totalRevenue },
           { "Pending Orders": analyticsData.pendingOrders },
@@ -515,7 +515,7 @@ export default function AnalyticsPage() {
   };
 
   const getSecondaryStats = () => {
-    if (userRole === "health-facilities") {
+    if (userRole === "healthcare-facility") {
       const currentMonth =
         analyticsData.monthlyData[analyticsData.monthlyData.length - 1]
           ?.revenue || 0;
@@ -545,7 +545,7 @@ export default function AnalyticsPage() {
     {
       key: "name",
       label:
-        userRole === "health-facilities"
+        userRole === "healthcare-facility"
           ? "Most Purchased"
           : "Best Selling Products",
     },
@@ -554,12 +554,12 @@ export default function AnalyticsPage() {
     { key: "category", label: "Category" },
     {
       key: "stockLevel",
-      label: userRole === "health-facilities" ? "Last Order" : "Stock Level",
+      label: userRole === "healthcare-facility" ? "Last Order" : "Stock Level",
     },
     { key: "closestExpiry", label: "Closest Expiry" },
     {
       key: "increase",
-      label: userRole === "health-facilities" ? "Orders" : "Sales Count",
+      label: userRole === "healthcare-facility" ? "Orders" : "Sales Count",
     },
   ];
 
@@ -608,12 +608,12 @@ export default function AnalyticsPage() {
       <MinTableCard
         onSeeAll={() => {
           // Navigate to products page or show all products
-          if (userRole !== "health-facilities") {
+          if (userRole !== "healthcare-facility") {
             window.location.href = `/medical-supplies/${userRole}/inventory`;
           }
         }}
         title={
-          userRole === "health-facilities"
+          userRole === "healthcare-facility"
             ? "Most Purchased Products"
             : "Best Selling Products"
         }

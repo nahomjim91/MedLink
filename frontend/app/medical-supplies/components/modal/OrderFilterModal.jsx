@@ -160,7 +160,7 @@ export function OrderFilterModal({
           {/* Order By Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {userRole === "health_facility" ? "Supplier" : "Customer"}
+              {userRole === "healthcare-facility" ? "Supplier" : "Customer"}
             </label>
             <input
               type="text"
@@ -168,7 +168,7 @@ export function OrderFilterModal({
               onChange={(e) => handleInputChange("orderBy", e.target.value)}
               className="w-full p-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-xs md:text-sm appearance-none bg-white border-gray-200 focus:border-primary focus:ring-primary/20"
               placeholder={`Search by ${
-                userRole === "health_facility" ? "supplier" : "customer"
+                userRole === "healthcare-facility" ? "supplier" : "customer"
               } name...`}
             />
           </div>

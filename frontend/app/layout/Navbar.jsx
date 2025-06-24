@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import LanguageSelector from "../medical-supplies/components/ui/LanguageSelector";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMSAuth } from "../../hooks/useMSAuth";
+import { useMSAuth } from "../medical-supplies/hooks/useMSAuth";
 import { useAuth } from "../telehealth/hooks/useAuth";
 
 export default function Navbar({ service = "medical-supply" }) {

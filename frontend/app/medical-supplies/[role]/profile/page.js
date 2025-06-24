@@ -1,5 +1,5 @@
 "use client";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@apollo/client";
@@ -8,7 +8,11 @@ import ProfileImage from "../../components/ui/ProfileImage";
 import { Button } from "../../components/ui/Button";
 import { FileField, Rating, TextField } from "../../components/ui/FormField";
 import { FileText, MapPin, Save, X } from "lucide-react";
-import { AddressInput, EditableFileField, EditableTextField } from "../../components/ui/Input";
+import {
+  AddressInput,
+  EditableFileField,
+  EditableTextField,
+} from "../../components/ui/Input";
 
 // Create editable versions of our form fields
 
@@ -193,8 +197,11 @@ export default function ProfilePage() {
         }
       }
 
+      const [latitudeStr, longitudeStr] = userData.address.geoLocationText
+        ? userData.address.geoLocationText.split(",").map((s) => s.trim())
+        : [null, null];
+
       const input = {
-        userId: user.userId,
         role: userData.role,
         email: userData.email,
         companyName: userData.companyName,
@@ -206,10 +213,14 @@ export default function ProfilePage() {
           state: userData.address.state,
           country: userData.address.country,
           postalCode: userData.address.postalCode,
-          geoLocation: userData.address.geoLocation,
+          geoLocation: {
+            latitude: parseFloat(latitudeStr), // ✅ Required!
+            longitude: parseFloat(longitudeStr),
+          },
           geoLocationText: userData.address.geoLocationText,
         },
-        // Handle file uploads if present
+
+        // Optional files
         ...(userData.profileImage && { profileImage: userData.profileImage }),
         ...(userData.efdaLicenseUrl &&
           typeof userData.efdaLicenseUrl !== "string" && {
@@ -220,6 +231,8 @@ export default function ProfilePage() {
             businessLicense: userData.businessLicenseUrl,
           }),
       };
+
+      console.log(input);
 
       const { data } = await updateMSUserProfile({
         variables: { input },

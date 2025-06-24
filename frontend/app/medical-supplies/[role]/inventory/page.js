@@ -9,7 +9,7 @@ import { StatCard } from "../../components/ui/Cards";
 import { TableCard } from "../../components/ui/Cards";
 import AddProductMultiSteps from "../../components/ui/product/AddProductMultiSteps";
 import { useRouter } from "next/navigation";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 // import icons from '../lib/icons';
 
 const icons = {

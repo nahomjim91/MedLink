@@ -102,6 +102,41 @@ const MSUserModel = {
     }
   },
 
+  async getUserIdsByRoles(roles) {
+  try {
+    // Validate input
+    if (!Array.isArray(roles) || roles.length === 0) {
+      throw new Error("Roles must be a non-empty array");
+    }
+
+    const userIds = [];
+    const roleQueries = roles.map(role => 
+      msUsersRef
+        .where("role", "==", role)
+        .select("uid") // Only select the uid field for better performance
+        .get()
+    );
+
+    const snapshots = await Promise.all(roleQueries);
+    
+    // Extract user IDs from all snapshots
+    snapshots.forEach(snapshot => {
+      snapshot.docs.forEach(doc => {
+        const uid = doc.data().uid || doc.id;
+        if (uid && !userIds.includes(uid)) {
+          userIds.push(uid);
+        }
+      });
+    });
+
+    return userIds;
+
+  } catch (error) {
+    console.error("Error getting user IDs by roles:", error);
+    throw error;
+  }
+},
+
   /**
    * Get pending approval users
    * @param {Number} limit - Number of users to return

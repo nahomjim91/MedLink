@@ -8,6 +8,7 @@ const {
   paginationParams,
 } = require("../../utils/helpers");
 const { createNotificationService } = require("../service/notificationService");
+const MSUserModel = require("./msUser");
 
 const productsRef = db.collection("products");
 const batchesRef = db.collection("batches");
@@ -120,150 +121,256 @@ const ProductModel = {
     }
   },
 
-  async searchProducts(
-    {
-      searchTerm,
-      productType,
-      limit = 20,
-      offset = 0,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-      expiryDateStart,
-      expiryDateEnd,
-    },
-    currentUserId
-  ) {
-    try {
-      console.log("Starting product search with parameters:", {
-        searchTerm,
-        productType,
-        limit,
-        offset,
-        sortBy,
-        sortOrder,
-        expiryDateStart,
-        expiryDateEnd,
+async searchProducts(
+  {
+    searchTerm,
+    productType,
+    limit = 20,
+    offset = 0,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+    expiryDateStart,
+    expiryDateEnd,
+  },
+  currentUserId
+) {
+  try {
+    console.log("=== DEBUG: Starting product search ===");
+    console.log("Current user ID:", currentUserId);
+
+    // Get current user's role
+    const userDoc = await MSUserModel.getById(currentUserId);
+    const currentUserRole = userDoc?.role;
+    
+    console.log("Current user role:", currentUserRole);
+    console.log("User doc:", userDoc);
+
+    const { limit: limitVal, offset: offsetVal } = paginationParams(
+      limit,
+      offset
+    );
+
+    let query = productsRef;
+
+    if (productType && productType.trim() !== "") {
+      query = query.where("productType", "==", productType);
+    }
+
+    query = query.orderBy(sortBy, sortOrder);
+
+    let snapshot = await query.get();
+    let allProducts = formatDocs(snapshot.docs);
+    
+    console.log("=== DEBUG: Initial products count:", allProducts.length);
+
+    // Filter out current user's own products
+    if (currentUserId) {
+      const beforeFilter = allProducts.length;
+      allProducts = allProducts.filter(
+        (product) => product.ownerId !== currentUserId
+      );
+      console.log(`=== DEBUG: After filtering own products: ${allProducts.length} (removed ${beforeFilter - allProducts.length})`);
+    }
+
+    // Filter by active products
+    const beforeActiveFilter = allProducts.length;
+    allProducts = allProducts.filter((product) => product.isActive === true);
+    console.log(`=== DEBUG: After filtering active products: ${allProducts.length} (removed ${beforeActiveFilter - allProducts.length})`);
+
+    // Role-based filtering
+    if (currentUserRole) {
+      const allowedOwnerIds = await this.getAllowedOwnerIds(currentUserRole, currentUserId);
+      console.log("=== DEBUG: Allowed owner IDs:", allowedOwnerIds);
+      
+      if (allowedOwnerIds.length > 0) {
+        const beforeRoleFilter = allProducts.length;
+        
+        // Log some product owner IDs for debugging
+        console.log("=== DEBUG: Sample product owner IDs:", 
+          allProducts.slice(0, 5).map(p => ({ productId: p.productId, ownerId: p.ownerId, ownerName: p.ownerName }))
+        );
+        
+        allProducts = allProducts.filter((product) => {
+          const isAllowed = allowedOwnerIds.includes(product.ownerId);
+          if (!isAllowed) {
+            console.log(`=== DEBUG: Filtering out product ${product.productId} from owner ${product.ownerId} (${product.ownerName})`);
+          }
+          return isAllowed;
+        });
+        
+        console.log(`=== DEBUG: After role-based filtering: ${allProducts.length} (removed ${beforeRoleFilter - allProducts.length})`);
+      } else {
+        console.log("=== DEBUG: No allowed owners found, returning empty results");
+        return [];
+      }
+    }
+
+    // Check for valid batches
+    const hasValidBatches = async (product) => {
+      try {
+        const batchQuery = batchesRef.where(
+          "productId",
+          "==",
+          product.productId
+        );
+        const batchesSnapshot = await batchQuery.get();
+        const batches = formatDocs(batchesSnapshot.docs);
+
+        const hasValid = batches.some(
+          (batch) => batch.sellingPrice && batch.sellingPrice > 0
+        );
+        
+        if (!hasValid) {
+          console.log(`=== DEBUG: Product ${product.productId} has no valid batches`);
+        }
+        
+        return hasValid;
+      } catch (error) {
+        console.error(
+          `Error checking batches for product ${product.productId}:`,
+          error
+        );
+        return false;
+      }
+    };
+
+    const validProducts = [];
+    const batchSize = 10;
+    for (let i = 0; i < allProducts.length; i += batchSize) {
+      const batch = allProducts.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (product) => {
+        const isValid = await hasValidBatches(product);
+        return isValid ? product : null;
       });
 
-      const { limit: limitVal, offset: offsetVal } = paginationParams(
-        limit,
-        offset
+      const batchResults = await Promise.all(batchPromises);
+      validProducts.push(
+        ...batchResults.filter((product) => product !== null)
       );
+    }
 
-      let query = productsRef;
+    console.log(`=== DEBUG: After batch validation: ${validProducts.length} valid products`);
 
-      if (productType && productType.trim() !== "") {
-        query = query.where("productType", "==", productType);
-      }
-
-      query = query.orderBy(sortBy, sortOrder);
-
-      let snapshot = await query.get();
-      let allProducts = formatDocs(snapshot.docs);
-
-      if (currentUserId) {
-        allProducts = allProducts.filter(
-          (product) => product.ownerId !== currentUserId
-        );
-      }
-
-      allProducts = allProducts.filter((product) => product.isActive === true);
-
-      const hasValidBatches = async (product) => {
-        try {
-          const batchQuery = batchesRef.where(
-            "productId",
-            "==",
-            product.productId
-          );
-          const batchesSnapshot = await batchQuery.get();
-          const batches = formatDocs(batchesSnapshot.docs);
-
-          return batches.some(
-            (batch) => batch.sellingPrice && batch.sellingPrice > 0
-          );
-        } catch (error) {
-          console.error(
-            `Error checking batches for product ${product.productId}:`,
-            error
-          );
-          return false;
-        }
-      };
-
-      const validProducts = [];
-      const batchSize = 10;
-      for (let i = 0; i < allProducts.length; i += batchSize) {
-        const batch = allProducts.slice(i, i + batchSize);
-        const batchPromises = batch.map(async (product) => {
-          const isValid = await hasValidBatches(product);
-          return isValid ? product : null;
-        });
-
-        const batchResults = await Promise.all(batchPromises);
-        validProducts.push(
-          ...batchResults.filter((product) => product !== null)
-        );
-      }
-
-      if (!searchTerm || searchTerm.trim() === "") {
-        const paginatedResults = validProducts.slice(
-          offsetVal,
-          offsetVal + limitVal
-        );
-        return paginatedResults;
-      }
-
-      const lowerSearchTerm = searchTerm.toLowerCase().trim();
-      const matchingProducts = [];
-      const processedProductIds = new Set();
-
-      const productMatchesSearch = (product) => {
-        if (product.name?.toLowerCase().includes(lowerSearchTerm)) return true;
-        if (product.description?.toLowerCase().includes(lowerSearchTerm))
-          return true;
-        if (product.category?.toLowerCase().includes(lowerSearchTerm))
-          return true;
-
-        if (product.productType === "DRUG") {
-          if (product.concentration?.toLowerCase().includes(lowerSearchTerm))
-            return true;
-          if (product.packageType?.toLowerCase().includes(lowerSearchTerm))
-            return true;
-        }
-
-        if (product.productType === "EQUIPMENT") {
-          if (product.brandName?.toLowerCase().includes(lowerSearchTerm))
-            return true;
-          if (product.modelNumber?.toLowerCase().includes(lowerSearchTerm))
-            return true;
-        }
-
-        return false;
-      };
-
-      for (const product of validProducts) {
-        if (productMatchesSearch(product)) {
-          if (!processedProductIds.has(product.productId)) {
-            matchingProducts.push(product);
-            processedProductIds.add(product.productId);
-          }
-        }
-      }
-
-      // Additional batch field matching logic would continue here...
-      // (keeping the rest of your existing search logic for brevity)
-
-      const paginatedResults = matchingProducts.slice(
+    if (!searchTerm || searchTerm.trim() === "") {
+      const paginatedResults = validProducts.slice(
         offsetVal,
         offsetVal + limitVal
       );
+      console.log(`=== DEBUG: Final results count: ${paginatedResults.length}`);
       return paginatedResults;
-    } catch (error) {
-      console.error("Error searching products:", error);
-      throw error;
     }
-  },
+
+    // Continue with search logic...
+    const lowerSearchTerm = searchTerm.toLowerCase().trim();
+    const matchingProducts = [];
+    const processedProductIds = new Set();
+
+    const productMatchesSearch = (product) => {
+      if (product.name?.toLowerCase().includes(lowerSearchTerm)) return true;
+      if (product.description?.toLowerCase().includes(lowerSearchTerm))
+        return true;
+      if (product.category?.toLowerCase().includes(lowerSearchTerm))
+        return true;
+
+      if (product.productType === "DRUG") {
+        if (product.concentration?.toLowerCase().includes(lowerSearchTerm))
+          return true;
+        if (product.packageType?.toLowerCase().includes(lowerSearchTerm))
+          return true;
+      }
+
+      if (product.productType === "EQUIPMENT") {
+        if (product.brandName?.toLowerCase().includes(lowerSearchTerm))
+          return true;
+        if (product.modelNumber?.toLowerCase().includes(lowerSearchTerm))
+          return true;
+      }
+
+      return false;
+    };
+
+    for (const product of validProducts) {
+      if (productMatchesSearch(product)) {
+        if (!processedProductIds.has(product.productId)) {
+          matchingProducts.push(product);
+          processedProductIds.add(product.productId);
+        }
+      }
+    }
+
+    const paginatedResults = matchingProducts.slice(
+      offsetVal,
+      offsetVal + limitVal
+    );
+    
+    console.log(`=== DEBUG: Final search results count: ${paginatedResults.length}`);
+    return paginatedResults;
+    
+  } catch (error) {
+    console.error("Error searching products:", error);
+    throw error;
+  }
+},
+
+// Debug version of getAllowedOwnerIds with detailed logging
+async getAllowedOwnerIds(currentUserRole, currentUserId) {
+  try {
+    console.log(`=== DEBUG: Getting allowed owners for role: ${currentUserRole}`);
+    
+    let allowedOwnerIds = [];
+    
+    switch (currentUserRole) {
+      case 'supplier':
+        console.log("=== DEBUG: Fetching importers and suppliers");
+        allowedOwnerIds = await MSUserModel.getUserIdsByRoles(['importer', 'supplier']);
+        break;
+        
+      case 'healthcare-facility':
+        console.log("=== DEBUG: Fetching suppliers only");
+        allowedOwnerIds = await MSUserModel.getUserIdsByRoles(['supplier']);
+        break;
+        
+      case 'importer':
+        console.log("=== DEBUG: Fetching importers and suppliers");
+        allowedOwnerIds = await MSUserModel.getUserIdsByRoles(['importer', 'supplier']);
+        break;
+        
+      default:
+        console.warn(`Unknown user role: ${currentUserRole}`);
+        return [];
+    }
+    
+    console.log(`=== DEBUG: Found ${allowedOwnerIds.length} users with allowed roles:`, allowedOwnerIds);
+    
+    // Remove current user from allowed owners
+    const filteredIds = allowedOwnerIds.filter(id => id !== currentUserId);
+    console.log(`=== DEBUG: After removing current user, ${filteredIds.length} allowed owners remain`);
+    
+    return filteredIds;
+    
+  } catch (error) {
+    console.error("Error getting allowed owner IDs:", error);
+    return [];
+  }
+},
+
+// Additional debug function to check a specific product owner
+async debugProductOwner(productOwnerId) {
+  try {
+    console.log(`=== DEBUG: Checking owner ${productOwnerId}`);
+    const ownerDoc = await MSUserModel.getById(productOwnerId);
+    console.log("Owner details:", {
+      uid: ownerDoc?.uid,
+      role: ownerDoc?.role,
+      name: ownerDoc?.name,
+      // Add other relevant fields
+    });
+    return ownerDoc;
+  } catch (error) {
+    console.error(`Error fetching owner ${productOwnerId}:`, error);
+    return null;
+  }
+},
 
   async create(productData) {
     try {

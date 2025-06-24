@@ -251,8 +251,8 @@ const resolvers = {
     // Add to cart
     addToCart: async (_, { input }, context) => {
       try {
-        // Only facility and supplier roles can add to cart
-        const user = await hasRole(context, ["facility", "supplier"]);
+        // Only healthcare-facility and supplier roles can add to cart
+        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
         return await CartModel.addToCart(user.uid, input);
       } catch (error) {
         console.error("Error in addToCart resolver:", error);
@@ -262,7 +262,7 @@ const resolvers = {
 
     addSpecificBatchToCart: async (_, { input }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
         return await CartModel.addSpecificBatchToCart(user.uid, input);
       } catch (error) {
         console.error("Error in addSpecificBatchToCart resolver:", error);
@@ -272,7 +272,7 @@ const resolvers = {
 
     updateCartBatchItem: async (_, { input }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
         return await CartModel.updateCartBatchItem(user.uid, input);
       } catch (error) {
         console.error("Error in updateCartBatchItem resolver:", error);
@@ -282,7 +282,7 @@ const resolvers = {
 
     removeProductFromCart: async (_, { productId }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
         return await CartModel.removeProductFromCart(user.uid, productId);
       } catch (error) {
         console.error("Error in removeProductFromCart resolver:", error);
@@ -292,7 +292,7 @@ const resolvers = {
 
     removeBatchFromCart: async (_, { productId, batchId }, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
         return await CartModel.removeBatchFromCart(
           user.uid,
           productId,
@@ -306,7 +306,7 @@ const resolvers = {
 
     clearCart: async (_, __, context) => {
       try {
-        const user = await hasRole(context, ["facility", "supplier"]);
+        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
         return await CartModel.clearCart(user.uid);
       } catch (error) {
         console.error("Error in clearCart resolver:", error);

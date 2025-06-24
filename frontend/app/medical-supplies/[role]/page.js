@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client";
-import { useMSAuth } from "../../../hooks/useMSAuth";
+import { useMSAuth } from "../hooks/useMSAuth";
 import {
   GET_MY_ORDERS,
   GET_ORDERS_TO_FULFILL,
@@ -104,7 +104,7 @@ const WeeklySalesChart = ({ weeklyData, userRole }) => {
       case "importer":
       case "supplier":
         return "Weekly Sales";
-      case "health-facilities":
+      case "healthcare-facility":
         return "Weekly Purchases";
       default:
         return "Weekly Activity";
@@ -239,7 +239,7 @@ export default function DynamicDashboard() {
   const userRole = userData?.role;
 
   // Determine which queries to run based on user role
-  const shouldFetchBuyerData = ["supplier", "health-facilities"].includes(
+  const shouldFetchBuyerData = ["supplier", "healthcare-facility"].includes(
     userRole
   );
   const shouldFetchSellerData = ["importer", "supplier"].includes(userRole);
@@ -388,7 +388,7 @@ export default function DynamicDashboard() {
 
       return last7Days.map((dayInfo) => {
         const ordersToCheck =
-          userRole === "health-facilities" ? buyerOrders : sellerOrders;
+          userRole === "healthcare-facility" ? buyerOrders : sellerOrders;
 
         const dayOrders = ordersToCheck.filter((order) => {
           if (!order.orderDate) return false;
@@ -414,7 +414,7 @@ export default function DynamicDashboard() {
       let equipmentCost = 0;
 
       const ordersToAnalyze =
-        userRole === "health-facilities" ? buyerOrders : sellerOrders;
+        userRole === "healthcare-facility" ? buyerOrders : sellerOrders;
 
       ordersToAnalyze.forEach((order) => {
         if (order.items && Array.isArray(order.items)) {
@@ -454,7 +454,7 @@ export default function DynamicDashboard() {
 
     return {
       // Current metrics
-      totalRevenue: userRole === "health-facilities" ? currentPurchases : currentRevenue,
+      totalRevenue: userRole === "healthcare-facility" ? currentPurchases : currentRevenue,
       totalSales: currentSales,
       totalPurchases: currentPurchases,
       totalProducts: products.length,
@@ -462,7 +462,7 @@ export default function DynamicDashboard() {
       completedOrders: currentCompletedOrders,
       
       // Previous metrics for comparison
-      previousRevenue: userRole === "health-facilities" ? previousPurchases : previousRevenue,
+      previousRevenue: userRole === "healthcare-facility" ? previousPurchases : previousRevenue,
       previousSales,
       previousPurchases,
       previousProducts: previousProductsCount,
@@ -589,7 +589,7 @@ export default function DynamicDashboard() {
             icon: "sales",
           },
         ];
-      case "health-facilities":
+      case "healthcare-facility":
         return [
           {
             title: "Total Purchases",

@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "../../components/ui/Button";
 import { EmailInput } from "../../components/ui/Input";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 
 export default function MSForgotPassword() {
   const { sendPasswordReset } = useMSAuth();

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useMSAuth } from "../../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 import { useMutation } from "@apollo/client";
 import { COMPLETE_MS_REGISTRATION } from "../../../api/graphql/mutations";
 import RoleSelection from "./RoleSelection";
@@ -22,7 +22,7 @@ export default function MultiStepSignup({ email }) {
 
   // Initialize userData with values from auth context if available
   const [userData, setUserData] = useState({
-    role: user?.role || "", // facility, supplier, or admin
+    role: user?.role || "", // healthcare-facility, supplier, or admin
     email: email || user?.email || "",
     companyName: user?.companyName || "",
     contactName: user?.contactName || "",
@@ -80,7 +80,7 @@ export default function MultiStepSignup({ email }) {
   // Total number of steps depends on the selected role
   const getTotalSteps = () => {
     switch (userData.role) {
-      case "health Facility":
+      case "healthcare-facility":
       case "supplier":
       case "importer":
       case "admin":
@@ -335,7 +335,7 @@ export default function MultiStepSignup({ email }) {
   }, [userData]);
 
   return (
-    <div className="w-full max-w-md md:max-w-3xl mx-auto bg-white rounded-2xl shadow-md p-6 md:py-6 md:px-12">
+    <div className="w-full max-w-md md:max-w-3xl h-[85vh] overflow-y-auto scrollbar-hide mx-auto bg-white rounded-2xl shadow-md p-6 md:py-6 md:px-12">
       <h1 className="text-2xl font-bold text-center mb-6">
         Complete Your Registration
       </h1>

@@ -8,7 +8,7 @@ import {
   getRoleBasedTabs,
   canUpdateStatus,
 } from "../../utils/orderUtils";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { OrderFilterModal } from "../../components/modal/OrderFilterModal";
@@ -26,7 +26,7 @@ const ordersColumns = [
 const getUserPerspective = (order, user) => {
   console.log("getUserPerspective called with order:", order);
   // Determine if current user is buyer or seller for this order
-  if (user?.role?.toLowerCase() === "health_facility") {
+  if (user?.role?.toLowerCase() === "healthcare-facility") {
     return "buyer"; // Health facilities are always buyers
   } else if (user?.role?.toLowerCase() === "importer") {
     return "seller"; // Importers are always sellers
@@ -134,7 +134,7 @@ export default function OrdersPage() {
           (order) => order.status === "Delivered"
         ),
       };
-    } else if (userRole === "health_facility") {
+    } else if (userRole === "healthcare-facility") {
       // Health facilities only make orders (buy)
       const myOrders = orders.map((order) => ({
         ...transformOrder(order, "buyer"),
@@ -411,7 +411,7 @@ export default function OrdersPage() {
           isLoading={loading}
           isClickable={true}
           onClickRow={handleRowClick}
-          isAddButton={user?.role?.toLowerCase() === "health_facility"}
+          isAddButton={user?.role?.toLowerCase() === "healthcare-facility"}
           isOrderButton={true}
           // Order functionality props
           user={user}

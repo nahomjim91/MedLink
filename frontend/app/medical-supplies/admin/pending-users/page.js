@@ -8,7 +8,7 @@ import PendingUserCard from "../../components/ui/admin/PendingUserCard";
 import RejectionModal from "../../components/ui/admin/RejectionModal";
 import LoadingSpinner from "../../components/ui/LoadingSpinner";
 import ErrorMessage from "../../components/ui/ErrorMessage";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion"; // Import motion and AnimatePresence

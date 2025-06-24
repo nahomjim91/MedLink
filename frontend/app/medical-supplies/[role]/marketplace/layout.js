@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useMSAuth } from "../../../../hooks/useMSAuth"; // Adjust path as needed
+import { useMSAuth } from "../../hooks/useMSAuth"; // Adjust path as needed
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 

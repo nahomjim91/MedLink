@@ -36,7 +36,7 @@ export const useOrders = (userRole, limit = 20, offset = 0, status = null) => {
     variables: { limit, offset, status },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    skip: role === 'health_facility', // Health facilities don't sell, only buy
+    skip: role === 'healthcare-facility', // Health facilities don't sell, only buy
   });
 
   // Mutations
@@ -44,7 +44,7 @@ export const useOrders = (userRole, limit = 20, offset = 0, status = null) => {
     onCompleted: () => {
       // Refetch relevant queries after status update
       if (role !== 'importer') refetchMyOrders();
-      if (role !== 'health_facility') refetchOrdersToFulfill();
+      if (role !== 'healthcare-facility') refetchOrdersToFulfill();
     },
     onError: (error) => {
       console.error('Error updating order status:', error);
@@ -54,7 +54,7 @@ export const useOrders = (userRole, limit = 20, offset = 0, status = null) => {
   const [schedulePickupMutation] = useMutation(SCHEDULE_PICKUP, {
     onCompleted: () => {
       if (role !== 'importer') refetchMyOrders();
-      if (role !== 'health_facility') refetchOrdersToFulfill();
+      if (role !== 'healthcare-facility') refetchOrdersToFulfill();
     },
     onError: (error) => {
       console.error('Error scheduling pickup:', error);
@@ -64,7 +64,7 @@ export const useOrders = (userRole, limit = 20, offset = 0, status = null) => {
   const [cancelOrderMutation] = useMutation(CANCEL_ORDER, {
     onCompleted: () => {
       if (role !== 'importer') refetchMyOrders();
-      if (role !== 'health_facility') refetchOrdersToFulfill();
+      if (role !== 'healthcare-facility') refetchOrdersToFulfill();
     },
     onError: (error) => {
       console.error('Error cancelling order:', error);
@@ -81,7 +81,7 @@ export const useOrders = (userRole, limit = 20, offset = 0, status = null) => {
   const refetch = async () => {
     const promises = [];
     if (role !== 'importer') promises.push(refetchMyOrders());
-    if (role !== 'health_facility') promises.push(refetchOrdersToFulfill());
+    if (role !== 'healthcare-facility') promises.push(refetchOrdersToFulfill());
     
     try {
       await Promise.all(promises);

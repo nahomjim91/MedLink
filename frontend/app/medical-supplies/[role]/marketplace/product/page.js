@@ -6,7 +6,7 @@ import {
   GET_PRODUCT_BY_ID,
   SEARCH_PRODUCTS,
 } from "../../../api/graphql/product/productQueries";
-import { useMSAuth } from "../../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../hooks/useMSAuth";
 import { ProductImageGallery } from "../../../components/ui/ProductImageGallery";
 import { Rating } from "../../../components/ui/FormField";
 import { NumberInput } from "../../../components/ui/Input";

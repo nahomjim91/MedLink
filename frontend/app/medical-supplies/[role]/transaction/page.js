@@ -8,7 +8,7 @@ import {
 import { StatCard } from "../../components/ui/Cards";
 import { TableCard } from "../../components/ui/Cards";
 import { useRouter } from "next/navigation";
-import { useMSAuth } from "../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../hooks/useMSAuth";
 import { TransactionFilterModal } from "../../components/modal/TransactionFilterModal";
 
 const icons = {

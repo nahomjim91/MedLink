@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useMutation } from "@apollo/client";
 import { StepProgressIndicator } from "../../StepProgressIndicator";
-import { useMSAuth } from "../../../../../../hooks/useMSAuth";
+import { useMSAuth } from "../../../../hooks/useMSAuth";
 
 // GraphQL Mutations
 import { 
