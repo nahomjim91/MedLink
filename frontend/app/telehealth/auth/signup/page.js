@@ -31,11 +31,11 @@ export default function SignupPage() {
            <div className="hidden md:flex md:w-1/2 relative items-center justify-center py-8 pr-8 ">
              <div className="relative w-full h-full">
                <Image
-                 src="/image/trees.jpg"
+                 src="/image/Online Doctor-rafiki.svg" 
                  alt="Healthcare professional using MedLink platform"
                   fill
                  style={{ objectFit: "cover" }}
-                 className="rounded-3xl shadow-lg"
+                 className="rounded-3xl "
                  priority
                />
              </div>

@@ -9,9 +9,7 @@ const {
 // Collection reference
 const slotsRef = db.collection("doctorAvailabilitySlots");
 
-/**
- * Doctor Availability Slot model
- */
+
 const DoctorAvailabilitySlotModel = {
   /**
    * Create availability slots (automatically splits into 30-min slots)

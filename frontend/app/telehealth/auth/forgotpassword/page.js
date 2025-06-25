@@ -1,8 +1,8 @@
 "use client";
 import Image from "next/image";
-import ForgotPassword from "@/app/telehealth/components/auth/ForgotPassword";
+import ForgotPassword from "../../components/auth/ForgotPassword";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   return (
     <div className="flex flex-col md:flex-row ">
       {/* Left side - Sign-up form */}
@@ -14,11 +14,11 @@ export default function LoginPage() {
       <div className="hidden md:flex md:w-1/2 relative items-center justify-center py-8 pr-8 ">
         <div className="relative w-full h-full">
           <Image
-            src="/image/trees.jpg"
+            src="/image/Forgot password-cuate.svg"
             alt="Healthcare professional using MedLink platform"
             fill
             style={{ objectFit: "cover" }}
-            className="rounded-3xl shadow-lg"
+            className="Forgot password-cuate.svg"
             priority
           />
         </div>

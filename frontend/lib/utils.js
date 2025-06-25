@@ -1,624 +1,543 @@
-"use client";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Star } from "lucide-react";
-import { Button } from "../components/ui/Button";
-import { UpcomingAppointmentCard } from "../components/ui/Card";
-import CalendarAppointments from "../components/ui/CalendarAppointments";
-import TelehealthAddFunds from "../components/ui/AddFound";
-import { useAuth } from "../hooks/useAuth";
-import {
-  GET_DOCTOR_SPECIALIZATIONS,
-  GET_DOCTORS_BY_SPECIALIZATION,
-} from "../api/graphql/queries";
-import { useQuery } from "@apollo/client";
-import { useAppointment } from "../hooks/useAppointment ";
-import Link from "next/link";
+// models/BatchModel.js
+const { db, admin } = require("../config/firebase");
+const {
+  formatDoc,
+  formatDocs,
+  sanitizeInput,
+  timestamp,
+  paginationParams,
+} = require("../../utils/helpers");
+const { createNotificationService } = require("../service/notificationService");
+const batchesRef = db.collection("batches");
+const productsRef = db.collection("products");
+const usersRef = db.collection("msUsers");
+const BatchModel = {
+  notificationService: null,
 
-export default function TelehealthPatientPage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [showAddFunds, setShowAddFunds] = useState(false);
-  const [appointments, setAppointments] = useState([]);
-  const [historyAppointments, setHistoryAppointments] = useState([]);
-  const [selectedSpecialty, setSelectedSpecialty] = useState("");
-
-  const { user } = useAuth();
-  const {
-    fetchMyAppointments,
-    cancelAppointment,
-    loading: appointmentsLoading,
-  } = useAppointment();
-
-  // Fetch specializations
-  const { data: specializationsData, loading: specializationsLoading } =
-    useQuery(GET_DOCTOR_SPECIALIZATIONS, {
-      onCompleted: (data) => {
-        // This code runs only ONCE when the query successfully finishes
-        const fetchedSpecialties =
-          data?.getDoctorSpecializations || data?.doctorSpecializations || [];
-        // If we have specialties and none is selected yet, set the first one as default
-        if (fetchedSpecialties.length > 0 && !selectedSpecialty) {
-          console.log(
-            "Setting default specialty from onCompleted:",
-            fetchedSpecialties[0]
-          );
-          setSelectedSpecialty(fetchedSpecialties[0]);
-        }
-      },
-      errorPolicy: "all",
-      notifyOnNetworkStatusChange: true,
-    });
-
-  // Memoize specialties as before
-  const specialties = useMemo(() => {
-    return (
-      specializationsData?.getDoctorSpecializations ||
-      specializationsData?.doctorSpecializations ||
-      []
-    );
-  }, [specializationsData]);
-
-  // Fetch doctors by specialization
-  const {
-    data: doctorsData,
-    loading: doctorsLoading,
-    error: doctorsError,
-  } = useQuery(GET_DOCTORS_BY_SPECIALIZATION, {
-    variables: { specialization: selectedSpecialty },
-    skip: !selectedSpecialty, // This is the key part
-    fetchPolicy: "cache-and-network",
-  });
-
-  // Memoize doctors to handle different response structures
-  const doctors = useMemo(() => {
-    if (!doctorsData) return [];
-
-    // Handle different possible response structures
-    return (
-      doctorsData.getDoctorsBySpecialization ||
-      doctorsData.doctorsBySpecialization ||
-      []
-    );
-  }, [doctorsData]);
-
-  // Set default specialty when specialties are loaded
-
-  // Memoized function to load appointments
-  const loadAppointments = useCallback(async () => {
+  setNotificationService(io) {
+    this.notificationService = createNotificationService(io);
+  },
+  async create(batchData, productType) {
     try {
-      console.log("Loading appointments...");
-      const appointmentsData = await fetchMyAppointments();
-
-      if (!appointmentsData) {
-        console.log("No appointments data received");
-        setAppointments([]);
-        setHistoryAppointments([]);
-        return;
+      // Verify product exists
+      const productDoc = await productsRef.doc(batchData.productId).get();
+      if (!productDoc.exists) {
+        throw new Error(`Product with ID ${batchData.productId} not found.`);
       }
 
-      console.log("Loaded appointments:", appointmentsData);
-      setAppointments(appointmentsData);
+      if (productDoc.data().productType !== productType) {
+        throw new Error(
+          `Product type mismatch (expected ${productType}, got ${
+            productDoc.data().productType
+          }).`
+        );
+      }
+      const sanitizedData = sanitizeInput(batchData);
+      const now = timestamp();
 
-      // Filter appointments for history (cancelled and finished)
-      const historyData = appointmentsData.filter(
-        (appointment) =>
-          appointment.status === "CANCELLED_DOCTOR" ||
-          appointment.status === "CANCELLED_PATIENT" ||
-          appointment.status === "COMPLETED"
+      const newBatchRef = batchesRef.doc();
+      const newBatch = {
+        batchId: newBatchRef.id,
+        ...sanitizedData,
+        productType: productType,
+        addedAt: now,
+        lastUpdatedAt: now,
+      };
+
+      // Handle expiryDate conversion
+      if (
+        newBatch.expiryDate &&
+        !(newBatch.expiryDate instanceof admin.firestore.Timestamp) &&
+        !newBatch.expiryDate.toDate
+      ) {
+        try {
+          newBatch.expiryDate = admin.firestore.Timestamp.fromDate(
+            new Date(newBatch.expiryDate)
+          );
+        } catch (dateError) {
+          throw new Error(
+            "Invalid expiryDate format. Please use a valid date string or timestamp."
+          );
+        }
+      }
+
+      await newBatchRef.set(newBatch);
+      const doc = await newBatchRef.get();
+      const formattedDoc = formatDoc(doc);
+
+      if (formattedDoc) {
+        formattedDoc.productType = productType;
+
+        const productData = productDoc.data();
+        formattedDoc.product = {
+          productId: batchData.productId,
+          productType: productType,
+          name: productData.name,
+          originalListerId: productData.originalListerId,
+          originalListerName: productData.originalListerName,
+          isActive: productData.isActive,
+          createdAt: productData.createdAt,
+          lastUpdatedAt: productData.lastUpdatedAt,
+          ownerId: productData.ownerId || productData.originalListerId,
+          ownerName: productData.ownerName || productData.originalListerName,
+        };
+
+        // Send notification to product owner about new batch
+        await this.notifyBatchCreated(
+          productData.ownerId || productData.originalListerId,
+          formattedDoc,
+          productData
+        );
+
+        // Check if batch is expiring soon and notify
+        await this.checkAndNotifyExpiringBatch(formattedDoc, productData);
+      }
+
+      return formattedDoc;
+    } catch (error) {
+      console.error("Error creating batch:", error);
+      throw error;
+    }
+  },
+
+  async getById(batchId) {
+    try {
+      const doc = await batchesRef.doc(batchId).get();
+      const batch = formatDoc(doc);
+      if (batch) {
+        // Optionally enrich with productType if needed by resolver/client directly
+        const productDoc = await productsRef.doc(batch.productId).get();
+        if (productDoc.exists) {
+          batch.productType = productDoc.data().productType;
+        }
+      }
+      return batch;
+    } catch (error) {
+      console.error("Error getting batch by ID:", error);
+      throw error;
+    }
+  },
+
+  async getByProductId(
+    productId,
+    { limit, offset, sortBy = "addedAt", sortOrder = "desc" }
+  ) {
+    try {
+      // Guard against invalid productId
+      if (!productId) {
+        console.warn("getByProductId called with invalid productId");
+        return [];
+      }
+
+      const { limit: limitVal, offset: offsetVal } = paginationParams(
+        limit,
+        offset
       );
 
-      console.log("History appointments:", historyData);
-      setHistoryAppointments(historyData);
-    } catch (error) {
-      console.error("Error fetching appointments:", error);
-      // Set empty arrays on error to prevent UI issues
-      setAppointments([]);
-      setHistoryAppointments([]);
-    }
-  }, [fetchMyAppointments]);
+      let query = batchesRef
+        .where("productId", "==", productId)
+        .orderBy(sortBy, sortOrder);
 
-  // Fetch appointments on component mount
-  useEffect(() => {
-    loadAppointments();
-  }, [loadAppointments]);
-
-  // Enhanced appointment cancellation handler
-  const handleCancelAppointment = useCallback(
-    async (appointmentId, reason) => {
-      if (!appointmentId) {
-        console.error("No appointment ID provided for cancellation");
-        throw new Error("Invalid appointment ID");
+      if (offsetVal > 0) {
+        const offsetSnapshot = await query.limit(offsetVal).get();
+        
+        if (!offsetSnapshot.empty) {
+          const lastVisible =
+            offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
+          query = query.startAfter(lastVisible);
+        }
       }
 
+      const snapshot = await query.limit(limitVal).get();
+      const results = snapshot.empty ? [] : formatDocs(snapshot.docs);
+
+      // Get product type to add to each batch
+      let productType = null;
       try {
-        console.log(
-          "Canceling appointment with ID:",
-          appointmentId,
-          "Reason:",
-          reason
-        );
-        await cancelAppointment(appointmentId, reason);
-
-        // Refresh appointments after cancellation
-        await loadAppointments();
-
-        console.log("Appointment cancelled successfully");
-      } catch (error) {
-        console.error("Failed to cancel appointment:", error);
-        throw error; // Re-throw to let the component handle the error display
+        const productDoc = await productsRef.doc(productId).get();
+        
+        if (productDoc.exists) {
+          productType = productDoc.data().productType;
+        }
+      } catch (err) {
+        console.error("Error fetching product type:", err);
       }
-    },
-    [cancelAppointment, loadAppointments]
-  );
 
-  // Enhanced specialty selection handler
-  const handleSpecialtySelect = useCallback((specialty) => {
-    if (!specialty) {
-      console.warn("No specialty provided");
-      return;
-    }
-
-    console.log("Selecting specialty:", specialty);
-    setSelectedSpecialty(specialty);
-  }, []);
-
-  // Enhanced doctor data transformation with better error handling
-  const getDisplayDoctors = useMemo(() => {
-    console.log("Processing doctors - Selected specialty:", selectedSpecialty);
-    console.log("Raw doctors data:", doctors);
-
-    if (!doctors || !Array.isArray(doctors) || doctors.length === 0) {
-      console.log("No valid doctors data available");
+      // Add productType to each batch if available
+      const enrichedResults = results.map((batch) => ({
+        ...batch,
+        productType: productType || batch.productType,
+      }));
+      
+      return enrichedResults;
+    } catch (error) {
+      console.error("Error getting batches by product ID:", error);
       return [];
     }
+  },
 
-    console.log("Processing doctors data:", doctors);
+  async getAll({ limit, offset, sortBy = "addedAt", sortOrder = "desc" }) {
+    try {
+      const { limit: limitVal, offset: offsetVal } = paginationParams(
+        limit,
+        offset
+      );
+      let query = batchesRef.orderBy(sortBy, sortOrder);
 
-    return doctors.map((doctor, index) => {
-      try {
-        // Enhanced null checks for nested properties
-        const firstName = doctor?.user?.firstName || doctor?.firstName || "";
-        const lastName = doctor?.user?.lastName || doctor?.lastName || "";
-        const fullName = `Dr. ${firstName} ${lastName}`.trim();
-
-        // Handle specialization - it might be an array or string
-        let doctorSpecialty = selectedSpecialty;
-        if (doctor.specialization) {
-          doctorSpecialty = Array.isArray(doctor.specialization)
-            ? doctor.specialization[0]
-            : doctor.specialization;
+      if (offsetVal > 0) {
+        const offsetSnapshot = await query.limit(offsetVal).get();
+        if (!offsetSnapshot.empty) {
+          const lastVisible =
+            offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
+          query = query.startAfter(lastVisible);
         }
-
-        const processedDoctor = {
-          id: doctor.doctorId || doctor.id || `doctor-${index}`,
-          name: fullName === "Dr." ? "Dr. Unknown" : fullName,
-          specialty: doctorSpecialty || "General",
-          rating: Math.max(0, parseFloat(doctor.averageRating || 0)),
-          ratingCount: Math.max(0, parseInt(doctor.ratingCount || 0)),
-          price: Math.max(0, parseFloat(doctor.pricePerSession || 0)),
-          avatar:
-            doctor?.user?.profileImageUrl ||
-            doctor?.profileImageUrl ||
-            "/api/placeholder/60/60",
-          experience: Math.max(0, parseInt(doctor.experienceYears || 0)),
-          isApproved: Boolean(doctor.isApproved),
-          gender: doctor?.user?.gender || doctor?.gender || "Not specified",
-        };
-
-        console.log(`Processed doctor ${index + 1}:`, processedDoctor);
-        return processedDoctor;
-      } catch (error) {
-        console.error(
-          `Error processing doctor at index ${index}:`,
-          error,
-          doctor
-        );
-        // Return a fallback doctor object
-        return {
-          id: `doctor-error-${index}`,
-          name: "Dr. Unknown",
-          specialty: selectedSpecialty || "General",
-          rating: 0,
-          ratingCount: 0,
-          price: 0,
-          avatar: "/api/placeholder/60/60",
-          experience: 0,
-          isApproved: false,
-          gender: "Not specified",
-        };
       }
-    });
-  }, [doctors, selectedSpecialty]);
 
-  // Enhanced upcoming appointment getter with better error handling
-  const getUpcomingAppointment = useMemo(() => {
-    if (!appointments || appointments.length === 0) return null;
+      const snapshot = await query.limit(limitVal).get();
+      return snapshot.empty ? [] : formatDocs(snapshot.docs);
+    } catch (error) {
+      console.error("Error getting all batches:", error);
+      return [];
+    }
+  },
+
+
+  async update(batchId, updateData) {
+    try {
+      const batchRef = batchesRef.doc(batchId);
+      const doc = await batchRef.get();
+      if (!doc.exists) {
+        throw new Error("Batch not found");
+      }
+
+      const oldBatchData = doc.data();
+      const sanitizedData = sanitizeInput(updateData);
+      const updatedBatch = {
+        ...sanitizedData,
+        lastUpdatedAt: timestamp(),
+      };
+
+      // Handle expiryDate conversion for updates
+      if (
+        updatedBatch.expiryDate &&
+        !(updatedBatch.expiryDate instanceof admin.firestore.Timestamp) &&
+        !updatedBatch.expiryDate.toDate
+      ) {
+        try {
+          updatedBatch.expiryDate = admin.firestore.Timestamp.fromDate(
+            new Date(updatedBatch.expiryDate)
+          );
+        } catch (dateError) {
+          throw new Error(
+            "Invalid expiryDate format for update. Please use a valid date string or timestamp."
+          );
+        }
+      }
+
+      await batchRef.update(updatedBatch);
+      const updatedDoc = await batchRef.get();
+      const formattedDoc = formatDoc(updatedDoc);
+      
+      if (formattedDoc) {
+        // Add productType hint
+        const productDoc = await productsRef.doc(formattedDoc.productId).get();
+        if (productDoc.exists) {
+          formattedDoc.productType = productDoc.data().productType;
+          const productData = productDoc.data();
+
+          // Send notification about batch update
+          await this.notifyBatchUpdated(
+            productData.ownerId || productData.originalListerId,
+            formattedDoc,
+            oldBatchData,
+            updateData,
+            productData
+          );
+
+          // Check if updated batch is now expiring soon
+          await this.checkAndNotifyExpiringBatch(formattedDoc, productData);
+        }
+      }
+      
+      return formattedDoc;
+    } catch (error) {
+      console.error("Error updating batch:", error);
+      throw error;
+    }
+  },
+
+  async delete(batchId) {
+    try {
+      const batchRef = batchesRef.doc(batchId);
+      const doc = await batchRef.get();
+      if (!doc.exists) {
+        throw new Error("Batch not found for deletion");
+      }
+
+      const batchData = doc.data();
+      
+      // Get product info for notification
+      const productDoc = await productsRef.doc(batchData.productId).get();
+      let productData = null;
+      if (productDoc.exists) {
+        productData = productDoc.data();
+      }
+
+      await batchRef.delete();
+
+      // Send notification about batch deletion
+      if (productData) {
+        await this.notifyBatchDeleted(
+          productData.ownerId || productData.originalListerId,
+          batchData,
+          productData
+        );
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting batch:", error);
+      throw error;
+    }
+  },
+
+  // Notification methods
+  async notifyBatchCreated(userId, batchData, productData) {
+    if (!this.notificationService || !userId) return;
 
     try {
-      const upcomingAppointments = appointments.filter(
-        (appointment) =>
-          appointment?.status === "CONFIRMED" ||
-          appointment?.status === "PENDING" ||
-          appointment?.status === "REQUESTED" ||
-          appointment?.status === "SCHEDULED"
+      const message = `New batch added for ${productData.name}`;
+      const metadata = {
+        batchId: batchData.batchId,
+        productId: batchData.productId,
+        productName: productData.name,
+        quantity: batchData.quantity,
+        actionUrl: `/products/${batchData.productId}/batches`,
+        batchNumber: batchData.batchNumber || batchData.batchId,
+      };
+
+      await this.notificationService.createNotification(
+        userId,
+        "batch_created",
+        message,
+        metadata,
+        "normal"
       );
+    } catch (error) {
+      console.error("Error sending batch created notification:", error);
+    }
+  },
 
-      if (upcomingAppointments.length === 0) return null;
+  async notifyBatchUpdated(userId, newBatchData, oldBatchData, updateData, productData) {
+    if (!this.notificationService || !userId) return;
 
-      // Sort by scheduled start time and get the closest one
-      const sortedAppointments = upcomingAppointments.sort((a, b) => {
-        const timeA = new Date(a.scheduledStartTime);
-        const timeB = new Date(b.scheduledStartTime);
-        return timeA - timeB;
+    try {
+      // Determine what was updated
+      const changes = [];
+      if (updateData.quantity && updateData.quantity !== oldBatchData.quantity) {
+        changes.push(`quantity: ${oldBatchData.quantity} → ${updateData.quantity}`);
+      }
+      if (updateData.expiryDate) {
+        changes.push('expiry date updated');
+      }
+      if (updateData.location && updateData.location !== oldBatchData.location) {
+        changes.push(`location: ${updateData.location}`);
+      }
+
+      const changeText = changes.length > 0 ? ` (${changes.join(', ')})` : '';
+      const message = `Batch updated for ${productData.name}${changeText}`;
+
+      const metadata = {
+        batchId: newBatchData.batchId,
+        productId: newBatchData.productId,
+        productName: productData.name,
+        changes: updateData,
+        actionUrl: `/products/${newBatchData.productId}/batches`,
+        batchNumber: newBatchData.batchNumber || newBatchData.batchId,
+      };
+
+      // Use higher priority if quantity significantly changed
+      const priority = updateData.quantity && 
+        Math.abs(updateData.quantity - oldBatchData.quantity) > (oldBatchData.quantity * 0.5) 
+        ? "high" : "normal";
+
+      await this.notificationService.createNotification(
+        userId,
+        "batch_updated",
+        message,
+        metadata,
+        priority
+      );
+    } catch (error) {
+      console.error("Error sending batch updated notification:", error);
+    }
+  },
+
+  async notifyBatchDeleted(userId, batchData, productData) {
+    if (!this.notificationService || !userId) return;
+
+    try {
+      const message = `Batch removed from ${productData.name}`;
+      const metadata = {
+        batchId: batchData.batchId,
+        productId: batchData.productId,
+        productName: productData.name,
+        quantity: batchData.quantity,
+        actionUrl: `/products/${batchData.productId}/batches`,
+        batchNumber: batchData.batchNumber || batchData.batchId,
+      };
+
+      await this.notificationService.createNotification(
+        userId,
+        "batch_deleted",
+        message,
+        metadata,
+        "normal"
+      );
+    } catch (error) {
+      console.error("Error sending batch deleted notification:", error);
+    }
+  },
+
+  async checkAndNotifyExpiringBatch(batchData, productData) {
+    if (!this.notificationService || !batchData.expiryDate) return;
+
+    try {
+      const now = new Date();
+      const expiryDate = batchData.expiryDate.toDate ? batchData.expiryDate.toDate() : new Date(batchData.expiryDate);
+      const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+
+      // Notify if expiring within 7 days
+      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
+        const message = daysUntilExpiry === 1 
+          ? `Batch for ${productData.name} expires tomorrow!`
+          : `Batch for ${productData.name} expires in ${daysUntilExpiry} days`;
+
+        const priority = daysUntilExpiry <= 2 ? "urgent" : daysUntilExpiry <= 5 ? "high" : "normal";
+
+        const metadata = {
+          batchId: batchData.batchId,
+          productId: batchData.productId,
+          productName: productData.name,
+          expiryDate: expiryDate.toISOString(),
+          daysUntilExpiry,
+          actionUrl: `/products/${batchData.productId}/batches`,
+          batchNumber: batchData.batchNumber || batchData.batchId,
+        };
+
+        await this.notificationService.createNotification(
+          productData.ownerId || productData.originalListerId,
+          "batch_expiring",
+          message,
+          metadata,
+          priority
+        );
+      }
+      // Notify if already expired
+      else if (daysUntilExpiry <= 0) {
+        const message = `Batch for ${productData.name} has expired!`;
+        
+        const metadata = {
+          batchId: batchData.batchId,
+          productId: batchData.productId,
+          productName: productData.name,
+          expiryDate: expiryDate.toISOString(),
+          daysOverdue: Math.abs(daysUntilExpiry),
+          actionUrl: `/products/${batchData.productId}/batches`,
+          batchNumber: batchData.batchNumber || batchData.batchId,
+        };
+
+        await this.notificationService.createNotification(
+          productData.ownerId || productData.originalListerId,
+          "batch_expired",
+          message,
+          metadata,
+          "urgent"
+        );
+      }
+    } catch (error) {
+      console.error("Error checking batch expiry:", error);
+    }
+  },
+
+  // Method to notify low stock based on batch quantities
+  async checkAndNotifyLowStock(productId) {
+    if (!this.notificationService) return;
+
+    try {
+      // Get all batches for this product
+      const batchesSnapshot = await batchesRef
+        .where("productId", "==", productId)
+        .get();
+
+      if (batchesSnapshot.empty) return;
+
+      // Calculate total available quantity
+      let totalQuantity = 0;
+      batchesSnapshot.docs.forEach(doc => {
+        const batch = doc.data();
+        if (batch.quantity && batch.quantity > 0) {
+          totalQuantity += batch.quantity;
+        }
       });
 
-      const closest = sortedAppointments[0];
-      if (!closest) return null;
+      // Get product details
+      const productDoc = await productsRef.doc(productId).get();
+      if (!productDoc.exists) return;
 
-      // Enhanced doctor name extraction
-      const getDoctorName = (appointment) => {
-        const doctor = appointment.doctor;
-        if (!doctor) return "Unknown Doctor";
+      const productData = productDoc.data();
+      const minimumStock = productData.minimumStock || 10; // Default minimum stock
 
-        const firstName = doctor.firstName || doctor.user?.firstName || "";
-        const lastName = doctor.lastName || doctor.user?.lastName || "";
-
-        return firstName || lastName
-          ? `Dr. ${firstName} ${lastName}`.trim()
-          : "Unknown Doctor";
-      };
-
-      // Enhanced specialty extraction
-      const getSpecialty = (appointment) => {
-        const doctor = appointment.doctor;
-        if (!doctor) return "General";
-
-        const specialization = doctor.doctorProfile?.specialization;
-        if (Array.isArray(specialization) && specialization.length > 0) {
-          return specialization.join(", ");
-        }
-        return specialization || "General";
-      };
-
-      // Transform to match UpcomingAppointmentCard expected format
-      return {
-        id: closest.appointmentId,
-        doctorName: getDoctorName(closest),
-        specialty: getSpecialty(closest),
-        date: new Date(closest.scheduledStartTime).toLocaleDateString("en-US", {
-          day: "numeric",
-          month: "short",
-          weekday: "long",
-        }),
-        time: `${new Date(closest.scheduledStartTime).toLocaleTimeString(
-          "en-US",
+      // Check if stock is low
+      if (totalQuantity <= minimumStock) {
+        await this.notificationService.notifyLowInventory(
+          productData.ownerId || productData.originalListerId,
           {
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
+            productId,
+            productName: productData.name,
+            currentStock: totalQuantity,
+            minimumStock,
           }
-        )} - ${new Date(closest.scheduledEndTime).toLocaleTimeString("en-US", {
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })}`,
-        avatar:
-          closest.doctor?.profilePicture ||
-          closest.doctor?.user?.profileImageUrl ||
-          "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
-        status: closest.status,
-      };
+        );
+      }
     } catch (error) {
-      console.error("Error getting upcoming appointment:", error);
-      return null;
+      console.error("Error checking low stock:", error);
     }
-  }, [appointments]);
+  },
 
-  // Enhanced calendar appointments transformation
-  const getCalendarAppointments = useMemo(() => {
-    if (!appointments || appointments.length === 0) return [];
+  // Method to send bulk notifications for expiring batches (can be called by a cron job)
+  async notifyAllExpiringBatches() {
+    if (!this.notificationService) return;
 
-    return appointments.map((appointment, index) => {
-      try {
-        const getDoctorName = (appt) => {
-          const doctor = appt.doctor;
-          if (!doctor) return "Unknown Doctor";
+    try {
+      const now = new Date();
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-          const firstName = doctor.firstName || doctor.user?.firstName || "";
-          const lastName = doctor.lastName || doctor.user?.lastName || "";
+      // Get batches expiring within 7 days
+      const expiringBatchesSnapshot = await batchesRef
+        .where("expiryDate", "<=", admin.firestore.Timestamp.fromDate(sevenDaysFromNow))
+        .where("expiryDate", ">", admin.firestore.Timestamp.fromDate(now))
+        .get();
 
-          return firstName || lastName
-            ? `Dr. ${firstName} ${lastName}`.trim()
-            : "Unknown Doctor";
-        };
-
-        const getSpecialty = (appt) => {
-          const doctor = appt.doctor;
-          if (!doctor) return "General";
-
-          const specialization = doctor.doctorProfile?.specialization;
-          if (Array.isArray(specialization) && specialization.length > 0) {
-            return specialization.join(", ");
+      const notificationPromises = expiringBatchesSnapshot.docs.map(async (doc) => {
+        const batchData = { ...doc.data(), batchId: doc.id };
+        
+        try {
+          const productDoc = await productsRef.doc(batchData.productId).get();
+          if (productDoc.exists) {
+            await this.checkAndNotifyExpiringBatch(batchData, productDoc.data());
           }
-          return specialization || "General";
-        };
+        } catch (error) {
+          console.error(`Error processing expiring batch ${doc.id}:`, error);
+        }
+      });
 
-        return {
-          id: appointment.appointmentId || `appointment-${index}`,
-          doctorName: getDoctorName(appointment),
-          specialty: getSpecialty(appointment),
-          date: new Date(appointment.scheduledStartTime),
-          time: `${new Date(appointment.scheduledStartTime).toLocaleTimeString(
-            "en-US",
-            {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            }
-          )} - ${new Date(appointment.scheduledEndTime).toLocaleTimeString(
-            "en-US",
-            {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            }
-          )}`,
-          status: appointment.status,
-          avatar:
-            appointment.doctor?.profilePicture ||
-            appointment.doctor?.user?.profileImageUrl ||
-            "/api/placeholder/60/60",
-        };
-      } catch (error) {
-        console.error(
-          `Error processing calendar appointment at index ${index}:`,
-          error
-        );
-        return {
-          id: `appointment-error-${index}`,
-          doctorName: "Unknown Doctor",
-          specialty: "General",
-          date: new Date(),
-          time: "Time not available",
-          status: "UNKNOWN",
-          avatar: "/api/placeholder/60/60",
-        };
-      }
-    });
-  }, [appointments]);
+      await Promise.allSettled(notificationPromises);
+      console.log(`Processed ${expiringBatchesSnapshot.size} expiring batches`);
+    } catch (error) {
+      console.error("Error notifying expiring batches:", error);
+    }
+  },
+};
 
-  // Enhanced history appointments transformation
-  const getHistoryAppointments = useMemo(() => {
-    if (!historyAppointments || historyAppointments.length === 0) return [];
-
-    return historyAppointments.map((appointment, index) => {
-      try {
-        const getDoctorName = (appt) => {
-          const doctor = appt.doctor;
-          if (!doctor) return "Unknown Doctor";
-
-          const firstName = doctor.firstName || doctor.user?.firstName || "";
-          const lastName = doctor.lastName || doctor.user?.lastName || "";
-
-          return firstName || lastName
-            ? `Dr. ${firstName} ${lastName}`.trim()
-            : "Unknown Doctor";
-        };
-
-        const getSpecialty = (appt) => {
-          const doctor = appt.doctor;
-          if (!doctor || !doctor.doctorProfile) return "General";
-
-          const specialization = doctor.doctorProfile.specialization;
-          if (Array.isArray(specialization) && specialization.length > 0) {
-            return specialization[0];
-          }
-          return specialization || "General";
-        };
-
-        const getDiagnosis = (appt) => {
-          if (appt.diagnosis) return appt.diagnosis;
-          if (appt.notes) return appt.notes;
-
-          switch (appt.status) {
-            case "CANCELLED_DOCTOR":
-              return "Cancelled by Doctor";
-            case "CANCELLED_PATIENT":
-              return "Cancelled";
-            case "COMPLETED":
-              return "Completed";
-            default:
-              return "No diagnosis available";
-          }
-        };
-
-        return {
-          id: appointment.appointmentId || `history-${index}`,
-          doctor: getDoctorName(appointment),
-          specialty: getSpecialty(appointment),
-          date: new Date(appointment.scheduledStartTime).toLocaleDateString(
-            "en-US",
-            {
-              day: "numeric",
-              month: "short",
-              weekday: "long",
-            }
-          ),
-          diagnosis: getDiagnosis(appointment),
-          status: appointment.status,
-          avatar:
-            appointment.doctor?.profilePicture ||
-            appointment.doctor?.user?.profileImageUrl ||
-            "/api/placeholder/60/60",
-        };
-      } catch (error) {
-        console.error(
-          `Error processing history appointment at index ${index}:`,
-          error
-        );
-        return {
-          id: `history-error-${index}`,
-          doctor: "Unknown Doctor",
-          specialty: "General",
-          date: "Date not available",
-          diagnosis: "Information not available",
-          status: "UNKNOWN",
-          avatar: "/api/placeholder/60/60",
-        };
-      }
-    });
-  }, [historyAppointments]);
-
-  // Memoize computed values
-  const upcomingAppointment = getUpcomingAppointment;
-  const calendarAppointments = getCalendarAppointments;
-  const historyData = getHistoryAppointments;
-  const displayDoctors = getDisplayDoctors;
-
-  return (
-    <div className="">
-      {/* Header with New Appointment button */}
-      <div className="flex justify-between md:justify-end items-center mb-6 md:mb-2">
-        <div className="md:hidden">
-          <h1 className="text-2xl font-bold text-gray-900">Hello, Ms X</h1>
-        </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          New Appointment
-        </Button>
-      </div>
-
-      {/* Upcoming Appointments and Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-        {/* Upcoming Appointments */}
-        {appointmentsLoading ? (
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : upcomingAppointment ? (
-          <UpcomingAppointmentCard
-            upcomingAppointment={upcomingAppointment}
-            onCancelAppointment={handleCancelAppointment}
-            loading={appointmentsLoading}
-          />
-        ) : (
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <h2 className="text-lg font-semibold text-secondary mb-4">
-              Upcoming Appointment
-            </h2>
-            <p className="text-gray-500 text-center">
-              No upcoming appointments
-            </p>
-          </div>
-        )}
-
-        {/* Calendar with methods passed */}
-        <CalendarAppointments
-          appointments={calendarAppointments}
-          onCancelAppointment={handleCancelAppointment}
-          loading={appointmentsLoading}
-        />
-      </div>
-
-      {/* Bottom Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* History Table */}
-        <div className="lg:col-span-2 bg-white p-3 rounded-xl shadow-sm">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold text-secondary">History</h2>
-            <Link
-              href="/telehealth/patient/history"
-              className="text-primary/70 text-sm font-medium hover:text-primary"
-            >
-              See All
-            </Link>
-          </div>
-
-          <div className="overflow-x-auto">
-            <div className="grid grid-cols-4 gap-4 text-sm font-medium text-secondary/80 pb-2 border-b">
-              <div>Doctor</div>
-              <div>Speciality</div>
-              <div>Date of Visit</div>
-              <div>Status/Diagnosis</div>
-            </div>
-
-            {appointmentsLoading ? (
-              // Loading skeleton
-              Array.from({ length: 5 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-4 gap-4 py-3 animate-pulse"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="hidden md:block w-8 h-8 rounded-full bg-gray-200"></div>
-                    <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </div>
-                  <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  <div className="h-4 bg-gray-200 rounded w-18"></div>
-                </div>
-              ))
-            ) : historyData.length > 0 ? (
-              historyData.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="grid grid-cols-4 gap-4 py-3 text-sm border-b border-gray-100 last:border-b-0 text-secondary/60"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="hidden md:block w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
-                      <img
-                        src={appointment.avatar}
-                        alt={appointment.doctor}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    </div>
-                    <span className="font-medium text-gray-900">
-                      {appointment.doctor}
-                    </span>
-                  </div>
-                  <div className="">{appointment.specialty}</div>
-                  <div className="">{appointment.date}</div>
-                  <div
-                    className={`flex items-center gap-1 ${
-                      appointment.status === "CANCELLED"
-                        ? "text-red-600"
-                        : appointment.status === "COMPLETED"
-                        ? "text-green-600"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        appointment.status === "CANCELLED"
-                          ? "bg-red-400"
-                          : appointment.status === "COMPLETED"
-                          ? "bg-green-400"
-                          : "bg-gray-400"
-                      }`}
-                    ></span>
-                    {appointment.diagnosis}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-8 text-center text-gray-500">
-                No appointment history found
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+module.exports = BatchModel;

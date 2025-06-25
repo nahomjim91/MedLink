@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Button } from "../../ui/Button";
-import { EmailInput } from "../../ui/Input";
-import { useMSAuth } from "../../../hooks/useMSAuth";
+import { Button } from "../ui/Button";
+import { EmailInput } from "../ui/Input";
+import { useAuth } from "../../hooks/useAuth";
 
-export default function MSForgotPassword() {
-  const { sendPasswordReset } = useMSAuth();
+export default function THForgotPassword() {
+  const { sendPasswordReset } = useAuth();
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -98,8 +98,8 @@ export default function MSForgotPassword() {
 
         <div className="w-full bg-white rounded-3xl shadow-sm px-8 py-16 md:m-0 md:px-20 md:py-28 md:mt-14">
           <div className="flex flex-col items-center mb-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
               </svg>
             </div>
@@ -131,7 +131,7 @@ export default function MSForgotPassword() {
             </p>
           </div>
 
-          <Link href="/medical-supplies/auth/login">
+          <Link href="/telehealth/auth/login">
             <Button variant="outline" color="primary" fullWidth>
               Back to Login
             </Button>
@@ -155,7 +155,7 @@ export default function MSForgotPassword() {
           <p className="text-xs md:text-sm text-secondary/50 mt-2">
             Remembered your password?{" "}
             <Link
-              href="/medical-supplies/auth/login"
+              href="/telehealth/auth/login"
               className="text-secondary hover:underline"
             >
               Log in
