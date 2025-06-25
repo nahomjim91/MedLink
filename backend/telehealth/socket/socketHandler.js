@@ -16,7 +16,7 @@ function initializeSocket(io) {
     // Broadcast online users list to all clients
     io.emit('updateOnlineUsers', Array.from(onlineUsers.keys()));
 
-    // --- Chat Event Handlers ---
+    // Event Handlers 
 
     // Handle user joining a specific appointment chat
     socket.on('joinAppointmentRoom', async (appointmentId) => {
