@@ -1,13 +1,17 @@
 "use client";
 
 import { useAuth } from "../hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import SharedLayout from "../components/layout/SharedLayout";
+import { ChatProvider } from "../context/ChatContext";
+import { auth } from "../api/firebase/config";
+// import { AppointmentChatProvider } from "../utils/useAppointmentChatContext";
 
 export default function PatientLayout({ children }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [token, setToken] = useState(null);
 
   // Check if user is an admin
   useEffect(() => {
@@ -31,6 +35,26 @@ export default function PatientLayout({ children }) {
     }
   }, [user, loading, router]);
 
+  // Get the current user token
+    useEffect(() => {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) {
+          user
+            .getIdToken()
+            .then((token) => {
+              setToken(token);
+            })
+            .catch((error) => {
+              console.error("Error getting token:", error);
+              setToken(null);
+            });
+        } else {
+          setToken(null);
+        }
+      });
+      return () => unsubscribe();
+    }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -46,9 +70,14 @@ export default function PatientLayout({ children }) {
 
   return (
     <div className="min-h-screen ">
-      <SharedLayout allowedRoles={["PATIENT", "patient"]}>
-        <main className="px-2">{children}</main>
-      </SharedLayout>
+      {/* <AppointmentChatProvider> */}
+      <ChatProvider token={token}>
+
+        <SharedLayout allowedRoles={["PATIENT", "patient"]}>
+          <main className="px-2">{children}</main>
+        </SharedLayout>
+      </ChatProvider>
+      {/* </AppointmentChatProvider> */}
     </div>
   );
 }

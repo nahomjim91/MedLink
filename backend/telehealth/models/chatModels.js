@@ -1,4 +1,4 @@
-// models/chat-models.js
+// models/chatModels.js
 const { db, FieldValue } = require("../config/firebase"); // Assuming firebase config is in this path
 const { formatDoc, formatDocs, timestamp } = require("../../utils/helpers"); // Assuming helpers are in this path
 const crypto = require("crypto");
@@ -97,28 +97,40 @@ const MessageModel = {
 
     return { messageId: messageRef.id, ...message };
   },
-  async getMessagesForAppointment(
-    appointmentId,
-    limit = 50,
-    startAfterDoc = null
-  ) {
-    let query = messagesRef
-      .where("appointmentId", "==", appointmentId)
-      .orderBy("createdAt", "desc")
-      .limit(limit);
+async getMessagesForAppointment(appointmentId, limit = 50, startAfterDoc = null) {
+  console.log("➡️ getMessagesForAppointment called with ID:", appointmentId);
 
-    if (startAfterDoc) {
-      query = query.startAfter(startAfterDoc);
+  let query = messagesRef
+    .where("appointmentId", "==", appointmentId)
+    .orderBy("createdAt", "desc");
+
+  if (startAfterDoc) {
+    query = query.startAfter(startAfterDoc);
+  }
+
+  query = query.limit(limit); // Always apply the limit
+
+  try {
+    const snapshot = await query.get();
+
+    if (snapshot.empty) {
+      console.log("📭 No messages found for appointment:", appointmentId);
+      return [];
     }
 
-    const snapshot = await query.get();
     const docs = formatDocs(snapshot.docs).reverse();
+    console.log("✅ Messages fetched:", docs.length);
 
     return docs.map((msg) => ({
       ...msg,
       textContent: decrypt(msg.textContent, msg.iv, appointmentId),
     }));
-  },
+  } catch (error) {
+    console.error("❌ Firestore query error:", error.message);
+    throw error;
+  }
+}
+
 };
 
 module.exports = { ChatRoomModel, MessageModel };

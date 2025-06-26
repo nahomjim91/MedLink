@@ -44,6 +44,7 @@ const appointmentTypeDefs = gql`
     REJECTED
     CANCELLED_PATIENT
     CANCELLED_DOCTOR
+    CANCELLED_ADMIN
     UPCOMING
     IN_PROGRESS
     COMPLETED

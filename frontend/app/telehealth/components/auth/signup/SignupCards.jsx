@@ -9,6 +9,8 @@ import { useAuth } from "../../../hooks/useAuth";
 // Initial signup card with Google auth option or email entry
 export function SignupStartCard({ onNextStep, }) {
   const [isLoading, setIsLoading] = useState(false);
+    const {signInWithGoogle } = useAuth();
+
   
   const handleContinueWithEmail = () => {
     setIsLoading(true);
@@ -17,6 +19,16 @@ export function SignupStartCard({ onNextStep, }) {
       setIsLoading(false);
       onNextStep();
     }, 800);
+  };
+    const handleGoogleSignup = async () => {
+    setIsLoading(true);
+    
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Google signup error:", error);
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -43,7 +55,7 @@ export function SignupStartCard({ onNextStep, }) {
         {/* Google OAuth Button */}
         <OAuthButton 
           provider="google" 
-          onClick={onNextStep} 
+          onClick={handleGoogleSignup} 
           fullWidth 
           disabled={isLoading}
         />

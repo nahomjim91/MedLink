@@ -9,6 +9,7 @@ import {
   DateInput,
 } from "../../Input";
 import { FileUploader } from "../../FileUploader";
+import { getData } from "country-list";
 
 export default function ProductEquipmentInventory({
   productType,
@@ -62,11 +63,10 @@ export default function ProductEquipmentInventory({
   }, [batchData]);
 
   // Country options - could be fetched from an API
-  const countryOptions = [
-    { label: "Country 1", value: "country1" },
-    { label: "Country 2", value: "country2" },
-    { label: "Country 3", value: "country3" },
-  ];
+  const countryOptions = getData().map((country) => ({
+    label: country.name,
+    value: country.code.toLowerCase(),
+  }));
 
   const validateField = (value) =>
     value !== undefined && value !== "" && value !== null;

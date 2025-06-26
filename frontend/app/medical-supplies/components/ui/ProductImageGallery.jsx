@@ -3,11 +3,13 @@ import Image from "next/image";
 import { useState, useRef } from "react";
 import { Syringe, Pill, Upload, Trash, Plus, X } from "lucide-react";
 
-
-
-export const ProductImageGallery = ({ images = [], type , imageSize = 'h-48' }) => {
+export const ProductImageGallery = ({
+  images = [],
+  type,
+  imageSize = "h-48",
+}) => {
   const [selectedImage, setSelectedImage] = useState(images[0] || null);
-  
+
   // Determine which icon to use based on product type
   const isEquipment = type === "EQUIPMENT";
   const ProductIcon = isEquipment ? Syringe : Pill;
@@ -18,15 +20,19 @@ export const ProductImageGallery = ({ images = [], type , imageSize = 'h-48' }) 
         {selectedImage ? (
           <div className={`relative w-full ${imageSize} mb-4`}>
             <Image
-              src={selectedImage}
-              alt={ `${type} image`}
+              // src={selectedImage}
+                          src={"/image/Untitled.jpeg"}
+
+              alt={`${type} image`}
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 400px"
             />
           </div>
         ) : (
-          <div className={`flex items-center justify-center w-full ${imageSize} mb-4 bg-gray-50 rounded-2xl`}>
+          <div
+            className={`flex items-center justify-center w-full ${imageSize} mb-4 bg-gray-50 rounded-2xl`}
+          >
             <ProductIcon size={80} className="text-gray-400" />
           </div>
         )}
@@ -46,7 +52,8 @@ export const ProductImageGallery = ({ images = [], type , imageSize = 'h-48' }) 
                 >
                   <div className="relative w-16 h-8">
                     <Image
-                      src={image}
+                      // src={image}
+                      src={"/image/Untitled.jpeg"}
                       alt={`${type} thumbnail ${index + 1}`}
                       fill
                       className="object-contain"
@@ -57,7 +64,10 @@ export const ProductImageGallery = ({ images = [], type , imageSize = 'h-48' }) 
               ))
             : // Placeholder thumbnails with icons if no images
               [1, 2, 3].map((i) => (
-                <div key={i} className="border border-gray-200 rounded p-2 flex items-center justify-center">
+                <div
+                  key={i}
+                  className="border border-gray-200 rounded p-2 flex items-center justify-center"
+                >
                   <div className="w-16 h-8 flex items-center justify-center">
                     <ProductIcon size={20} className="text-gray-400" />
                   </div>
@@ -67,20 +77,19 @@ export const ProductImageGallery = ({ images = [], type , imageSize = 'h-48' }) 
       </div>
     </div>
   );
-
 };
-export const EditableImageGallery = ({ 
-  images = [], 
-  type, 
-  isEditing = false, 
-  onUpload, 
+export const EditableImageGallery = ({
+  images = [],
+  type,
+  isEditing = false,
+  onUpload,
   onRemove,
-  removedImages = []
+  removedImages = [],
 }) => {
   const [selectedImage, setSelectedImage] = useState(images[0] || null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
-  
+
   // Determine which icon to use based on product type
   const isEquipment = type === "EQUIPMENT";
   const ProductIcon = isEquipment ? Syringe : Pill;
@@ -89,23 +98,23 @@ export const EditableImageGallery = ({
   const handleFileSelect = async (e) => {
     const files = e.target.files;
     if (!files.length) return;
-    
+
     setUploading(true);
-    
+
     try {
       // In a real application, you would upload these files to your server or cloud storage
       // This is a mock implementation that simulates an upload
       // Replace this with your actual image upload API call
-      
+
       const uploadedUrls = await Promise.all(
         Array.from(files).map(async (file) => {
           // Simulate API call with a delay
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
           // Create a temporary URL for the file
           // In a real app, this would be the URL returned by your upload service
           return URL.createObjectURL(file);
-          
+
           // Example of how a real upload might look:
           // const formData = new FormData();
           // formData.append('file', file);
@@ -117,15 +126,14 @@ export const EditableImageGallery = ({
           // return data.url;
         })
       );
-      
+
       // Call the parent component's upload handler with the new URLs
       onUpload(uploadedUrls);
-      
+
       // Select the first uploaded image
       if (uploadedUrls.length > 0 && !selectedImage) {
         setSelectedImage(uploadedUrls[0]);
       }
-      
     } catch (error) {
       console.error("Error uploading images:", error);
       alert("Failed to upload images. Please try again.");
@@ -141,18 +149,18 @@ export const EditableImageGallery = ({
   // Handle removing an image
   const handleRemoveImage = (image) => {
     onRemove(image);
-    
+
     // If we're removing the currently selected image, select another one
     if (selectedImage === image) {
-      const remainingImages = images.filter(img => 
-        img !== image && !removedImages.includes(img)
+      const remainingImages = images.filter(
+        (img) => img !== image && !removedImages.includes(img)
       );
       setSelectedImage(remainingImages[0] || null);
     }
   };
 
   // Get the effective list of images (accounting for removals)
-  const effectiveImages = images.filter(img => !removedImages.includes(img));
+  const effectiveImages = images.filter((img) => !removedImages.includes(img));
 
   return (
     <div className="rounded-md p-4 flex flex-col items-center">
@@ -160,7 +168,8 @@ export const EditableImageGallery = ({
       {selectedImage ? (
         <div className="relative w-full h-48 mb-4">
           <Image
-            src={selectedImage}
+            // src={selectedImage}
+            src={"/image/Untitled.jpeg"}
             alt={`${type} image`}
             fill
             className="object-contain"
@@ -196,7 +205,8 @@ export const EditableImageGallery = ({
               >
                 <div className="relative w-16 h-8">
                   <Image
-                    src={image}
+                    // src={image}
+                    src={"/image/Untitled.jpeg"}
                     alt={`${type} thumbnail ${index + 1}`}
                     fill
                     className="object-contain"
@@ -218,13 +228,16 @@ export const EditableImageGallery = ({
             ))
           : // Placeholder thumbnails with icons if no images
             [1, 2, 3].map((i) => (
-              <div key={i} className="border border-gray-200 rounded p-2 flex items-center justify-center">
+              <div
+                key={i}
+                className="border border-gray-200 rounded p-2 flex items-center justify-center"
+              >
                 <div className="w-16 h-8 flex items-center justify-center">
                   <ProductIcon size={20} className="text-gray-400" />
                 </div>
               </div>
             ))}
-            
+
         {/* Upload button */}
         {isEditing && (
           <>
@@ -240,7 +253,9 @@ export const EditableImageGallery = ({
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className={`border ${
-                uploading ? "border-gray-300 bg-gray-100" : "border-teal-500 hover:bg-teal-50"
+                uploading
+                  ? "border-gray-300 bg-gray-100"
+                  : "border-teal-500 hover:bg-teal-50"
               } rounded p-2 flex items-center justify-center h-[40px] min-w-[40px]`}
             >
               {uploading ? (
@@ -252,12 +267,14 @@ export const EditableImageGallery = ({
           </>
         )}
       </div>
-      
+
       {/* Upload area (visible in edit mode) */}
       {isEditing && (
-        <div 
+        <div
           className={`mt-4 border-2 border-dashed ${
-            uploading ? "border-gray-300 bg-gray-50" : "border-teal-300 hover:border-teal-500"
+            uploading
+              ? "border-gray-300 bg-gray-50"
+              : "border-teal-300 hover:border-teal-500"
           } rounded-lg p-4 w-full text-center cursor-pointer`}
           onClick={() => !uploading && fileInputRef.current?.click()}
         >

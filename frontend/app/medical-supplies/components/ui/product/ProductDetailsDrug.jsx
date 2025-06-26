@@ -40,18 +40,42 @@ export default function ProductDetailsDrug({
   });
 
   // Category options - could be fetched from API
-  const categoryOptions = [
-    { label: "Category 1", value: "category1" },
-    { label: "Category 2", value: "category2" },
-    { label: "Category 3", value: "category3" },
-  ];
+// Real medical categories - for drug-related items
+const categoryOptions = [
+  { label: "Antibiotics", value: "antibiotics" },
+  { label: "Antivirals", value: "antivirals" },
+  { label: "Antifungals", value: "antifungals" },
+  { label: "Analgesics (Pain Relief)", value: "analgesics" },
+  { label: "Antipyretics (Fever Reducers)", value: "antipyretics" },
+  { label: "Anti-inflammatory", value: "anti_inflammatory" },
+  { label: "Antihistamines", value: "antihistamines" },
+  { label: "Cough and Cold", value: "cough_cold" },
+  { label: "Gastrointestinal", value: "gastrointestinal" },
+  { label: "Cardiovascular", value: "cardiovascular" },
+  { label: "Respiratory", value: "respiratory" },
+  { label: "Endocrine (e.g. Diabetes, Thyroid)", value: "endocrine" },
+  { label: "Neurological", value: "neurological" },
+  { label: "Psychiatric", value: "psychiatric" },
+  { label: "Dermatological", value: "dermatological" },
+  { label: "Ophthalmic (Eye Care)", value: "ophthalmic" },
+  { label: "Vitamins & Supplements", value: "vitamins_supplements" },
+  { label: "Oncology (Cancer Treatment)", value: "oncology" },
+  { label: "Immunological", value: "immunological" },
+  { label: "Reproductive Health", value: "reproductive_health" },
+];
+
+
 
   // Package type options - could be fetched from API 
-  const packageTypeOptions = [
-    { label: "Package Type 1", value: "packageType1" },
-    { label: "Package Type 2", value: "packageType2" },
-    { label: "Package Type 3", value: "packageType3" },
-  ];
+ const packageTypeOptions = [
+  { label: "Tablet", value: "tablet" },
+  { label: "Capsule", value: "capsule" },
+  { label: "Syrup", value: "syrup" },
+  { label: "Injection", value: "injection" },
+  { label: "Cream/Ointment", value: "cream_ointment" },
+  { label: "Medical Equipment Kit", value: "equipment_kit" },
+  { label: "Single-use Item", value: "single_use" },
+];
 
   // Concentration unit options
   const concentrationUnitOptions = [

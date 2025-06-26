@@ -16,6 +16,7 @@ const cron = require("node-cron");
 const paymentRoutes = require("./route/payment");
 const { auth } = require("./config/firebase");
 const ChatRoutes = require("./route/chatRoutes");
+const AppointmentModel = require("./models/appointment");
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -86,6 +87,13 @@ cron.schedule("0 0 * * *", async () => {
   }
 });
 
+cron.schedule('*/1 * * * *', async () => {
+  try {
+    await AppointmentModel.autoUpdateStatuses();
+  } catch (error) {
+    console.error("Cron job failed:", error);
+  }
+});
 /**
  * Initialize the telehealth server
  * @param {Object} parentApp - Optional parent Express app to attach as middleware
@@ -132,3 +140,4 @@ if (require.main === module) {
 
 // Export for importing in other files
 module.exports = initializeTelehealthServer;
+

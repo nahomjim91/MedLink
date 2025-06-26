@@ -342,8 +342,8 @@ export default function InventoryPage() {
         <StatCard
           title="Top Selling"
           metrics={[
-            { value: stats.topSellingProduct, label: "Last 7 days" },
-            { value: stats.topSellingRevenue, label: "Revenue" },
+            { value: 2, label: "Last 7 days" },
+            { value: 1, label: "Revenue" },
           ]}
           icon={
             <div

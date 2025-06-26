@@ -659,8 +659,12 @@ export default function ProductPage() {
               </div>
             </div>
             <div className="w-1/2 pl-4">
+              {console.log(editedProductData)}
               <EditableImageGallery
-                images={editedProductData.imageList || []}
+                // images={editedProductData.imageList || []}
+                images={[
+                  "https://www.imexpharm.com/Data/Sites/1/Product/8809/Paracetamol-IMEX-500mg-hop-100v.png",
+                ]}
                 type={editedProductData.productType}
                 isEditing={isEditing}
                 onUpload={handleImageUpload}

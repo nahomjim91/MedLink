@@ -153,7 +153,7 @@ const Marketplace = () => {
         <div className="h-32 bg-gray-100 flex items-center justify-center">
           {product.imageList && product.imageList.length > 0 ? (
             <Image
-              src={product.imageList[0]}
+              src={product.imageList[0] === 'Untitled.jpeg' ? '/image/Untitled.jpeg' : product.imageList[0]}
               alt={product.name}
               className="h-full w-full object-contain"
               width={400}

@@ -30,6 +30,30 @@ const AppointmentModel = {
   },
 
   /**
+   * Get appointments by user ID
+   * @param {String} patientId - Patient ID
+   * @returns {Array} Array of appointments
+   */
+  async getByUserId(userId) {
+    try {
+      const [asPatientSnapshot, asDoctorSnapshot] = await Promise.all([
+        appointmentsRef.where("patientId", "==", userId).get(),
+        appointmentsRef.where("doctorId", "==", userId).get(),
+      ]);
+
+      const allDocs = [...asPatientSnapshot.docs, ...asDoctorSnapshot.docs];
+
+      // Optional: deduplicate if any appointment is both (shouldn’t happen normally)
+      const uniqueMap = new Map();
+      allDocs.forEach((doc) => uniqueMap.set(doc.id, formatDoc(doc)));
+
+      return Array.from(uniqueMap.values());
+    } catch (error) {
+      console.error("Error getting appointments by user ID:", error);
+      throw error;
+    }
+  },
+  /**
    * Create new appointment with wallet deduction and transaction
    * @param {Object} data - Appointment data
    * @param {Object} transaction - Firestore transaction (optional)
@@ -214,7 +238,7 @@ const AppointmentModel = {
           break;
 
         case "IN_PROGRESS":
-          updateData.actualStartTime = timestamp();
+          // updateData.actualStartTime = timestamp();
           break;
 
         case "COMPLETED":
@@ -225,6 +249,7 @@ const AppointmentModel = {
 
         case "CANCELLED_PATIENT":
         case "CANCELLED_DOCTOR":
+        case "CANCELLED_ADMIN":
           updateData.cancelledAt = timestamp();
           // Process refund when appointment is cancelled
           await this.processRefund(appointmentData, status);
@@ -242,6 +267,100 @@ const AppointmentModel = {
     }
   },
 
+async autoUpdateStatuses() {
+  const now = new Date();
+
+  try {
+    // 1. CONFIRMED / UPCOMING → IN_PROGRESS
+    const confirmedSnap = await appointmentsRef
+      .where("status", "in", ["CONFIRMED", "UPCOMING"])
+      .get();
+
+    for (const doc of confirmedSnap.docs) {
+      const data = doc.data();
+      const { scheduledStartTime, scheduledEndTime, actualStartTime } = data;
+
+      const start = new Date(
+        scheduledStartTime.toDate ? scheduledStartTime.toDate() : scheduledStartTime
+      );
+      const end = new Date(
+        scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
+      );
+
+      if (
+        now >= new Date(start.getTime() - 5 * 60000) &&
+        now <= end
+      ) {
+        await doc.ref.update({
+          status: "IN_PROGRESS",
+          updatedAt: timestamp(),
+        });
+        console.log(`🔄 Updated to IN_PROGRESS: ${doc.id}`);
+      }
+
+      if (now > end && !actualStartTime) {
+        await doc.ref.update({
+          status: "NO_SHOW",
+          updatedAt: timestamp(),
+        });
+        console.log(`🚫 Marked CONFIRMED/UPCOMING as NO_SHOW: ${doc.id}`);
+      }
+    }
+
+    // 2. REQUESTED → CANCELLED_ADMIN if not approved before end
+    const requestedSnap = await appointmentsRef
+      .where("status", "==", "REQUESTED")
+      .get();
+
+    for (const doc of requestedSnap.docs) {
+      const data = doc.data();
+      const { scheduledEndTime } = data;
+
+      const end = new Date(
+        scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
+      );
+
+      if (now > end) {
+        const status = "CANCELLED_ADMIN";
+
+        await doc.ref.update({
+          status,
+          cancelledAt: timestamp(),
+          updatedAt: timestamp(),
+        });
+
+        console.log(`❌ Auto-cancelled REQUESTED: ${doc.id}`);
+        await this.processRefund(data, status);
+      }
+    }
+
+    // 3. IN_PROGRESS → NO_SHOW if ended with no actualStartTime
+    const inProgressSnap = await appointmentsRef
+      .where("status", "==", "IN_PROGRESS")
+      .get();
+
+    for (const doc of inProgressSnap.docs) {
+      const data = doc.data();
+      const { scheduledEndTime, actualStartTime } = data;
+
+      const end = new Date(
+        scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
+      );
+
+      if (now > end && !actualStartTime) {
+        await doc.ref.update({
+          status: "NO_SHOW",
+          updatedAt: timestamp(),
+        });
+        console.log(`🚫 Marked IN_PROGRESS as NO_SHOW: ${doc.id}`);
+      }
+    }
+
+  } catch (error) {
+    console.error("❌ Error in autoUpdateStatuses:", error);
+  }
+}
+,
   /**
    * Update payment status
    * @param {String} appointmentId - Appointment ID

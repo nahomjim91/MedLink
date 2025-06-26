@@ -1,12 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { StepButtons } from "../Button";
-import {
-  TextInput,
-  SelectInput,
-  TextAreaInput,
-  DynamicList,
-} from "../Input";
+import { TextInput, SelectInput, TextAreaInput, DynamicList } from "../Input";
 
 // Validation helper
 const validateField = (value) => value !== undefined && value !== "";
@@ -40,9 +35,24 @@ export default function ProductDetailsEquipment({
 
   // Category options - could be fetched from API
   const categoryOptions = [
-    { label: "Category 1", value: "category1" },
-    { label: "Category 2", value: "category2" },
-    { label: "Category 3", value: "category3" },
+    { label: "Diagnostic Equipment", value: "diagnostic_equipment" },
+    { label: "Monitoring Equipment", value: "monitoring_equipment" },
+    { label: "Surgical Instruments", value: "surgical_instruments" },
+    { label: "Emergency Equipment", value: "emergency_equipment" },
+    { label: "Therapeutic Equipment", value: "therapeutic_equipment" },
+    { label: "Respiratory Equipment", value: "respiratory_equipment" },
+    { label: "Mobility Aids", value: "mobility_aids" },
+    { label: "Hospital Furniture", value: "hospital_furniture" },
+    { label: "Infusion & IV Equipment", value: "infusion_iv_equipment" },
+    { label: "Sterilization Equipment", value: "sterilization_equipment" },
+    { label: "Laboratory Equipment", value: "laboratory_equipment" },
+    { label: "Imaging Equipment", value: "imaging_equipment" },
+    { label: "Rehabilitation Equipment", value: "rehabilitation_equipment" },
+    { label: "Dental Equipment", value: "dental_equipment" },
+    { label: "Ophthalmic Equipment", value: "ophthalmic_equipment" },
+    { label: "ENT Equipment", value: "ent_equipment" },
+    { label: "Patient Care Equipment", value: "patient_care_equipment" },
+    { label: "Disposables & Consumables", value: "disposables_consumables" },
   ];
 
   // Update local form state when parent data changes
@@ -77,15 +87,18 @@ export default function ProductDetailsEquipment({
   }, []);
 
   // Submit form data and proceed
-  const handleSubmit = useCallback((e) => {
-    if (e) e.preventDefault();
-    
-    // Update parent component with form data
-    onUpdate(formData);
-    
-    // Proceed to next step
-    onNext();
-  }, [formData, onUpdate, onNext]);
+  const handleSubmit = useCallback(
+    (e) => {
+      if (e) e.preventDefault();
+
+      // Update parent component with form data
+      onUpdate(formData);
+
+      // Proceed to next step
+      onNext();
+    },
+    [formData, onUpdate, onNext]
+  );
 
   // Check if all required fields are valid
   const isFormValid = Object.values(validationState).every(Boolean);
@@ -119,7 +132,7 @@ export default function ProductDetailsEquipment({
             required={true}
           />
         </div>
-        
+
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextInput
             name="brandName"
@@ -130,7 +143,7 @@ export default function ProductDetailsEquipment({
             onChange={handleChange}
             required={true}
           />
-          
+
           <TextInput
             name="modelNumber"
             label="Model Number"
@@ -142,7 +155,7 @@ export default function ProductDetailsEquipment({
             required={true}
           />
         </div>
-        
+
         <div className="grid md:grid-cols-2 md:gap-4">
           <TextAreaInput
             name="description"
@@ -153,7 +166,7 @@ export default function ProductDetailsEquipment({
             onChange={handleChange}
             required={true}
           />
-          
+
           <DynamicList
             name="sparePartInfo"
             label="Spare Part Info"
@@ -166,7 +179,7 @@ export default function ProductDetailsEquipment({
         </div>
 
         <StepButtons
-          onNext={ isFormValid && handleSubmit}
+          onNext={isFormValid && handleSubmit}
           onPrevious={onPrevious}
           isLoading={isLoading}
         />

@@ -97,7 +97,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         path: "/telehealth/doctor/transactions",
         icon: <FaMoneyBill />,
       },
-      
+
       {
         name: "Settings",
         path: "/telehealth/doctor/settings",
@@ -111,13 +111,13 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
     ],
     patient: [
       { name: "Home", path: "/telehealth/patient", icon: <Home /> },
-      
+
       {
         name: "Doctors",
         path: "/telehealth/patient/doctors",
         icon: <Users />,
       },
-      
+
       {
         name: "Appointments",
         path: "/telehealth/patient/appointments",
@@ -128,7 +128,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         path: "/telehealth/patient/chats",
         icon: <MessageCircle />,
       },
-       {
+      {
         name: "Transaction",
         path: "/telehealth/patient/transactions",
         icon: <FaMoneyBill />,
@@ -184,10 +184,18 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
   // Check if a path is active
   const isActive = (path) => {
-    if (path === `/${userType}`) {
-      return pathname === `/${userType}`;
+    const normalizedPath = path.endsWith("/") ? path : path + "/";
+    const normalizedCurrent = pathname.endsWith("/")
+      ? pathname
+      : pathname + "/";
+
+    // Home route — must match exactly
+    if (normalizedPath === `/telehealth/${user.role}/`) {
+      return normalizedCurrent === normalizedPath;
     }
-    return pathname.startsWith(path);
+
+    // Other routes — must start with path and have something after
+    return normalizedCurrent.startsWith(normalizedPath);
   };
 
   // Role protection check
@@ -448,7 +456,10 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                   >
                     <LogOut size={24} className="hover:text-white" />
                   </div>
-                  <Link href={`/telehealth/${userType}/profile`} className="block">
+                  <Link
+                    href={`/telehealth/${userType}/profile`}
+                    className="block"
+                  >
                     <ImageIconButton
                       imageUrl={user.image || "/image/trees.jpg"}
                       isActive={false}
@@ -462,9 +473,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         </AnimatePresence>
 
         {/* Main content area */}
-        <main className="flex-1 overflow-y-auto  ">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto  ">{children}</main>
       </div>
     </div>
   );

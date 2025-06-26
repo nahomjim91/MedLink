@@ -16,6 +16,9 @@ import {
   AlertCircle,
   CheckCircle,
   RefreshCw,
+  Trash,
+  Menu,
+  X,
 } from "lucide-react";
 import { GET_MY_AVAILABILITY_SLOTS } from "../../api/graphql/doctor/availabilitySlotQueries";
 import {
@@ -36,6 +39,7 @@ const DoctorAvailabilityCalendar = () => {
     endTime: "09:30",
   });
   const [notification, setNotification] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Utility functions
   const formatDateForQuery = (date) => {
@@ -290,15 +294,16 @@ const DoctorAvailabilityCalendar = () => {
 
   const handleDeleteSlot = async (slot) => {
     try {
-      if (!slot || !slot._id) return;
+      if (!slot || !slot.slotId) return;
 
       if (slot.isBooked) {
         showNotification("Cannot delete a booked slot.", "error");
         return;
       }
+      console.log("Delete slot:", slot);
 
       await deleteAvailabilitySlot({
-        variables: { slotId: slot._id },
+        variables: { slotId: slot.slotId },
       });
 
       showNotification("Slot deleted successfully.", "success");
@@ -311,24 +316,18 @@ const DoctorAvailabilityCalendar = () => {
   const handleDeleteMultiple = async () => {
     if (selectedSlots.length === 0) return;
 
-    // Assume selectedSlots is an array of full slot objects (not just IDs)
-    const bookedSlots = selectedSlots.filter((slot) => slot.isBooked);
+    const slotIds = selectedSlots.filter(
+      (id) => id !== null && id !== undefined
+    );
 
-    if (bookedSlots.length > 0) {
-      showNotification(
-        "One or more selected slots are booked and cannot be deleted.",
-        "error"
-      );
+    if (slotIds.length === 0) {
+      showNotification("No valid slot IDs found to delete.", "error");
       return;
     }
 
     try {
-      const slotIds = selectedSlots.map((slot) => slot._id); // if selectedSlots are objects
-      await deleteMultipleSlots({
-        variables: { slotIds },
-      });
-
-      showNotification("Slots deleted successfully.", "success");
+      console.log("Deleting multiple slot IDs:", slotIds);
+      await deleteMultipleSlots({ variables: { slotIds } });
     } catch (error) {
       console.error("Error deleting multiple slots:", error);
       showNotification(
@@ -395,7 +394,7 @@ const DoctorAvailabilityCalendar = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleDeleteSlot(slot.slotId);
+                handleDeleteSlot(slot);
               }}
               className="text-red-500 hover:text-red-700 transition-colors"
               disabled={deletingSlot}
@@ -438,14 +437,15 @@ const DoctorAvailabilityCalendar = () => {
     ];
 
     return (
-      <div className="bg-white rounded-lg border shadow-sm">
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <div className="grid grid-cols-7 border-b bg-gray-50">
           {weekDays.map((day) => (
             <div
               key={day}
-              className="p-4 text-sm font-semibold text-gray-700 text-center border-r last:border-r-0"
+              className="p-2 sm:p-4 text-xs sm:text-sm font-semibold text-gray-700 text-center border-r last:border-r-0"
             >
-              {day}
+              <span className="hidden sm:inline">{day}</span>
+              <span className="sm:hidden">{day.slice(0, 3)}</span>
             </div>
           ))}
         </div>
@@ -461,12 +461,12 @@ const DoctorAvailabilityCalendar = () => {
             return (
               <div
                 key={index}
-                className={`min-h-[140px] p-3 border-r border-b last:border-r-0 scrollbar-hide ${
+                className={`min-h-[80px] sm:min-h-[140px] p-1 sm:p-3 border-r border-b last:border-r-0 scrollbar-hide ${
                   !day.isCurrentMonth ? "bg-gray-50" : "bg-white"
                 } hover:bg-gray-50 transition-colors`}
               >
                 <div
-                  className={`text-sm font-medium mb-2 flex items-center justify-between ${
+                  className={`text-xs sm:text-sm font-medium mb-1 sm:mb-2 flex items-center justify-between ${
                     !day.isCurrentMonth
                       ? "text-gray-400"
                       : isToday
@@ -478,10 +478,10 @@ const DoctorAvailabilityCalendar = () => {
                   {daySlots.length > 0 && (
                     <div className="flex space-x-1">
                       {availableSlots.length > 0 && (
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
                       )}
                       {bookedSlots.length > 0 && (
-                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-500 rounded-full"></div>
                       )}
                     </div>
                   )}
@@ -489,11 +489,11 @@ const DoctorAvailabilityCalendar = () => {
 
                 <div className="space-y-1">
                   {daySlots
-                    .slice(0, 3)
+                    .slice(0, window.innerWidth < 640 ? 2 : 3)
                     .map((slot) => renderSlotItem(slot, true))}
-                  {daySlots.length > 3 && (
+                  {daySlots.length > (window.innerWidth < 640 ? 2 : 3) && (
                     <div className="text-xs text-gray-500 text-center">
-                      +{daySlots.length - 3} more
+                      +{daySlots.length - (window.innerWidth < 640 ? 2 : 3)} more
                     </div>
                   )}
                 </div>
@@ -510,16 +510,16 @@ const DoctorAvailabilityCalendar = () => {
     const weekDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
     return (
-      <div className="bg-white rounded-lg border shadow-sm">
+      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <div className="grid grid-cols-7 border-b bg-gray-50">
           {weekDays.map((day, index) => {
             const isToday = day.toDateString() === new Date().toDateString();
             return (
               <div
                 key={index}
-                className="p-4 text-center border-r last:border-r-0"
+                className="p-2 sm:p-4 text-center border-r last:border-r-0"
               >
-                <div className="text-sm font-medium text-gray-500">
+                <div className="text-xs sm:text-sm font-medium text-gray-500">
                   {weekDayNames[index]}
                 </div>
                 <div
@@ -534,17 +534,17 @@ const DoctorAvailabilityCalendar = () => {
           })}
         </div>
 
-        <div className="grid grid-cols-7 min-h-[500px] scrollbar-hide">
+        <div className="grid grid-cols-7 min-h-[300px] sm:min-h-[500px] scrollbar-hide">
           {weekDays.map((day, index) => {
             const daySlots = getSlotsForDate(day);
 
             return (
               <div
                 key={index}
-                className="p-3 border-r last:border-r-0 border-b"
+                className="p-1 sm:p-3 border-r last:border-r-0 border-b overflow-y-auto"
               >
                 <div className="space-y-2">
-                  {daySlots.map((slot) => renderSlotItem(slot, false))}
+                  {daySlots.map((slot) => renderSlotItem(slot, window.innerWidth < 640))}
                 </div>
               </div>
             );
@@ -560,13 +560,13 @@ const DoctorAvailabilityCalendar = () => {
 
     return (
       <div className="bg-white rounded-lg border shadow-sm">
-        <div className="p-6 border-b bg-gray-50">
+        <div className="p-4 sm:p-6 border-b bg-gray-50">
           <div className="text-center">
             <div className="text-sm font-medium text-gray-500">
               {currentDate.toLocaleDateString("en-US", { weekday: "long" })}
             </div>
             <div
-              className={`text-2xl font-bold ${
+              className={`text-xl sm:text-2xl font-bold ${
                 isToday ? "text-blue-600" : "text-gray-900"
               }`}
             >
@@ -579,13 +579,13 @@ const DoctorAvailabilityCalendar = () => {
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="space-y-3">
             {daySlots.length > 0 ? (
               daySlots.map((slot) => renderSlotItem(slot, false))
             ) : (
               <div className="text-center py-12 text-gray-500">
-                <CalendarCheck className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <CalendarCheck className="w-8 sm:w-12 h-8 sm:h-12 mx-auto mb-4 text-gray-300" />
                 <p>No slots scheduled for this day</p>
               </div>
             )}
@@ -608,7 +608,7 @@ const DoctorAvailabilityCalendar = () => {
       return (
         <div className="flex items-center justify-center h-96 bg-white rounded-lg border">
           <div className="text-center">
-            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+            <AlertCircle className="w-8 sm:w-12 h-8 sm:h-12 mx-auto mb-4 text-red-500" />
             <p className="text-red-600 mb-4">
               Error loading availability slots
             </p>
@@ -644,12 +644,152 @@ const DoctorAvailabilityCalendar = () => {
     return "00:00";
   };
 
+  // Sidebar component
+  const SidebarContent = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Add New Slot
+        </h2>
+
+        <div className="space-y-4">
+          {/* Date Input */}
+          <DateInput
+            label="Date"
+            name="date"
+            value={newSlot.date}
+            onChange={(e) => {
+              const selectedDate = e.target.value;
+              setNewSlot({ ...newSlot, date: selectedDate });
+              // Reset times when date changes to avoid conflicts
+              if (isToday(selectedDate)) {
+                const currentTime = getCurrentTime();
+                const endTime = new Date(`2000-01-01T${currentTime}`);
+                endTime.setMinutes(endTime.getMinutes() + 30);
+                setNewSlot((prev) => ({
+                  ...prev,
+                  date: selectedDate,
+                  startTime: currentTime,
+                  endTime: endTime.toTimeString().slice(0, 5),
+                }));
+              }
+            }}
+            min={new Date().toISOString().split("T")[0]}
+          />
+
+          {/* Time Inputs */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                From
+              </label>
+              <div className="relative">
+                <input
+                  type="time"
+                  value={newSlot.startTime}
+                  onChange={(e) => {
+                    const startTime = e.target.value;
+                    setNewSlot((prev) => ({ ...prev, startTime }));
+
+                    // Auto-adjust end time to be 30 minutes after start time
+                    const start = new Date(`2000-01-01T${startTime}:00`);
+                    start.setMinutes(start.getMinutes() + 30);
+                    const endTime = start.toTimeString().slice(0, 5);
+                    setNewSlot((prev) => ({ ...prev, endTime }));
+                  }}
+                  min={getMinTimeForDate(newSlot.date)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                To
+              </label>
+              <div className="relative">
+                <input
+                  type="time"
+                  value={newSlot.endTime}
+                  onChange={(e) =>
+                    setNewSlot({ ...newSlot, endTime: e.target.value })
+                  }
+                  min={newSlot.startTime || undefined}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Validation Messages */}
+          {newSlot.date && newSlot.startTime && newSlot.endTime && (
+            <div className="text-sm">
+              {!isToday(newSlot.date) && (
+                <p className="text-red-500">
+                  The selected date is not today.
+                </p>
+              )}
+              {newSlot.startTime >= newSlot.endTime && (
+                <p className="text-red-500">
+                  The end time must be after the start time.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Add Slot Button */}
+          <button
+            onClick={handleAddSlot}
+            disabled={
+              addingSlot ||
+              !newSlot.date ||
+              !newSlot.startTime ||
+              !newSlot.endTime
+            }
+            className="w-full py-3 px-4 bg-primary/70 text-white font-medium rounded-xl hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {addingSlot ? (
+              <>
+                <Loader2 className="w-4 h-4 inline mr-2 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 inline mr-2" />
+                Add Slot
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Today's Slots */}
+      <div>
+        <h3 className="text-md font-medium text-gray-900 mb-3">
+          Today&apos;s Slots
+        </h3>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {getSlotsForDate(new Date()).map((slot) =>
+            renderSlotItem(slot, false)
+          )}
+
+          {getSlotsForDate(new Date()).length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <CalendarCheck className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No slots for today</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex  bg-white p-4 rounded-xl shadow-md">
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
       {/* Notification */}
       {notification && (
         <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
             notification.type === "success"
               ? "bg-green-500 text-white"
               : "bg-red-500 text-white"
@@ -657,251 +797,259 @@ const DoctorAvailabilityCalendar = () => {
         >
           <div className="flex items-center">
             {notification.type === "success" ? (
-              <CheckCircle className="w-5 h-5 mr-2" />
+              <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0" />
             ) : (
-              <AlertCircle className="w-5 h-5 mr-2" />
+              <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
             )}
-            {notification.message}
+            <span className="text-sm">{notification.message}</span>
           </div>
         </div>
       )}
 
-      {/* Main Calendar Area */}
-      <div className="flex-1 ">
-        {/* Calendar Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={goToToday}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-primary/30 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Today
-            </button>
-            <div className="flex items-center ">
-              <button
-                onClick={() => navigateDate("prev")}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <span className="text-xl font text-secondary min-w-[250px] text-center">
-                {viewMode === "Month" && getMonthName(currentDate)}
-                {viewMode === "Week" &&
-                  `${getWeekRange(
-                    currentDate
-                  ).start.toLocaleDateString()} - ${getWeekRange(
-                    currentDate
-                  ).end.toLocaleDateString()}`}
-                {viewMode === "Day" &&
-                  currentDate.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-              </span>
-              <button
-                onClick={() => navigateDate("next")}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            {["Month", "Week", "Day"].map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center space-x-2 transition-colors ${
-                  viewMode === mode
-                    ? "bg-primary text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                {getViewModeIcon(mode)}
-                <span>{mode}</span>
-              </button>
-            ))}
-          </div>
+      <div className="max-w-7xl mx-auto">
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
+          <h1 className="text-lg font-semibold">Availability</h1>
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Selected Slots Actions */}
-        {selectedSlots.length > 0 && (
-          <div className="mb-2 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-primary">
-                {selectedSlots.length} slot{selectedSlots.length > 1 ? "s" : ""}{" "}
-                selected
-              </span>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setSelectedSlots([])}
-                  className="px-3 py-1 text-sm text-primary/80 hover:text-primary transition-colors"
-                >
-                  Clear Selection
-                </button>
-                <button
-                  onClick={handleDeleteMultiple}
-                  disabled={deletingMultiple}
-                  className="px-3 py-1 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  {deletingMultiple ? (
-                    <>
-                      <Loader2 className="w-4 h-4 inline mr-1 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4 inline mr-1" />
-                      Delete Selected
-                    </>
-                  )}
-                </button>
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-50 bg-black/30 bg-opacity-50">
+            <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-lg overflow-y-auto">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold">Availability</h2>
+                  <button
+                    onClick={() => setIsSidebarOpen(false)}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <SidebarContent />
               </div>
             </div>
           </div>
         )}
 
-        {/* Calendar */}
-        {renderCalendar()}
-      </div>
-
-      {/* Add New Slot Sidebar */}
-      <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Add New Slot
-          </h2>
-
-          <div className="space-y-4">
-            {/* Date Input */}
-            <DateInput
-              label="Date"
-              name="date"
-              value={newSlot.date}
-              onChange={(e) => {
-                const selectedDate = e.target.value;
-                setNewSlot({ ...newSlot, date: selectedDate });
-                // Reset times when date changes to avoid conflicts
-                if (isToday(selectedDate)) {
-                  const currentTime = getCurrentTime();
-                  const endTime = new Date(`2000-01-01T${currentTime}`);
-                  endTime.setMinutes(endTime.getMinutes() + 30);
-                  setNewSlot((prev) => ({
-                    ...prev,
-                    date: selectedDate,
-                    startTime: currentTime,
-                    endTime: endTime.toTimeString().slice(0, 5),
-                  }));
-                }
-              }}
-              min={new Date().toISOString().split("T")[0]}
-            />
-
-            {/* Time Inputs */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  From
-                </label>
-                <div className="relative">
-                  <input
-                    type="time"
-                    value={newSlot.startTime}
-                    onChange={(e) => {
-                      const startTime = e.target.value;
-                      setNewSlot((prev) => ({ ...prev, startTime }));
-
-                      // Auto-adjust end time to be 30 minutes after start time
-                      const start = new Date(`2000-01-01T${startTime}:00`);
-                      start.setMinutes(start.getMinutes() + 30);
-                      const endTime = start.toTimeString().slice(0, 5);
-                      setNewSlot((prev) => ({ ...prev, endTime }));
-                    }}
-                    min={getMinTimeForDate(newSlot.date)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-none "
-                  />
+        {/* Desktop Layout */}
+        <div className="hidden lg:flex gap-6">
+          {/* Main Calendar Area */}
+          <div className="flex-1">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-lg shadow-sm">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={goToToday}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-primary/30 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Today
+                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => navigateDate("prev")}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-xl font-semibold text-secondary min-w-[250px] text-center">
+                    {viewMode === "Month" && getMonthName(currentDate)}
+                    {viewMode === "Week" &&
+                      `${getWeekRange(
+                        currentDate
+                      ).start.toLocaleDateString()} - ${getWeekRange(
+                        currentDate
+                      ).end.toLocaleDateString()}`}
+                    {viewMode === "Day" &&
+                      currentDate.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                  </span>
+                  <button
+                    onClick={() => navigateDate("next")}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  To
-                </label>
-                <div className="relative">
-                  <input
-                    type="time"
-                    value={newSlot.endTime}
-                    onChange={(e) =>
-                      setNewSlot({ ...newSlot, endTime: e.target.value })
-                    }
-                    min={newSlot.startTime || undefined}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-none "
-                  />
-                </div>
+              <div className="flex items-center space-x-2">
+                {["Month", "Week", "Day"].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center space-x-2 transition-colors ${
+                      viewMode === mode
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {getViewModeIcon(mode)}
+                    <span>{mode}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Validation Messages */}
-            {newSlot.date && newSlot.startTime && newSlot.endTime && (
-              <div className="text-sm">
-                {!isToday(newSlot.date) && (
-                  <p className="text-red-500">
-                    The selected date is not today.
-                  </p>
-                )}
-                {newSlot.startTime >= newSlot.endTime && (
-                  <p className="text-red-500">
-                    The end time must be after the start time.
-                  </p>
-                )}
+            {/* Selected Slots Actions */}
+            {selectedSlots.length > 0 && (
+              <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-primary">
+                    {selectedSlots.length} slot{selectedSlots.length > 1 ? "s" : ""}{" "}
+                    selected
+                  </span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setSelectedSlots([])}
+                      className="px-3 py-1 text-sm text-primary/80 hover:text-primary transition-colors"
+                    >
+                      Clear Selection
+                    </button>
+                    <button
+                      onClick={handleDeleteMultiple}
+                      disabled={deletingMultiple}
+                      className="px-3 py-1 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {deletingMultiple ? (
+                        <>
+                          <Loader2 className="w-4 h-4 inline mr-1 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash className="w-4 h-4 inline mr-1" />
+                          Delete Selected
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Add Slot Button */}
-            <button
-              onClick={handleAddSlot}
-              disabled={
-                addingSlot ||
-                !newSlot.date ||
-                !newSlot.startTime ||
-                !newSlot.endTime
-              }
-              className="w-full py-3 px-4 bg-primary/70 text-white font-medium rounded-xl hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {addingSlot ? (
-                <>
-                  <Loader2 className="w-4 h-4 inline mr-2 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 inline mr-2" />
-                  Add Slot
-                </>
-              )}
-            </button>
+            {/* Calendar */}
+            {renderCalendar()}
+          </div>
+
+          {/* Desktop Sidebar */}
+          <div className="w-80 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <SidebarContent />
           </div>
         </div>
-        {/* Today's Slots */}
-        <div>
-          <h3 className="text-md font-medium text-gray-900 mb-3">
-            Today&apos;s Slots
-          </h3>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {getSlotsForDate(new Date()).map((slot) =>
-              renderSlotItem(slot, false)
-            )}
 
-            {getSlotsForDate(new Date()).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <CalendarCheck className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">No slots for today</p>
+        {/* Mobile Calendar View */}
+        <div className="lg:hidden">
+          {/* Mobile Calendar Header */}
+          <div className="flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={goToToday}
+                className="px-3 py-1 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Today
+              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => navigateDate("prev")}
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm font-medium text-secondary px-2">
+                  {viewMode === "Month" && getMonthName(currentDate)}
+                  {viewMode === "Week" &&
+                    `${getWeekRange(
+                      currentDate
+                    ).start.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })} - ${getWeekRange(
+                      currentDate
+                    ).end.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}`}
+                  {viewMode === "Day" &&
+                    currentDate.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                </span>
+                <button
+                  onClick={() => navigateDate("next")}
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
-            )}
+            </div>
+
+            <div className="flex items-center space-x-1">
+              {["Month", "Week", "Day"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
+                    viewMode === mode
+                      ? "bg-primary text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Mobile Selected Slots Actions */}
+          {selectedSlots.length > 0 && (
+            <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-primary">
+                  {selectedSlots.length} selected
+                </span>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setSelectedSlots([])}
+                    className="px-2 py-1 text-xs text-primary/80 hover:text-primary transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={handleDeleteMultiple}
+                    disabled={deletingMultiple}
+                    className="px-2 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {deletingMultiple ? (
+                      <>
+                        <Loader2 className="w-3 h-3 inline mr-1 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash className="w-3 h-3 inline mr-1" />
+                        Delete
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Calendar */}
+          {renderCalendar()}
         </div>
       </div>
     </div>

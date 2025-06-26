@@ -27,7 +27,7 @@ export default function DoctorProfileResponsive() {
   const params = useParams();
   const doctorId = params.doctorId;
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-  const {user}= useAuth();
+  const { user, refetchUser } = useAuth();
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -40,7 +40,6 @@ export default function DoctorProfileResponsive() {
   const [formattedSelectedDate, setFormattedSelectedDate] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const daysPerWeek = 7;
-  
 
   // GraphQL Queries
   const {
@@ -65,7 +64,11 @@ export default function DoctorProfileResponsive() {
     skip: !doctorId || !formattedSelectedDate,
   });
 
-    const { createAppointment, loading: appointmentLoading, error: appointmentError } = useAppointment();
+  const {
+    createAppointment,
+    loading: appointmentLoading,
+    error: appointmentError,
+  } = useAppointment();
 
   // Set initial selected date to today or first available date
   useEffect(() => {
@@ -210,7 +213,7 @@ export default function DoctorProfileResponsive() {
     setSelectedTime(timeString);
   };
 
-const handleBookAppointment = () => {
+  const handleBookAppointment = () => {
     const selectedSlot = availableSlots.find(
       (slot) => formatSlotTime(slot.startTime) === selectedTime
     );
@@ -230,30 +233,37 @@ const handleBookAppointment = () => {
   const handleConfirm = async (appointmentData) => {
     try {
       // console.log("Creating appointment with data:", appointmentData);
-      
+
       // Prepare the appointment input data
       const appointmentInput = {
-        doctorId: appointmentData.doctor?.doctorId || appointmentData.doctor?._id,
-        doctorName: `${appointmentData.doctor?.user?.firstName || 'Dr.'} ${appointmentData.doctor?.user?.lastName || 'Doctor'}`,
+        doctorId:
+          appointmentData.doctor?.doctorId || appointmentData.doctor?._id,
+        doctorName: `${appointmentData.doctor?.user?.firstName || "Dr."} ${
+          appointmentData.doctor?.user?.lastName || "Doctor"
+        }`,
         reasonNote: appointmentData.reason,
-        scheduledStartTime: appointmentData.slot?.startTime || new Date(appointmentData.date + ' ' + appointmentData.time.split(' - ')[0]),
-        scheduledEndTime: appointmentData.slot?.endTime || new Date(appointmentData.date + ' ' + appointmentData.time.split(' - ')[1]),
-        associatedSlotId: appointmentData.slot?.slotId || appointmentData.slot?._id
+        scheduledStartTime:
+          appointmentData.slot?.startTime ||
+          new Date(
+            appointmentData.date + " " + appointmentData.time.split(" - ")[0]
+          ),
+        scheduledEndTime:
+          appointmentData.slot?.endTime ||
+          new Date(
+            appointmentData.date + " " + appointmentData.time.split(" - ")[1]
+          ),
+        associatedSlotId:
+          appointmentData.slot?.slotId || appointmentData.slot?._id,
       };
 
       // Create the appointment using the hook
       const newAppointment = await createAppointment(appointmentInput);
-      
-      // console.log('Appointment created successfully:', newAppointment);
-      
-      // Optional: Show success message or redirect
-      // You might want to show a toast notification here
+
       refetchSlots();
-      
+      refetchUser();
       return newAppointment;
-      
     } catch (error) {
-      console.error('Failed to create appointment:', error);
+      console.error("Failed to create appointment:", error);
       // Handle error - you might want to show an error toast here
       throw error; // Re-throw so the modal can handle the error state
     }
@@ -263,7 +273,7 @@ const handleBookAppointment = () => {
     setShowAppointmentModal(false);
     setSelectedSlot(null);
   };
-  
+
   const allDates = generateCalendarDays().filter(
     (date) => date.day && !date.disabled
   );
@@ -309,29 +319,32 @@ const handleBookAppointment = () => {
   const reviews = [
     {
       id: 1,
-      name: "Darrell Steward",
+      name: "Martha Tesfaye",
       rating: 5,
-      comment: "This is amazing product I have.",
-      date: "July 2, 2020 03:29 PM",
-      likes: 128,
+      comment:
+        "Dr. Nahome is one of the most compassionate doctors I've ever met. He took the time to explain everything clearly and helped me feel at ease during a stressful time.",
+      date: "May 12, 2025 09:45 AM",
+      likes: 142,
       avatar: "/api/placeholder/40/40",
     },
     {
       id: 2,
-      name: "Sarah Johnson",
-      rating: 5,
-      comment: "Excellent service and very professional.",
-      date: "June 15, 2020 02:15 PM",
-      likes: 95,
+      name: "Samuel Berhane",
+      rating: 4,
+      comment:
+        "Very knowledgeable and professional. The clinic was busy, but he still gave me his full attention. I appreciate the thorough heart check-up.",
+      date: "April 28, 2025 02:10 PM",
+      likes: 97,
       avatar: "/api/placeholder/40/40",
     },
     {
       id: 3,
-      name: "Mike Chen",
-      rating: 4,
-      comment: "Great experience, highly recommended!",
-      date: "June 10, 2020 11:45 AM",
-      likes: 73,
+      name: "Lidya Abay",
+      rating: 5,
+      comment:
+        "Dr. Nahome saved my father's life with early diagnosis. I can’t thank him enough. Highly recommend for anyone with heart conditions.",
+      date: "March 6, 2025 11:20 AM",
+      likes: 186,
       avatar: "/api/placeholder/40/40",
     },
   ];
@@ -374,7 +387,7 @@ const handleBookAppointment = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Specialization</span>
                     <span className="text-secondary/60 font-semibold">
-                      {doctor.specialization}
+                      {doctor.specialization[0]}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -386,7 +399,7 @@ const handleBookAppointment = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-secondary/60">Rating</span>
                     <span className="text-secondary/60 font-semibold">
-                      {doctor.averageRating || "N/A"}
+                      {doctor.averageRating || "3.5"}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -794,7 +807,7 @@ const handleBookAppointment = () => {
         </div>
       </div>
       {showAppointmentModal && (
-       <AppointmentModal
+        <AppointmentModal
           doctor={doctor}
           slot={selectedSlot}
           date={formattedSelectedDate}
@@ -802,15 +815,16 @@ const handleBookAppointment = () => {
           onClose={handleCloseModal}
           onConfirm={handleConfirm}
           onUpdate={handleUpdate}
-          isLowFounds={user.patientProfile.telehealthWalletBalance < doctor.pricePerSession}
+          isLowFounds={
+            user.patientProfile.telehealthWalletBalance < doctor.pricePerSession
+          }
           openAddfoundsModal={() => setShowAddFundsModal(true)}
           userBalance={user.patientProfile.telehealthWalletBalance}
-          
         />
       )}
-       {showAddFundsModal && (
-              <TelehealthAddFunds onClose={() => setShowAddFundsModal(false)} />
-            )}
+      {showAddFundsModal && (
+        <TelehealthAddFunds onClose={() => setShowAddFundsModal(false)} />
+      )}
     </div>
   );
 }

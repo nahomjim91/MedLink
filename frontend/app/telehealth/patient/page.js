@@ -239,7 +239,8 @@ export default function TelehealthPatientPage() {
           appointment?.status === "CONFIRMED" ||
           appointment?.status === "PENDING" ||
           appointment?.status === "REQUESTED" ||
-          appointment?.status === "SCHEDULED"
+          appointment?.status === "SCHEDULED" ||
+          appointment?.status === "UPCOMING"
       );
 
       if (upcomingAppointments.length === 0) return null;
@@ -481,10 +482,13 @@ export default function TelehealthPatientPage() {
         <div className="md:hidden">
           <h1 className="text-2xl font-bold text-gray-900">Hello, Ms X</h1>
         </div>
-        <Button className="flex items-center gap-2">
+        <Link href={`/telehealth/patient/doctors`}>
+        <Button 
+         className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
           New Appointment
         </Button>
+        </Link>
       </div>
 
       {/* Upcoming Appointments and Calendar */}

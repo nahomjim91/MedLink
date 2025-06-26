@@ -20,7 +20,7 @@ export default function SuccessUpload({ onComplete }) {
 
       <div className="space-y-4">
         <Button onClick={onComplete} variant="fill" color="primary" fullWidth>
-          Go to Dashboard
+          Go to Inventory
         </Button>
       </div>
     </div>

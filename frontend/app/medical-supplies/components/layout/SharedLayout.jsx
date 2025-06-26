@@ -258,12 +258,19 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
     navigationItems[userType] || navigationItems.healthcare-facility;
 
   // Check if a path is active
-  const isActive = (path) => {
-    if (path === `/${userType}`) {
-      return pathname === `/${userType}`;
-    }
-    return pathname.startsWith(path);
-  };
+const isActive = (path) => {
+  const normalizedPath = path.endsWith('/') ? path : path + '/';
+  const normalizedCurrent = pathname.endsWith('/') ? pathname : pathname + '/';
+
+  // Home route — must match exactly
+  if (normalizedPath === `/medical-supplies/${user.role}/`) {
+    return normalizedCurrent === normalizedPath;
+  }
+
+  // Other routes — must start with path and have something after
+  return normalizedCurrent.startsWith(normalizedPath);
+};
+
 
   // Role protection check
   const isAuthorized = () => {

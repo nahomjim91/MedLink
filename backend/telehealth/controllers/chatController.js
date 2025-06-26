@@ -6,13 +6,12 @@ const DoctorProfileModel = require("../models/doctorProfile");
 const User = require("../models/user");
 const { FieldValue } = require("firebase-admin/firestore");
 const { db } = require("../config/firebase");
+const { timestamp } = require("../../utils/helpers.js");
 
 const ChatController = {
   handleJoinAppointmentRoom: async (socket, io, appointmentId) => {
     const GRACE_PERIOD_MINUTES = 10;
-    const graceEndTime = new Date(
-      endTime.getTime() + GRACE_PERIOD_MINUTES * 60000
-    );
+
     try {
       const userId = socket.user.uid;
       const appointment = await AppointmentModel.getById(appointmentId);
@@ -33,12 +32,14 @@ const ChatController = {
       const now = new Date();
       const startTime = appointment.scheduledStartTime.toDate();
       const endTime = appointment.scheduledEndTime.toDate();
+      const graceEndTime = new Date(
+        endTime.getTime() + GRACE_PERIOD_MINUTES * 60000
+      );
 
       if (
         appointment.status !== "IN_PROGRESS" ||
         now < startTime ||
-        now > endTime ||
-        (now > endTime && now > graceEndTime)
+        now > graceEndTime
       ) {
         socket.emit("chatAccess", {
           allowed: false,
@@ -47,7 +48,22 @@ const ChatController = {
         return;
       }
 
+      // ✅ Set actualStartTime if not already set
+      if (!appointment.actualStartTime) {
+        await AppointmentModel.update(appointmentId, {
+          actualStartTime: timestamp(),
+          updatedAt: timestamp(),
+        });
+        console.log(`🕒 actualStartTime set for appointment ${appointmentId}`);
+      }
+
       const roomName = `appointment_${appointmentId}`;
+      const chatRoom = await ChatRoomModel.findOrCreateChatRoom(
+        appointment.patientId,
+        appointment.doctorId
+      );
+      await ChatRoomModel.linkAppointmentToRoom(chatRoom.roomId, appointmentId);
+
       socket.join(roomName);
 
       socket.emit("chatAccess", {
@@ -88,9 +104,11 @@ const ChatController = {
         });
       }
 
-      const roomId = [appointment.patientId, appointment.doctorId]
-        .sort()
-        .join("_");
+      const chatRoom = await ChatRoomModel.findOrCreateChatRoom(
+        appointment.patientId,
+        appointment.doctorId
+      );
+      const roomId = chatRoom.roomId;
       const messageData = {
         senderId: userId,
         roomId,
@@ -220,23 +238,25 @@ const ChatController = {
     }
   },
 
-  // --- REST API Methods ---
-
   getChatHistory: async (req, res) => {
     try {
       // This would list all appointments (past and upcoming) that can be used to enter a chat
+      console.log("req.user.uid ", req.user.uid);
       const appointments = await AppointmentModel.getByUserId(req.user.uid);
       res.status(200).json({ success: true, data: appointments });
     } catch (error) {
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to fetch chat history." });
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch chat history." + error,
+      });
     }
   },
 
   getMessagesForPastAppointment: async (req, res) => {
     try {
       const { appointmentId } = req.params;
+      console.log("req.user.uid ", req.user.uid);
+      console.log("appointmentId ", appointmentId);
       const appointment = await AppointmentModel.getById(appointmentId);
       if (
         appointment.patientId !== req.user.uid &&

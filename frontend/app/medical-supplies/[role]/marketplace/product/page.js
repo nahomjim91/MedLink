@@ -82,7 +82,7 @@ const RelatedProducts = ({ currentProductId, productType, category, role }) => {
                 <div className="h-32 md:h-40 relative bg-gray-100 flex justify-center items-center">
                   {product.imageList && product.imageList.length > 0 ? (
                     <Image
-                      src={product.imageList[0]}
+                      src={product.imageList[0]=== 'Untitled.jpeg' ? '/image/Untitled.jpeg' : product.imageList[0]}
                       alt={product.name}
                       fill
                       className="object-cover"

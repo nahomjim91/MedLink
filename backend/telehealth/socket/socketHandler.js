@@ -30,13 +30,16 @@ function initializeSocket(io) {
     });
 
     // Handle typing indicators
-    socket.on('typing', ({ appointmentId }) => {
-        socket.to(`appointment_${appointmentId}`).emit('typing', { userId });
-    });
+   socket.on('typing', ({ appointmentId }) => {
+    // Assuming you can get the user's name from the decoded token
+    const userName = socket.user.name || 'A user'; // Fallback to a generic name
+    socket.to(`appointment_${appointmentId}`).emit('typing', { userId, userName });
+});
 
-    socket.on('stopTyping', ({ appointmentId }) => {
-        socket.to(`appointment_${appointmentId}`).emit('stopTyping', { userId });
-    });
+// When handling the 'stopTyping' event
+socket.on('stopTyping', ({ appointmentId }) => {
+    socket.to(`appointment_${appointmentId}`).emit('stopTyping', { userId });
+});
 
     // --- Appointment Extension Event Handlers ---
     socket.on('requestExtension', async (data) => {
@@ -60,3 +63,4 @@ function initializeSocket(io) {
 }
 
 module.exports = { initializeSocket };
+

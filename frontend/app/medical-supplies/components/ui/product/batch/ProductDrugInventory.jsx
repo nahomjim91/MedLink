@@ -8,6 +8,7 @@ import {
   FileInput,
   SelectInput,
 } from "../../Input";
+import { getData } from "country-list";
 
 export default function ProductDrugInventory({
   productData,
@@ -35,11 +36,10 @@ export default function ProductDrugInventory({
   const [errors, setErrors] = useState({});
 
   // Country options - could be fetched from an API
-  const countryOptions = [
-    { label: "Country 1", value: "country1" },
-    { label: "Country 2", value: "country2" },
-    { label: "Country 3", value: "country3" },
-  ];
+  const countryOptions = getData().map((country) => ({
+    label: country.name,
+    value: country.code.toLowerCase(),
+  }));
 
   // Update local state when productData prop changes
   useEffect(() => {
