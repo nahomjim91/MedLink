@@ -39,9 +39,11 @@ const upload = multer({
 });
 
 // Main query endpoint
+
 router.post("/query", async (req, res) => {
   try {
-    const { question, language = "english", documentName = null } = req.body;
+    const { question, language = "english", gender , userType} = req.body;
+    console.log("gender" , gender , "userType" , userType)
 
     if (!question) {
       return res.status(400).json({
@@ -61,19 +63,25 @@ router.post("/query", async (req, res) => {
     let result;
 
     if (language.toLowerCase() === "amharic") {
-      // Handle Amharic query directly
-      const answer = await ragService.handleAmharicQuery(question);
-      result = {
-        answer,
-        language: "amharic",
-        availableDocuments: ragService.getAvailableDocuments()
-      };
+      // Handle Amharic query with direct DeepSeek call
+      result = await ragService.handleAmharicQuery(question, gender);
+      
+      // If result is just a string (backward compatibility), wrap it
+      if (typeof result === 'string') {
+        result = {
+          answer: result,
+          language: "amharic",
+          source: "direct_llm",
+        //   availableDocuments: ragService.getAvailableDocuments()
+        };
+      }
     } else {
       // Handle English query with RAG
-      const ragResult = await ragService.handleEnglishQuery(question, documentName);
+      const ragResult = await ragService.handleEnglishQuery(question, gender , userType);
       result = {
         ...ragResult,
         language: "english",
+        source: "rag",
         availableDocuments: ragService.getAvailableDocuments()
       };
     }

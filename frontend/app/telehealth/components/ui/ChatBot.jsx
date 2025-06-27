@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import {
   Send,
@@ -72,15 +71,7 @@ const MedLinkChatBot = ({
   onClick,
 }) => {
   const { user } = useAuth();
-  const {
-    query,
-    queryEnglish,
-    queryAmharic,
-    loading,
-    error,
-    isServiceReady,
-    initializeService,
-  } = useRAG();
+  const { queryEnglish, queryAmharic, loading, error } = useRAG();
 
   // Internal state for chat open/close if no external control is provided
   const [internalIsOpener, setInternalIsOpener] = useState(initialIsOpener);
@@ -144,10 +135,12 @@ const MedLinkChatBot = ({
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       let response;
+      const gender = user?.gender === "M" ? "male" : "female";
+
       if (user?.role === "patient" && selectedLanguage === "amharic") {
-        response = await queryAmharic(currentMessage);
+        response = await queryAmharic(currentMessage, gender);
       } else {
-        response = await queryEnglish(currentMessage);
+        response = await queryEnglish(currentMessage, gender , user?.role);
       }
 
       setIsTyping(false);
@@ -218,7 +211,7 @@ const MedLinkChatBot = ({
     "🔬 Research assistance",
   ];
 
-   // Floating chat button when closed
+  // Floating chat button when closed
   if (!isOpener) {
     return (
       <div className="fixed bottom-4 right-5 z-50">
@@ -241,7 +234,9 @@ const MedLinkChatBot = ({
     <div className="fixed bottom-4 right-4 z-50">
       <div
         className={`bg-white rounded-2xl shadow-2xl border border-gray-200 transition-all duration-500 ease-in-out transform ${
-          isMinimized ? "w-80 h-16 scale-95" : " w-[95vw] md:w-[30vw] h-[90vh] scale-100"
+          isMinimized
+            ? "w-80 h-16 scale-95"
+            : " w-[95vw] md:w-[30vw] h-[90vh] scale-100"
         } hover:shadow-3xl flex flex-col`}
       >
         {/* Header - Fixed height */}

@@ -17,7 +17,7 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
       user
         .getIdToken()
         .then((token) => {
-          console.log('Token acquired:', token); // ✅
+        //   console.log('Token acquired:', token); // ✅
           setToken(token);
         })
         .catch((error) => {
@@ -61,7 +61,7 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
   }, [token, baseURL]);
 
   // Query the RAG system
-  const query = useCallback(async (question, language = 'english', documentName = null) => {
+  const query = useCallback(async (question, language = 'english', gender = 'male' , userType = 'patient') => {
     if (!question.trim()) {
       throw new Error('Question cannot be empty');
     }
@@ -75,7 +75,8 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
         body: JSON.stringify({
           question: question.trim(),
           language: language.toLowerCase(),
-          documentName,
+          gender: gender,
+          userType: userType
         }),
       });
 
@@ -83,7 +84,6 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
         id: Date.now(),
         question,
         language,
-        documentName,
         result: response.data,
         timestamp: new Date(),
       };
@@ -154,17 +154,16 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
 
 
   // Convenience methods for different query types
-  const queryEnglish = useCallback((question, documentName = null) => {
-    return query(question, 'english', documentName);
+  const queryEnglish = useCallback((question,  gender, userType) => {
+    console.log("gender" , gender)
+    return query(question, 'english', gender , userType);
   }, [query]);
 
-  const queryAmharic = useCallback((question) => {
-    return query(question, 'amharic');
+  const queryAmharic = useCallback((question , gender) => {
+    return query(question, 'amharic' , gender);
   }, [query]);
 
-  const querySpecificDocument = useCallback((question, documentName, language = 'english') => {
-    return query(question, language, documentName);
-  }, [query]);
+
 
   return {
     // State
@@ -179,7 +178,6 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
     query,
     queryEnglish,
     queryAmharic,
-    querySpecificDocument,
 
     
 
