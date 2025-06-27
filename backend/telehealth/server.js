@@ -17,6 +17,8 @@ const paymentRoutes = require("./route/payment");
 const { auth } = require("./config/firebase");
 const ChatRoutes = require("./route/chatRoutes");
 const AppointmentModel = require("./models/appointment");
+const ragService = require("./services/ragService");
+const ragRoutes = require("./route/ragRoutes");
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -77,6 +79,7 @@ app.get("/telehealth/health", (req, res) => {
 // Routes
 app.use("/api/payments", paymentRoutes);
 app.use("/api/chat", ChatRoutes);
+app.use("/api/rag", ragRoutes);
 
 cron.schedule("0 0 * * *", async () => {
   try {
