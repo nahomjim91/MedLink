@@ -16,7 +16,7 @@ import { useAuth } from "../../hooks/useAuth";
 import EditProfileModal from "./EditProfileModal";
 
 export default function PatientProfile() {
-  const { user } = useAuth();
+  const { user , refetchUser } = useAuth();
   const [showEditModal, setShowEditModal] = useState(false); 
   const [showManageSharing, setShowManageSharing] = useState(false);
   const [permissions, setPermissions] = useState({
@@ -29,7 +29,7 @@ export default function PatientProfile() {
     : "";
 
   const formatDate = (timestamp) => {
-    console.log("Timestamp:", timestamp);
+    // console.log("Timestamp:", timestamp);
     const date = new Date(timestamp);
     return date.toLocaleDateString("en-US", {
       day: "numeric",
@@ -38,14 +38,11 @@ export default function PatientProfile() {
     });
   };
 
-  const files = Array(7)
-    .fill(null)
-    .map((_, index) => ({
-      id: index + 1,
-      name: "123123.png",
-      appointmentNo: "#123456",
-    }));
-
+const onClose = () =>{
+  setShowEditModal(false);
+  refetchUser();
+}
+ 
   const accessList = Array(4)
     .fill(null)
     .map((_, index) => ({
@@ -73,6 +70,7 @@ export default function PatientProfile() {
     
     alert("Profile updated successfully!");
   };
+  console.log("user: ", user);
 
   const capitalize = (str) =>
     str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
@@ -80,7 +78,7 @@ export default function PatientProfile() {
     <div className="bg-none md:h-[86vh] md:bg-white rounded-lg md:shadow-sm p-3 ">
       <div className="flex flex-col items-center mb-6">
         <ProfileImage
-          profileImageUrl=""
+          profileImageUrl={user.profileImageUrl}
           altText="Patient"
           userName={user.firstName.toUpperCase()}
         />
@@ -497,7 +495,7 @@ export default function PatientProfile() {
         {/* Edit Profile Modal */}
         <EditProfileModal
           isOpen={showEditModal}
-          onClose={() => setShowEditModal(false)}
+          onClose={onClose}
           user={user}
           onSuccess={handleProfileUpdateSuccess}
         />

@@ -4,6 +4,8 @@ import { X, Save, Loader2 } from "lucide-react";
 import { useProfileUpdate } from "../../hooks/useProfileUpdate";
 import { NumberInput, SelectInput, TextInput } from "../../components/ui/Input";
 import { Button } from "../../components/ui/Button";
+import ProfileImage from "../../components/ui/ProfileImage";
+import { tr } from "date-fns/locale";
 
 export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
   const [errors, setErrors] = useState({});
@@ -16,7 +18,9 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
     bloodType: user?.patientProfile?.bloodType || "",
     weight: user?.patientProfile?.weight || "",
     height: user?.patientProfile?.height || "",
+    profileImageUrl: user?.profileImageUrl || "",
   };
+  console.log("Initial data:", initialData);
 
   const {
     formData,
@@ -37,6 +41,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
         bloodType: user.patientProfile?.bloodType || "",
         weight: user.patientProfile?.weight || "",
         height: user.patientProfile?.height || "",
+        profileImageUrl: user.profileImageUrl || "",
       };
       updateFormData(userData);
       setErrors({});
@@ -233,6 +238,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
           bloodType: formData.bloodType,
           height: parseFloat(formData.height),
           weight: parseFloat(formData.weight),
+          profileImageUrl: formData.profileImageUrl,
         };
 
         if (onSuccess) {
@@ -254,6 +260,7 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
     if (!loading) {
       setErrors({});
       onClose();
+
     }
   };
 
@@ -282,6 +289,14 @@ export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {
               <h3 className="text-lg font-medium text-gray-800 mb-4">
                 Personal Information
               </h3>
+
+              <ProfileImage
+                    profileImageUrl ={formData.profileImageUrl }
+                    altText="Profile"
+                    isEditing={true}
+                    userName={formData.firstName}
+                    onImageChange={(value) => handleInputChange("profileImageUrl", value)}
+                  />
 
               <div className="grid grid-cols-2 gap-4">
                 <TextInput

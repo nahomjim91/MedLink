@@ -12,12 +12,13 @@ import {
   DollarSign,
   Users,
   Loader2,
+  FileText,
 } from "lucide-react";
 import ProfileImage from "../../../components/ui/ProfileImage";
 import { useParams } from "next/navigation";
 import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
 import { GET_DOCTOR_AVAILABLE_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
-import { AboutMeCard } from "../../../components//ui/Card";
+import { AboutMeCard, InfoCard ,CertificatesList} from "../../../components/ui/Card";
 import AppointmentModal from "../../../components/ui/modal/AppointmentModal ";
 import { useAppointment } from "../../../hooks/useAppointment ";
 import { useAuth } from "../../../hooks/useAuth";
@@ -287,6 +288,8 @@ export default function DoctorProfileResponsive() {
         .slice(0, 2),
     }));
 
+ 
+
   // Loading state
   if (doctorLoading) {
     return (
@@ -359,9 +362,7 @@ export default function DoctorProfileResponsive() {
             <div className="col-span-3 bg-white rounded-2xl p-4 shadow-sm h-fit">
               <div className="text-center mb-6 flex flex-col items-center">
                 <ProfileImage
-                  imageUrl={
-                    doctor.user?.profileImageUrl || "/api/placeholder/96/96"
-                  }
+                  profileImageUrl={doctor.user?.profileImageUrl}
                   altText={`${doctor.user?.firstName} ${doctor.user?.lastName}`}
                   userName={`Dr. ${doctor.user?.firstName} ${doctor.user?.lastName}`}
                 />
@@ -537,33 +538,11 @@ export default function DoctorProfileResponsive() {
             </div>
 
             {/* Certificate Section */}
+
             <div className="col-span-4 bg-white rounded-2xl p-3 shadow-sm">
-              <h3 className="text-xl font-bold text-secondary/80 mb-6">
-                Certificates
-              </h3>
-              <div className="space-y-4">
-                {doctor.certificates && doctor.certificates.length > 0 ? (
-                  doctor.certificates.map((cert, index) => (
-                    <div key={index}>
-                      <p className="text-secondary/60 font-medium mb-3">
-                        Certificate
-                      </p>
-                      <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                        <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                          <Award className="w-4 h-4 text-teal-600" />
-                        </div>
-                        <span className="text-gray-700 font-medium">
-                          {cert.name}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">
-                    No certificates available
-                  </p>
-                )}
-              </div>
+              <InfoCard title="Certificates & Qualifications">
+                <CertificatesList certificates={doctor.certificates} />
+              </InfoCard>
             </div>
 
             {/* Reviews Section */}
@@ -619,7 +598,7 @@ export default function DoctorProfileResponsive() {
         {/* Doctor Profile Header */}
         <div className="text-center py-6 px-6 flex flex-col items-center">
           <ProfileImage
-            imageUrl={doctor.user?.profileImageUrl || "/api/placeholder/96/96"}
+            imageUrl={doctor.user?.profileImageUrl}
             altText={`${doctor.user?.firstName} ${doctor.user?.lastName}`}
             userName={`Dr. ${doctor.user?.firstName} ${doctor.user?.lastName}`}
           />

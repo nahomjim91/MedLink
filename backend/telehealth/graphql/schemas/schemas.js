@@ -48,6 +48,7 @@ const typeDefs = gql`
     appointmentId: String
     patientId: String
     createdAt: Date!
+
   }
 
   type Certificate {
@@ -85,6 +86,8 @@ const typeDefs = gql`
     profileImageUrl: String
     pricePerSession: Float
     telehealthWalletBalance: Float
+    certificates: [CertificateInput]
+
   }
 
   input CertificateInput {

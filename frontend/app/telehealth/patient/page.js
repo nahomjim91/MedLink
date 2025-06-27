@@ -240,7 +240,8 @@ export default function TelehealthPatientPage() {
           appointment?.status === "PENDING" ||
           appointment?.status === "REQUESTED" ||
           appointment?.status === "SCHEDULED" ||
-          appointment?.status === "UPCOMING"
+          appointment?.status === "UPCOMING" ||
+          appointment?.status === "IN_PROGRESS"
       );
 
       if (upcomingAppointments.length === 0) return null;
@@ -303,7 +304,7 @@ export default function TelehealthPatientPage() {
           hour12: true,
         })}`,
         avatar:
-          closest.doctor?.profilePicture ||
+          closest.doctor?.profileImageUrl ||
           closest.doctor?.user?.profileImageUrl ||
           "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face",
         status: closest.status,
@@ -447,7 +448,7 @@ export default function TelehealthPatientPage() {
           diagnosis: getDiagnosis(appointment),
           status: appointment.status,
           avatar:
-            appointment.doctor?.profilePicture ||
+            appointment.doctor?.profileImageUrl ||
             appointment.doctor?.user?.profileImageUrl ||
             "/api/placeholder/60/60",
         };
@@ -585,7 +586,7 @@ export default function TelehealthPatientPage() {
                       />
                     </div>
                     <span className="font-medium text-gray-900">
-                      {appointment.doctor}
+                      {appointment.doctor} 
                     </span>
                   </div>
                   <div className="">{appointment.specialty}</div>
@@ -710,7 +711,7 @@ export default function TelehealthPatientPage() {
                           className="flex-none w-80 bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
                         >
                           <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-orange-200 overflow-hidden flex-shrink-0">
+                            <div className="w-16 h-16 rounded-full bg-primary/20 overflow-hidden flex-shrink-0">
                               <img
                                 src={doctor.avatar}
                                 alt={doctor.name}

@@ -52,7 +52,7 @@ export default function ProfileUpload({
         />
 
         <StepButtons 
-          onNext={handleSubmit} 
+          onNext={localProfileImage && handleSubmit} 
           onPrevious={onPrevious}
           isLoading={isLoading} 
         />

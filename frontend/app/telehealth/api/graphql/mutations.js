@@ -62,35 +62,39 @@ export const UPDATE_USER_PROFILE = gql`
     }
   }
 `;
-
-// Doctor Profile Update Mutation
 export const UPDATE_DOCTOR_PROFILE = gql`
   mutation UpdateDoctorProfile($input: DoctorProfileInput!) {
     updateDoctorProfile(input: $input) {
       doctorId
-      displayName
-      gender
       specialization
       experienceYears
       aboutMe
-      profileImageUrl
-      isApproved
+      pricePerSession
+      telehealthWalletBalance
       averageRating
       ratingCount
+      isApproved
       approvedAt
-      doctorProfile {
-        telehealthWalletBalance
-      }
-      pricePerSession
+      rejectionReason
       certificates {
         name
         url
       }
+      user {
+        id
+        firstName
+        lastName
+        phoneNumber
+        gender
+        profileImageUrl
+      }
+      createdAt
+      updatedAt
     }
   }
 `;
 
-// Patient Profile Update Mutation
+// Patient Profile Update Mutation 
 export const UPDATE_PATIENT_PROFILE = gql`
   mutation UpdatePatientProfile($input: PatientProfileInput!) {
     updatePatientProfile(input: $input) {
@@ -101,7 +105,7 @@ export const UPDATE_PATIENT_PROFILE = gql`
       gender
       dob
       profileImageUrl
-      
+      profileComplete
       patientProfile {
         patientId
         height

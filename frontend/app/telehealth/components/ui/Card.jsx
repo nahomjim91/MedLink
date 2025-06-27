@@ -1,6 +1,6 @@
 'use client';
 import React , { useState } from "react";
-import { Calendar, Clock, Plus } from 'lucide-react';
+import { Calendar, Clock, FileText } from 'lucide-react';
 import { Button } from "./Button";
 import { CancelModal } from "./modal/AppointmentModal ";
 
@@ -84,7 +84,7 @@ export function UpcomingAppointmentCard({
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Check if appointment can be cancelled based on status
-  const canCancel = ["REQUESTED", "PENDING", "CONFIRMED", "SCHEDULED"].includes(
+  const canCancel = ["REQUESTED", "PENDING", "CONFIRMED", "SCHEDULED" ].includes(
     upcomingAppointment.status
   );
 
@@ -105,6 +105,7 @@ export function UpcomingAppointmentCard({
       onViewProfile(upcomingAppointment.id);
     }
   };
+  console.log("Upcoming Appointment:", upcomingAppointment);
 
   return (
     <>
@@ -210,3 +211,82 @@ export function UpcomingAppointmentCard({
   );
 }
 
+
+export const InfoCard = ({
+  title,
+  children,
+  className = "",
+  headerAction = null,
+  isProfile = false,
+}) => (
+  <div
+    className={` ${
+      !isProfile
+        ? "bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
+        : ""
+    } ${className}`}
+  >
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-lg font-semibold text-secondary">{title}</h3>
+      {headerAction}
+    </div>
+    {children}
+  </div>
+);
+
+export  const CertificatesList = ({ certificates }) => {
+    // Function to extract filename from the full path
+    const extractFilename = (fullPath) => {
+      if (!fullPath) return "";
+
+      // Split by '/' and get the last part
+      const parts = fullPath.split("/");
+      const filename = parts[parts.length - 1];
+
+      // Remove the timestamp prefix (everything before the first '-')
+      const dashIndex = filename.indexOf("-");
+      if (dashIndex !== -1) {
+        return filename.substring(dashIndex + 1);
+      }
+
+      return filename;
+    };
+
+    // Function to handle certificate click
+    const handleCertificateClick = (cert) => {
+      const url = cert.url || cert.name;
+      if (url) {
+        window.open(url, "_blank");
+      }
+    };
+
+    return (
+      <div className="space-y-3">
+        {certificates && certificates.length > 0 ? (
+          certificates.map((cert, index) => (
+            <div key={index} className="group">
+              <p className="text-sm text-secondary/80 mb-2">
+                Certificate {index + 1}
+              </p>
+              <div
+                className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg group-hover:border-primary/30 transition-colors cursor-pointer hover:bg-gray-50"
+                onClick={() => handleCertificateClick(cert)}
+              >
+                <FileText className="w-5 h-5 text-primary flex-shrink-0" />
+                <span className="text-sm text-secondary">
+                  {extractFilename(cert.name) || `Certificate ${index + 1}`}
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-8">
+            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-secondary/60">
+              No certificates uploaded yet
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };

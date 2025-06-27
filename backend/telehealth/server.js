@@ -7,6 +7,8 @@ const http = require("http");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const { Server } = require("socket.io");
 const { initializeSocket } = require("./socket/socketHandler");
 const setupApolloServer = require("./graphql");
@@ -32,6 +34,51 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static file serving for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Configure Multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, 'uploads');
+    // Ensure uploads directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Add file type restrictions if needed
+    const allowedMimes = [
+      'image/jpeg',
+      'image/png', 
+      'image/gif',
+      'application/pdf',
+      'text/plain',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'), false);
+    }
+  }
+});
+
 app.use(authMiddleware);
 
 // Create HTTP server
@@ -46,6 +93,7 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+
 io.use(async (socket, next) => {
   try {
     const token =
@@ -72,18 +120,126 @@ io.use(async (socket, next) => {
 initializeSocket(io);
 
 // Basic health check endpoint
-app.get("/telehealth/health", (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "telehealth" });
 });
 
-// Routes
+// File Upload Routes
+// Single file upload endpoint
+app.post('/upload', upload.single('file'), (req, res) => {
+  try {
+    // console.log(req.file);
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    // console.log(fileUrl);
+    res.json({
+      message: 'File uploaded successfully',
+      fileUrl,
+      fileType: req.file.mimetype,
+      fileName: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ message: 'Upload failed', error: error.message });
+  }
+});
+
+// Multiple files upload endpoint
+app.post('/uploads', upload.array('files', 10), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'No files uploaded' });
+    }
+
+    const fileInfos = req.files.map(file => ({
+      originalName: file.originalname,
+      fileName: file.filename,
+      fileUrl: `${req.protocol}://${req.get('host')}/uploads/${file.filename}`,
+      fileType: file.mimetype,
+      size: file.size
+    }));
+
+    res.json({
+      message: 'Files uploaded successfully',
+      files: fileInfos
+    });
+  } catch (error) {
+    console.error('Multiple upload error:', error);
+    res.status(500).json({ message: 'Upload failed', error: error.message });
+  }
+});
+
+// Delete file endpoint
+app.delete('/delete/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+
+    // Prevent directory traversal attacks
+    const safeFilename = path.basename(filename);
+    const filePath = path.join(__dirname, 'uploads', safeFilename);
+
+    // Check if file exists
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+      if (err) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      // Delete the file
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error('Delete error:', err);
+          return res.status(500).json({ message: 'Error deleting file' });
+        }
+
+        res.json({ message: 'File deleted successfully' });
+      });
+    });
+  } catch (error) {
+    console.error('Delete endpoint error:', error);
+    res.status(500).json({ message: 'Delete failed', error: error.message });
+  }
+});
+
+// Get file info endpoint
+app.get('/file/:filename', (req, res) => {
+  try {
+    const { filename } = req.params;
+    const safeFilename = path.basename(filename);
+    const filePath = path.join(__dirname, 'uploads', safeFilename);
+
+    fs.stat(filePath, (err, stats) => {
+      if (err) {
+        return res.status(404).json({ message: 'File not found' });
+      }
+
+      res.json({
+        filename: safeFilename,
+        size: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
+        fileUrl: `${req.protocol}://${req.get('host')}/uploads/${safeFilename}`
+      });
+    });
+  } catch (error) {
+    console.error('File info error:', error);
+    res.status(500).json({ message: 'Failed to get file info', error: error.message });
+  }
+});
+
+// Other existing routes
 app.use("/api/payments", paymentRoutes);
 app.use("/api/chat", ChatRoutes);
 app.use("/api/rag", ragRoutes);
 
+// Cron jobs
 cron.schedule("0 0 * * *", async () => {
   try {
-    const deletedCount = await AvailabilitySlot.cleanupExpiredSlots(1); // or any hoursAgo you prefer
+    const deletedCount = await AvailabilitySlot.cleanupExpiredSlots(1);
     console.log(`⏱️ Cleanup ran: ${deletedCount} expired slots deleted`);
   } catch (err) {
     console.error("❌ Cleanup error:", err);
@@ -97,6 +253,38 @@ cron.schedule('*/1 * * * *', async () => {
     console.error("Cron job failed:", error);
   }
 });
+
+// Optional: Cleanup old uploaded files (run daily)
+cron.schedule("0 2 * * *", () => {
+  const uploadDir = path.join(__dirname, 'uploads');
+  const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+
+  fs.readdir(uploadDir, (err, files) => {
+    if (err) {
+      console.error('Error reading upload directory:', err);
+      return;
+    }
+
+    files.forEach(file => {
+      const filePath = path.join(uploadDir, file);
+      fs.stat(filePath, (err, stats) => {
+        if (err) return;
+
+        const fileAge = Date.now() - stats.mtime.getTime();
+        if (fileAge > maxAge) {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error('Error deleting old file:', err);
+            } else {
+              console.log(`🗑️ Deleted old file: ${file}`);
+            }
+          });
+        }
+      });
+    });
+  });
+});
+
 /**
  * Initialize the telehealth server
  * @param {Object} parentApp - Optional parent Express app to attach as middleware
@@ -120,6 +308,7 @@ const initializeTelehealthServer = async (parentApp = null) => {
           console.log(`
 =======================================================
 🚀 MedLink Telehealth Server running on port ${PORT}
+📁 File uploads available at /telehealth/upload
 =======================================================
           `);
           resolve();
@@ -143,4 +332,3 @@ if (require.main === module) {
 
 // Export for importing in other files
 module.exports = initializeTelehealthServer;
-

@@ -345,7 +345,7 @@ async searchDoctors(searchInput, limit = 20, offset = 0) {
           data.specialization.forEach((spec) => specializationsSet.add(spec));
         }
       });
-
+console.log(specializationsSet);
       return Array.from(specializationsSet).sort();
     } catch (error) {
       console.error("Error getting specializations:", error);

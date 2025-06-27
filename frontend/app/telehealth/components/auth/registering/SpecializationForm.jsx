@@ -28,7 +28,7 @@ export default function SpecializationForm({
     aboutYou: aboutYou || "",
   });
 
-  const [documents, setDocuments] = useState(certificates || []);
+  const [documents, setDocuments] = useState(certificates?.map(cert => cert.url) || []);
   const [errors, setErrors] = useState({});
 
   const validateField = (name, value) => {
@@ -94,10 +94,12 @@ export default function SpecializationForm({
     }));
   };
 
-  const handleDocumentsUpload = (files) => {
+const handleDocumentsUpload = (files) => {
     setDocuments(files);
-    onDocumentsUpload(files);
-  };
+    console.log("Documents uploaded:", files);
+    const mappedFiles = files.map(file => ({name: file, url: file}));
+    onDocumentsUpload(mappedFiles);
+};
 
   const validateForm = () => {
     const newErrors = {};
@@ -227,6 +229,7 @@ export default function SpecializationForm({
         initialFiles={documents}
         showPreview={true}
         previewType="document"
+
       />
 
       <StepButtons 

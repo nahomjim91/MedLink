@@ -172,6 +172,7 @@ const UserModel = {
       });
 
       const updatedDoc = await userRef.get();
+      console.log(" formatDoc(updatedDoc) ", formatDoc(updatedDoc));
       return formatDoc(updatedDoc);
     } catch (error) {
       console.error('Error completing registration:', error);

@@ -20,7 +20,7 @@ import ProfileImage from "../../components/ui/ProfileImage";
 import { Rating } from "../../components/ui/Input";
 import { useAuth } from "../../hooks/useAuth";
 import { useProfileUpdate } from "../../hooks/useProfileUpdate";
-
+import {InfoCard, CertificatesList} from "../../components/ui/Card"
 // Success/Error notification component
 const NotificationBanner = ({ type, message, onClose }) => {
   const [isVisible, setIsVisible] = useState(true);
@@ -292,18 +292,20 @@ const ProfileHeader = ({
   isEditing,
   onEditClick,
   onSave,
+  onChange,
   onCancel,
   averageRating,
   isUpdating,
   hasChanges,
   isMobile = false,
-}) => (
-  <div className="flex flex-col justify-center items-center gap-4">
+}) => {
+  return(<div className="flex flex-col justify-center items-center gap-4">
     <ProfileImage
-      imageUrl={doctorData.profileImageUrl || doctorData.photoURL}
+      profileImageUrl={doctorData.profileImageUrl || null}
       altText="Profile"
       isEditing={isEditing}
       userName={doctorData.firstName}
+      onImageChange={onChange}
     />
 
     <div className="text-center">
@@ -383,30 +385,10 @@ const ProfileHeader = ({
         </div>
       )}
     </div>
-  </div>
-);
+  </div>)
+}
 
-const InfoCard = ({
-  title,
-  children,
-  className = "",
-  headerAction = null,
-  isProfile = false,
-}) => (
-  <div
-    className={` ${
-      !isProfile
-        ? "bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
-        : ""
-    } ${className}`}
-  >
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-lg font-semibold text-secondary">{title}</h3>
-      {headerAction}
-    </div>
-    {children}
-  </div>
-);
+
 
 const ReviewCard = ({ review }) => (
   <div className="border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
@@ -441,32 +423,6 @@ const ReviewCard = ({ review }) => (
   </div>
 );
 
-const CertificatesList = ({ certificates }) => (
-  <div className="space-y-3">
-    {certificates && certificates.length > 0 ? (
-      certificates.map((cert, index) => (
-        <div key={index} className="group">
-          <p className="text-sm text-secondary/80 mb-2">
-            Certificate {index + 1}
-          </p>
-          <div className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg group-hover:border-primary/30 transition-colors">
-            <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-            <span className="text-sm text-secondary">
-              {cert.name || `Certificate ${index + 1}`}
-            </span>
-          </div>
-        </div>
-      ))
-    ) : (
-      <div className="text-center py-8">
-        <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-        <p className="text-sm text-secondary/60">
-          No certificates uploaded yet
-        </p>
-      </div>
-    )}
-  </div>
-);
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -628,7 +584,7 @@ export default function ProfilePage() {
       </div>
     );
   }
-
+// console.log("formData: ", formData);
   return (
     <div className="min-h-screen">
       {/* Notification Banners */}
@@ -642,12 +598,14 @@ export default function ProfilePage() {
         {/* Profile Header - Always visible */}
         <div className="mb-3">
           <InfoCard title="" className="text-center" isProfile={true}>
+            {console.log("formData: ", formData)}
             <ProfileHeader
               doctorData={formData}
               isEditing={isEditing}
               onEditClick={handleEdit}
               onSave={handleSaveWithNotification}
               onCancel={handleCancel}
+              onChange={(value) => handleInputChange("profileImageUrl", value)}
               averageRating={averageRating}
               isUpdating={loading}
               hasChanges={hasChanges}

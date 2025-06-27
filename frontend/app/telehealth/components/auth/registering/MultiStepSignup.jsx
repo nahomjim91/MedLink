@@ -44,8 +44,8 @@ export default function MultiStepSignup({ email }) {
     specialization: user?.doctorProfile?.specialization || "",
     experienceYears: user?.doctorProfile?.experienceYears || "",
     aboutYou: user?.doctorProfile?.aboutMe || "",
-    certificates: null,
-    profileImage: null,
+    profileImageUrl: user?.profileImageUrl || null,
+    certificates: user?.doctorProfile?.certificates || null,
   });
 
   // Set up GraphQL mutations
@@ -68,6 +68,8 @@ export default function MultiStepSignup({ email }) {
         experienceYears:
           user.doctorProfile?.experienceYears || prevData.experienceYears,
         aboutYou: user.doctorProfile?.aboutMe || prevData.aboutYou,
+        profileImageUrl: user?.profileImageUrl || prevData.profileImageUrl,
+        certificates: user?.doctorProfile?.certificates || prevData.certificates,
       }));
     }
   }, [user]);
@@ -148,9 +150,10 @@ export default function MultiStepSignup({ email }) {
         firstName: userData.firstName,
         lastName: userData.lastName,
         gender: userData.gender,
-        dob: userData.dateOfBirth, // Match the schema field name
+        dob: userData.dateOfBirth,
         phoneNumber: userData.phoneNumber,
         role: userData.role,
+        profileImageUrl: userData.profileImageUrl,
       };
 
       // Only include role-specific data if relevant
@@ -182,6 +185,7 @@ export default function MultiStepSignup({ email }) {
           specialization: userData.specialization,
           experienceYears: parseInt(userData.experienceYears) || 0,
           aboutMe: userData.aboutYou || "", // Match the schema field name
+          certificates: userData.certificates || null,
           // Profile image URL would be handled separately if needed
         };
       }
@@ -225,9 +229,7 @@ export default function MultiStepSignup({ email }) {
 
   // Navigate to dashboard after completion
   const handleComplete = () => {
-    router.push(
-     `/telehealth/${userData.role}`
-    );
+    router.push(`/telehealth/${userData.role}`);
   };
 
   // Render the appropriate step component
@@ -301,8 +303,8 @@ export default function MultiStepSignup({ email }) {
         if (userData.role === "doctor" || userData.role === "patient") {
           return (
             <ProfileUpload
-              profileImage={userData.profileImage}
-              onImageUpload={(profileImage) => updateUserData({ profileImage })}
+              profileImage={userData.profileImageUrl}
+              onImageUpload={(profileImageUrl) => updateUserData({ profileImageUrl })}
               onNext={handleNext}
               onPrevious={handlePrevious}
               isLoading={isLoading}

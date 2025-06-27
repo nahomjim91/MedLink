@@ -353,7 +353,7 @@ const resolvers = {
         return existingUser; // Return existing user if found
       }
       // Create the basic user document
-      return await UserModel.initializeUser(user.uid, email);
+      return await UserModel.initializeUser(user.uid, user.email);
     },
 
     completeRegistration: async (
@@ -376,6 +376,7 @@ const resolvers = {
         // 1. Update the base user information
         const updatedUser = await UserModel.createOrUpdate(userId, {
           ...THuserInput,
+          email: context.user.email,
           profileComplete: true,
         });
 
