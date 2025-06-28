@@ -151,7 +151,12 @@ export function StepButtons({
   showNext = true,
   className = "",
   isLoading = false,
+    nextDisabled = false, // <-- Add this
+
 }) {
+  // console.log("showNext:", showNext);
+  // console.log("showPrevious:", showPrevious);
+  // console.log("isLoading:", isLoading);
   return (
     <div className={`flex justify-between gap-4 mt-6   ${className}`}>
       <div>
@@ -169,16 +174,15 @@ export function StepButtons({
 
       <div>
         {showNext && (
-          <Button
-            variant="fill"
-            color="primary"
-            onClick={isLoading ? () => {} : onNext}
-            className={`flex-1 sm:flex-initial text-sm md:text-base ${
-              !showPrevious ? "ml-auto" : ""
-            }`}
-          >
-            { isLoading ? "Loading..." :  nextLabel}
-          </Button>
+         <Button
+  variant="fill"
+  color="primary"
+  onClick={isLoading || nextDisabled ? () => {} : onNext}
+  disabled={isLoading || nextDisabled}
+  className={`...`}
+>
+  {isLoading ? "Loading..." : nextLabel}
+</Button>
         )}
       </div>
     </div>

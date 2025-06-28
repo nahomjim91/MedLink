@@ -5,9 +5,9 @@ import { StepProgressIndicator } from "../../StepProgressIndicator";
 import { useMSAuth } from "../../../../hooks/useMSAuth";
 
 // GraphQL Mutations
-import { 
+import {
   CREATE_DRUG_BATCH,
-  CREATE_EQUIPMENT_BATCH
+  CREATE_EQUIPMENT_BATCH,
 } from "../../../../api/graphql/product/productMutations";
 
 // Step Components
@@ -17,25 +17,34 @@ import BatchSummaryDrug from "./BatchSummaryDrug";
 import BatchSummaryEquipment from "./BatchSummaryEquipment";
 import SuccessUpload from "../SuccessUpload";
 import { ProductAndBatchModel } from "../../../modal/Modal";
+import useFileUpload from "../../../../hooks/useFileUpoload";
+
 
 // Initial batch data state schema
 const initialBatchData = {
   quantity: 0,
   costPrice: 0,
   sellingPrice: 0,
-  
+
   // DrugBatch-specific
   expiryDate: "",
   sizePerPackage: 0,
   manufacturer: "",
   manufacturerCountry: "",
   manufactureredDate: "",
-  
+
   // EquipmentBatch-specific
   serialNumbers: [],
+certification: null,
+    technicalSpecifications: "",
+    userManuals: null,
 };
 
-export default function AddBatchMultiSteps({ productData , productId, onClose ,  }) {
+export default function AddBatchMultiSteps({
+  productData,
+  productId,
+  onClose,
+}) {
   // Core state
   const [currentStep, setCurrentStep] = useState(1);
   const userData = useMSAuth();
@@ -48,6 +57,8 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
     currentOwnerName: userData?.companyName || userData?.email || "",
   });
   const [createdBatchId, setCreatedBatchId] = useState(null);
+    const { deleteFile, uploading } = useFileUpload();
+
 
   // Set up GraphQL mutations
   const [createDrugBatch] = useMutation(CREATE_DRUG_BATCH, {
@@ -78,8 +89,6 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
 
   // Navigation handlers
   const handleNext = useCallback(async () => {
-
-
     if (currentStep === getTotalSteps() - 1) {
       await handleSubmitBatch();
       return;
@@ -100,7 +109,7 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
     try {
       // Then create the batch for the product
       let createdBatchResponse;
-      
+
       if (productData.productType === "DRUG") {
         const drugBatchInput = {
           productId: productId,
@@ -115,11 +124,11 @@ export default function AddBatchMultiSteps({ productData , productId, onClose , 
           manufacturerCountry: batchData.manufacturerCountry,
           manufactureredDate: batchData.manufactureredDate,
         };
-console.log("DRUG BATCH INPUT:", drugBatchInput);
+        console.log("DRUG BATCH INPUT:", drugBatchInput);
         createdBatchResponse = await createDrugBatch({
           variables: { input: drugBatchInput },
         });
-        
+
         setCreatedBatchId(createdBatchResponse.data.createDrugBatch.batchId);
       } else {
         const equipmentBatchInput = {
@@ -138,24 +147,28 @@ console.log("DRUG BATCH INPUT:", drugBatchInput);
         createdBatchResponse = await createEquipmentBatch({
           variables: { input: equipmentBatchInput },
         });
-        
-        setCreatedBatchId(createdBatchResponse.data.createEquipmentBatch.batchId);
+
+        setCreatedBatchId(
+          createdBatchResponse.data.createEquipmentBatch.batchId
+        );
       }
 
       setSubmissionComplete(true);
       setCurrentStep(getTotalSteps()); // Move to success step
     } catch (err) {
       console.error("Error submitting batch:", err);
+       initialBatchData?.certification && await deleteFile(initialBatchData?.certification);
+      initialBatchData?.userManuals && await deleteFile(initialBatchData?.userManuals);
       setError(`Failed to submit batch: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
   }, [
-    batchData, 
+    batchData,
     productData,
-    getTotalSteps, 
-    createDrugBatch, 
-    createEquipmentBatch
+    getTotalSteps,
+    createDrugBatch,
+    createEquipmentBatch,
   ]);
 
   // Handle completion
@@ -165,41 +178,43 @@ console.log("DRUG BATCH INPUT:", drugBatchInput);
 
   // Step components and props map
   const stepComponents = {
-    1: productData.productType === "DRUG" ? (
-      <ProductDrugInventory
-        productType={productData.productType}
-        productData={productData}
-        onUpdate={updateBatchData}
-        batchData={batchData}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ) : (
-      <ProductEquipmentInventory
-        productType={productData.productType}
-        batchData={batchData}
-        onUpdate={updateBatchData}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ),
-    2: productData.productType === "DRUG" ? (
-      <BatchSummaryDrug
-        batch={batchData}
-        onSubmit={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ) : (
-      <BatchSummaryEquipment
-        batch={batchData}
-        onSubmit={handleNext}
-        onPrevious={handlePrevious}
-        isLoading={isLoading}
-      />
-    ),
+    1:
+      productData.productType === "DRUG" ? (
+        <ProductDrugInventory
+          productType={productData.productType}
+          productData={productData}
+          onUpdate={updateBatchData}
+          batchData={batchData}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ) : (
+        <ProductEquipmentInventory
+          productType={productData.productType}
+          batchData={batchData}
+          onUpdate={updateBatchData}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ),
+    2:
+      productData.productType === "DRUG" ? (
+        <BatchSummaryDrug
+          batch={batchData}
+          onSubmit={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ) : (
+        <BatchSummaryEquipment
+          batch={batchData}
+          onSubmit={handleNext}
+          onPrevious={handlePrevious}
+          isLoading={isLoading}
+        />
+      ),
     3: (
       <SuccessUpload
         productData={productData}
@@ -215,7 +230,7 @@ console.log("DRUG BATCH INPUT:", drugBatchInput);
     if (submissionComplete) {
       return `Batch Added for ${productData.name}`;
     }
-    
+
     return `Add New Batch for ${productData.name}`;
   }, [submissionComplete, productData.name]);
 
@@ -228,7 +243,6 @@ console.log("DRUG BATCH INPUT:", drugBatchInput);
       isLoading={isLoading}
       error={error}
       stepComponents={stepComponents}
-    />  
-  
+    />
   );
 }

@@ -7,8 +7,11 @@ import {
   TextAreaInput,
   SelectInput,
   DateInput,
+  EditableFileField,
 } from "../../Input";
 import { FileUploader } from "../../FileUploader";
+import useFileUpload from "../../../../hooks/useFileUpoload";
+
 import { getData } from "country-list";
 
 export default function ProductEquipmentInventory({
@@ -34,11 +37,12 @@ export default function ProductEquipmentInventory({
     certification: batchData?.certification || null,
     technicalSpecifications: batchData?.technicalSpecifications || "",
     userManuals: batchData?.userManuals || null,
-    license: batchData?.license || null,
   });
 
   // Track validation errors
   const [errors, setErrors] = useState({});
+  const { deleteFile, uploadSingle, uploading } = useFileUpload();
+  const [uploadError, setUploadError] = useState(null);
 
   // Update local state when batchData prop changes - memoized to prevent unnecessary re-renders
   useEffect(() => {
@@ -57,7 +61,6 @@ export default function ProductEquipmentInventory({
         certification: batchData.certification || null,
         technicalSpecifications: batchData.technicalSpecifications || "",
         userManuals: batchData.userManuals || null,
-        license: batchData.license || null,
       });
     }
   }, [batchData]);
@@ -164,22 +167,85 @@ export default function ProductEquipmentInventory({
   }, []);
 
   // Handle file uploads - memoized to prevent unnecessary re-renders
-  const handleFileUpload = useCallback((name, files) => {
-    setErrors((prev) => ({ ...prev, [name]: null }));
-
-    // Handle single file (our FileUploader always returns an array)
-    if (Array.isArray(files) && files.length > 0) {
+const handleFileUpload = useCallback(
+  async (name, files) => {
+    if (!files || (Array.isArray(files) && files.length === 0)) {
+      // Handle file removal
       setLocalBatchData((prev) => ({
         ...prev,
-        [name]: files[0], // Store just the first file
+        [name]: null,
       }));
-    } else if (files === null) {
+      return;
+    }
+
+    setUploadError(null);
+    setErrors((prev) => ({ ...prev, [name]: null }));
+
+    try {
+      const file = Array.isArray(files) ? files[0] : files;
+      
+      // Get current file from state and delete if exists
+      setLocalBatchData((prev) => {
+        // Delete existing file if present
+        if (prev[name]) {
+          console.log('Deleting existing file:', prev[name]);
+          deleteFile(prev[name]).catch(console.error); // Handle deletion async
+        }
+        return prev; // Return unchanged state for now
+      });
+
+      // Upload new file
+      const uploadResponse = await uploadSingle(file);
+
+      if (uploadResponse) {
+        // Store the server response (file URL/name) in local state
+        setLocalBatchData((prev) => ({
+          ...prev,
+          [name]: uploadResponse.fileUrl
+        }));
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      setUploadError(error.message || "Upload failed");
+
+      // Clear the file on error
       setLocalBatchData((prev) => ({
         ...prev,
         [name]: null,
       }));
     }
-  }, []);
+  },
+  [uploadSingle, deleteFile] // Add deleteFile to dependencies
+);
+
+  const handleFileRemove = useCallback(
+    async (name, fileName) => {
+      if (!fileName) return;
+
+      try {
+        setUploadError(null);
+
+        // Try to delete from server
+        await deleteFile(fileName);
+
+        // Clear from local state
+        setLocalBatchData((prev) => ({
+          ...prev,
+          [name]: null,
+        }));
+      } catch (error) {
+        console.error("Delete failed:", error);
+        setUploadError(error.message || "Failed to delete file");
+
+        // Still clear from local state even if server delete failed
+        setLocalBatchData((prev) => ({
+          ...prev,
+          [name]: null,
+        }));
+      }
+    },
+    [deleteFile]
+  );
 
   // Handle serial numbers input - memoized to prevent unnecessary re-renders
   const handleSerialNumbersChange = useCallback((e) => {
@@ -226,7 +292,10 @@ export default function ProductEquipmentInventory({
   // Prepare file upload initial state properly
   const getInitialFiles = useCallback((file) => {
     if (!file) return [];
-    return [file]; // FileUploader expects an array
+    // If file is a string (uploaded file URL/name), don't show in preview
+    // FileUploader preview is only for local files before upload
+    if (typeof file === "string") return [];
+    return [file]; // FileUploader expects an array for local files
   }, []);
 
   return (
@@ -375,6 +444,20 @@ export default function ProductEquipmentInventory({
             Technical Documentation
           </h3>
 
+          {/* Show upload error if any */}
+          {uploadError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              {uploadError}
+            </div>
+          )}
+
+          {/* Show uploading status */}
+          {uploading && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
+              Uploading file... Please wait.
+            </div>
+          )}
+
           <div className="mb-6">
             <TextAreaInput
               name="technicalSpecifications"
@@ -387,7 +470,7 @@ export default function ProductEquipmentInventory({
             />
           </div>
 
-          <div className="grid md:grid-cols-3 md:gap-4 mb-6">
+          <div className="grid md:grid-cols-2 md:gap-4 mb-6">
             <div>
               <FileUploader
                 label="Certification"
@@ -399,7 +482,31 @@ export default function ProductEquipmentInventory({
                 initialFiles={getInitialFiles(localBatchData.certification)}
                 previewType="document"
                 className="w-full"
+                disabled={uploading}
               />
+
+              {/* Show uploaded file info */}
+              {localBatchData.certification &&
+                typeof localBatchData.certification === "string" && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded flex items-center justify-between">
+                    <span className="text-sm text-gray-700 truncate">
+                      {localBatchData.certification.split("/").pop()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleFileRemove(
+                          "certification",
+                          localBatchData.certification
+                        )
+                      }
+                      disabled={uploading}
+                      className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      {uploading ? "Processing..." : "Remove"}
+                    </button>
+                  </div>
+                )}
             </div>
 
             <div>
@@ -411,19 +518,31 @@ export default function ProductEquipmentInventory({
                 initialFiles={getInitialFiles(localBatchData.userManuals)}
                 previewType="document"
                 className="w-full"
+                disabled={uploading}
               />
-            </div>
 
-            <div>
-              <FileUploader
-                label="License"
-                accept=".pdf,.png,.jpg,.jpeg"
-                multiple={false}
-                onFileUpload={(files) => handleFileUpload("license", files)}
-                initialFiles={getInitialFiles(localBatchData.license)}
-                previewType="document"
-                className="w-full"
-              />
+              {/* Show uploaded file info */}
+              {localBatchData.userManuals &&
+                typeof localBatchData.userManuals === "string" && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded flex items-center justify-between">
+                    <span className="text-sm text-gray-700 truncate">
+                      {localBatchData.userManuals.split("/").pop()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleFileRemove(
+                          "userManuals",
+                          localBatchData.userManuals
+                        )
+                      }
+                      disabled={uploading}
+                      className="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      {uploading ? "Processing..." : "Remove"}
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
         </div>
@@ -433,8 +552,8 @@ export default function ProductEquipmentInventory({
           <StepButtons
             onNext={isFormValid && handleSubmit}
             onPrevious={onPrevious}
-            nextDisabled={false} // We'll handle validation on submit
-            isLoading={isLoading}
+            nextDisabled={uploading || !isFormValid} // Disable next while uploading
+            isLoading={isLoading || uploading} // Include upload loading state
           />
         </div>
       </form>

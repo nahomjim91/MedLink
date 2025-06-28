@@ -37,7 +37,6 @@ export const EQUIPMENT_PRODUCT_FIELDS = gql`
     modelNumber
     warrantyInfo
     sparePartInfo
-    documentUrls
   }
   ${PRODUCT_CORE_FIELDS}
 `;

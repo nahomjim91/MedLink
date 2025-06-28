@@ -623,7 +623,6 @@ const OrderModel = {
           modelNumber: originalProduct.modelNumber,
           warrantyInfo: originalProduct.warrantyInfo,
           sparePartInfo: originalProduct.sparePartInfo || [],
-          documentUrls: originalProduct.documentUrls || [],
         }),
         // Add transfer metadata
         transferredFrom: originalProduct.productId,
@@ -698,6 +697,10 @@ const OrderModel = {
             orderBatchItem.quantity,
             originalBatch.quantity
           ),
+
+          technicalSpecifications: originalBatch?.technicalSpecifications,
+          userManuals: originalBatch?.userManuals || [],
+          certification: originalBatch?.certification,
         }),
         // Add transfer metadata
         transferredFromOrder: orderBatchItem.orderId,
@@ -891,7 +894,7 @@ const OrderModel = {
       }
 
       const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
-      console.log("ordersSnapshot: ", ordersSnapshot.docs)
+      console.log("ordersSnapshot: ", ordersSnapshot.docs);
 
       return await Promise.all(
         formatDocs(ordersSnapshot.docs).map(async (order) => {
@@ -940,7 +943,7 @@ const OrderModel = {
    * @param {Number} offset - Offset
    * @returns {Array} Order summaries
    */
-  async getOrderSummaries(filter = {},) {
+  async getOrderSummaries(filter = {}) {
     try {
       let query = ordersRef;
 
@@ -958,9 +961,7 @@ const OrderModel = {
         query = query.where("sellerId", "==", filter.sellerId);
       }
 
-      const ordersSnapshot = await query
-        .orderBy("createdAt", "desc")
-        .get();
+      const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
 
       return formatDocs(ordersSnapshot.docs).map((order) => ({
         orderId: order.orderId,
@@ -1207,7 +1208,7 @@ const OrderModel = {
       const result = await TransactionModel.updateStatus(
         transaction.transactionId,
         transactionStatus,
-        transaction.chapaRef 
+        transaction.chapaRef
       );
 
       console.log("Transaction update result:", result);

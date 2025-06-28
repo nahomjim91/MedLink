@@ -13,6 +13,7 @@ import {
   EditableFileField,
   EditableTextField,
 } from "../../components/ui/Input";
+import useFileUpload from "../../hooks/useFileUpoload";
 
 // Create editable versions of our form fields
 
@@ -24,6 +25,7 @@ export default function ProfilePage() {
   const [updateMSUserProfile, { loading: updating }] = useMutation(
     UPDATE_MS_USER_PROFILE
   );
+  const { uploadSingle, uploading, deleteFile } = useFileUpload();
 
   const [userData, setUserData] = useState({
     role: user?.role || "",
@@ -43,7 +45,7 @@ export default function ProfilePage() {
       },
       geoLocationText: user?.address?.geoLocationText || "",
     },
-    profileImage: null,
+    profileImageUrl: user?.profileImageUrl || null,
     efdaLicenseUrl: user?.efdaLicenseUrl || "",
     businessLicenseUrl: user?.businessLicenseUrl || "",
   });
@@ -71,15 +73,49 @@ export default function ProfilePage() {
           },
           geoLocationText: user.address?.geoLocationText || "",
         },
-        profileImage: null,
+        profileImageUrl: user.profileImageUrl || null,
         efdaLicenseUrl: user.efdaLicenseUrl || "",
         businessLicenseUrl: user.businessLicenseUrl || "",
       });
     }
   }, [user, router]);
 
-  const handleInputChange = (e) => {
+  const handleInputChange = async (e) => {
     const { name, value } = e.target;
+
+    // Handle file uploads for licenses
+    if (
+      (name === "efdaLicenseUrl" || name === "businessLicenseUrl") &&
+      value instanceof File
+    ) {
+      try {
+        setError(null);
+        // Upload the file using uploadSingle
+        const uploadResponse = await uploadSingle(value);
+
+        if (uploadResponse && uploadResponse.fileUrl) {
+          // Update userData with the uploaded file URL
+          setUserData({
+            ...userData,
+            [name]: uploadResponse.fileUrl,
+          });
+        } else {
+          setError(
+            `Failed to upload ${
+              name === "efdaLicenseUrl" ? "EFDA License" : "Business License"
+            }`
+          );
+        }
+      } catch (error) {
+        console.error(`Error uploading ${name}:`, error);
+        setError(
+          `Error uploading ${
+            name === "efdaLicenseUrl" ? "EFDA License" : "Business License"
+          }: ${error.message}`
+        );
+      }
+      return;
+    }
 
     // Handle nested fields in address
     if (name.startsWith("address.")) {
@@ -142,8 +178,18 @@ export default function ProfilePage() {
     setIsEditing(!isEditing);
   };
 
-  const cancelEdit = () => {
+  const cancelEdit = async () => {
     // Reset to original user data
+    if (userData?.businessLicenseUrl !== user?.businessLicenseUrl) {
+      await deleteFile(userData?.businessLicenseUrl);
+    }
+    if (userData?.efdaLicenseUrl !== user?.efdaLicenseUrl) {
+      await deleteFile(userData?.efdaLicenseUrl);
+    }
+    if (userData?.profileImageUrl !== user?.profileImageUrl) {
+      await deleteFile(userData?.profileImageUrl);
+    }
+
     setUserData({
       role: user.role || "",
       email: user.email || "",
@@ -162,7 +208,7 @@ export default function ProfilePage() {
         },
         geoLocationText: user.address?.geoLocationText || "",
       },
-      profileImage: null,
+      profileImageUrl: user.profileImageUrl || null,
       efdaLicenseUrl: user.efdaLicenseUrl || "",
       businessLicenseUrl: user.businessLicenseUrl || "",
     });
@@ -214,22 +260,14 @@ export default function ProfilePage() {
           country: userData.address.country,
           postalCode: userData.address.postalCode,
           geoLocation: {
-            latitude: parseFloat(latitudeStr), // ✅ Required!
+            latitude: parseFloat(latitudeStr),
             longitude: parseFloat(longitudeStr),
           },
           geoLocationText: userData.address.geoLocationText,
         },
-
-        // Optional files
-        ...(userData.profileImage && { profileImage: userData.profileImage }),
-        ...(userData.efdaLicenseUrl &&
-          typeof userData.efdaLicenseUrl !== "string" && {
-            efdaLicense: userData.efdaLicenseUrl,
-          }),
-        ...(userData.businessLicenseUrl &&
-          typeof userData.businessLicenseUrl !== "string" && {
-            businessLicense: userData.businessLicenseUrl,
-          }),
+        profileImageUrl: userData.profileImageUrl,
+        efdaLicenseUrl: userData.efdaLicenseUrl,
+        businessLicenseUrl: userData.businessLicenseUrl,
       };
 
       console.log(input);
@@ -254,10 +292,16 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col items-center">
       <ProfileImage
-        imageUrl={user.profileImageUrl}
+        profileImageUrl={user.profileImageUrl}
         altText="Profile"
         isEditing={isEditing}
         companyName={user.companyName}
+        onImageChange={(imageUrl) => {
+          setUserData((prev) => ({
+            ...prev,
+            profileImageUrl: imageUrl,
+          }));
+        }}
       />
       <div className="w-full mt-1 flex items-center">
         <div className="flex-1/4"></div>
@@ -391,12 +435,14 @@ export default function ProfilePage() {
                   value={userData.efdaLicenseUrl}
                   name="efdaLicenseUrl"
                   onChange={handleInputChange}
+                  uploading={uploading}
                 />
                 <EditableFileField
                   label="Business License"
                   value={userData.businessLicenseUrl}
                   name="businessLicenseUrl"
                   onChange={handleInputChange}
+                  uploading={uploading}
                 />
               </div>
             ) : (
@@ -408,6 +454,7 @@ export default function ProfilePage() {
                       ? userData.efdaLicenseUrl.split("/").pop()
                       : "Not available"
                   }
+                  fileUrl={userData.efdaLicenseUrl}
                 />
                 <FileField
                   label="Business License"
@@ -416,6 +463,7 @@ export default function ProfilePage() {
                       ? userData.businessLicenseUrl.split("/").pop()
                       : "Not available"
                   }
+                  fileUrl={userData.businessLicenseUrl}
                 />
               </>
             )}

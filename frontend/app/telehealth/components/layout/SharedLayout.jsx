@@ -282,7 +282,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
               className="flex items-center px-4 py-3 text-lg text-secondary rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ImageIconButton
-                imageUrl={user.image || "/image/trees.jpg"}
+                imageUrl={user.profileImageUrl || "/image/trees.jpg"}
                 isActive={false}
                 alt="Profile"
               />
@@ -461,7 +461,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                     className="block"
                   >
                     <ImageIconButton
-                      imageUrl={user.image || "/image/trees.jpg"}
+                      imageUrl={user.profileImageUrl || "/image/trees.jpg"}
                       isActive={false}
                       alt="Profile"
                     />

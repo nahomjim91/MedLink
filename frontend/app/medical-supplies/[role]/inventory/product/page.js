@@ -605,27 +605,7 @@ export default function ProductPage() {
                           label="Spare Parts"
                           value={productData.sparePartInfo?.join(", ") || "-"}
                         />
-                        {productData.documentUrls &&
-                          productData.documentUrls.length > 0 && (
-                            <div className="flex flex-col">
-                              <label className="text-sm font-medium text-gray-700 mb-1">
-                                Documents
-                              </label>
-                              <div className="space-y-1">
-                                {productData.documentUrls.map((url, index) => (
-                                  <a
-                                    key={index}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:text-blue-800 underline text-sm"
-                                  >
-                                    Document {index + 1}
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                        
                       </>
                     )}
 

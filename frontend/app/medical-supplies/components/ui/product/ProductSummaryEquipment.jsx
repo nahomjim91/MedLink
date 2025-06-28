@@ -369,6 +369,8 @@ export default function ProductSummaryEquipment({
               </div>
             </div>
           )}
+          
+          
 
           {formData.userManuals && (
             <div className="mb-4">
@@ -377,17 +379,6 @@ export default function ProductSummaryEquipment({
               </label>
               <div className="border border-gray-300 rounded-md p-2 bg-gray-50">
                 <FileViewer fileUrl={formData.userManuals} />
-              </div>
-            </div>
-          )}
-
-          {formData.license && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                License
-              </label>
-              <div className="border border-gray-300 rounded-md p-2 bg-gray-50">
-                <FileViewer fileUrl={formData.license} />
               </div>
             </div>
           )}

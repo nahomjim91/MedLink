@@ -356,7 +356,7 @@ const isActive = (path) => {
               className="flex items-center px-4 py-3 text-lg text-secondary rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ImageIconButton
-                imageUrl={user.image || "/image/trees.jpg"}
+                imageUrl={user.profileImageUrl || "/image/trees.jpg"}
                 isActive={false}
                 alt="Profile"
               />
@@ -561,7 +561,7 @@ const isActive = (path) => {
                   </div>
                   <Link href={`${userType}/profile`} className="block">
                     <ImageIconButton
-                      imageUrl={user.image || "/image/trees.jpg"}
+                      imageUrl={user.profileImageUrl || "/image/trees.jpg"}
                       isActive={false}
                       alt="Profile"
                     />

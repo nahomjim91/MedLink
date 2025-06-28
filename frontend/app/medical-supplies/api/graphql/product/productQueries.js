@@ -64,7 +64,7 @@ export const GET_PRODUCT_BY_ID = gql`
         modelNumber
         warrantyInfo
         sparePartInfo
-        documentUrls
+        
         batches {
           ... on EquipmentBatch {
             batchId
@@ -81,6 +81,9 @@ export const GET_PRODUCT_BY_ID = gql`
             manufacturer
             manufacturerCountry
             manufactureredDate
+            technicalSpecifications
+    userManuals
+    certification
           }
         }
       }
@@ -138,7 +141,7 @@ export const GET_MY_PRODUCTS = gql`
         modelNumber
         warrantyInfo
         sparePartInfo
-        documentUrls
+        
       }
     }
   }
@@ -211,7 +214,6 @@ export const GET_MY_PRODUCTS_WITH_BATCHES = gql`
         modelNumber
         warrantyInfo
         sparePartInfo
-        documentUrls
         batches {
           ... on EquipmentBatch {
             batchId
@@ -225,6 +227,9 @@ export const GET_MY_PRODUCTS_WITH_BATCHES = gql`
             lastUpdatedAt
             sourceOriginalBatchId
             serialNumbers
+            technicalSpecifications
+    userManuals
+    certification
           }
         }
       }

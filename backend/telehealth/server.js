@@ -19,7 +19,6 @@ const paymentRoutes = require("./route/payment");
 const { auth } = require("./config/firebase");
 const ChatRoutes = require("./route/chatRoutes");
 const AppointmentModel = require("./models/appointment");
-const ragService = require("./services/ragService");
 const ragRoutes = require("./route/ragRoutes");
 
 // Load environment variables if not already loaded
@@ -28,7 +27,7 @@ if (!process.env.NODE_ENV) {
 }
 
 // Create Express application for telehealth
-const app = express();
+const app = express(); 
 
 // Configure middleware
 app.use(cors());

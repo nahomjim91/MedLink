@@ -11,7 +11,7 @@ export function FileUploader({
   initialFiles = null,
   showPreview = true,
   previewType = "image", // "image" or "document"
-  className = "",
+  className = "", 
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState(initialFiles || (multiple ? [] : null));

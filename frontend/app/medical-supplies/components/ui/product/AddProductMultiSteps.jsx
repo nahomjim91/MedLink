@@ -22,7 +22,8 @@ import ProductEquipmentInventory from "./batch/ProductEquipmentInventory";
 import ProductSummaryDrug from "./ProductSummaryDrug";
 import ProductSummaryEquipment from "./ProductSummaryEquipment";
 import SuccessUpload from "./SuccessUpload";
-import {ProductAndBatchModel} from "../../modal/Modal";
+import { ProductAndBatchModel } from "../../modal/Modal";
+import useFileUpload from "../../../hooks/useFileUpoload";
 
 // Initial product data state schema
 const initialProductData = {
@@ -46,7 +47,6 @@ const initialProductData = {
   modelNumber: "",
   warrantyInfo: "",
   sparePartInfo: [],
-  documentUrls: [],
 
   // Batch information
   batch: {
@@ -63,6 +63,10 @@ const initialProductData = {
 
     // EquipmentBatch-specific
     serialNumbers: [],
+    serialNumbers: [],
+    certification: null,
+    technicalSpecifications: "",
+    userManuals: null,
   },
 };
 
@@ -79,6 +83,7 @@ export default function AddProductMultiSteps({ onClose }) {
     originalListerName: userData?.companyName || userData?.email || "",
   });
   const [createdProductId, setCreatedProductId] = useState(null);
+  const { deleteFile, uploading } = useFileUpload();
 
   // Set up GraphQL mutations
   const [createDrugProduct] = useMutation(CREATE_DRUG_PRODUCT, {
@@ -133,15 +138,13 @@ export default function AddProductMultiSteps({ onClose }) {
 
   // Navigation handlers
   const handleNext = useCallback(async () => {
-  
-
     if (currentStep === getTotalSteps() - 1) {
       await handleSubmitProduct();
       return;
     }
 
     setCurrentStep((prev) => Math.min(prev + 1, getTotalSteps()));
-  }, [currentStep, getTotalSteps, ]);
+  }, [currentStep, getTotalSteps]);
 
   const handlePrevious = useCallback(() => {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
@@ -223,7 +226,6 @@ export default function AddProductMultiSteps({ onClose }) {
           modelNumber: productData.modelNumber,
           warrantyInfo: productData.warrantyInfo,
           sparePartInfo: productData.sparePartInfo,
-          documentUrls: productData.documentUrls,
         };
 
         createdProductResponse = await createEquipmentProduct({
@@ -247,6 +249,9 @@ export default function AddProductMultiSteps({ onClose }) {
           manufacturer: productData.batch.manufacturer,
           manufacturerCountry: productData.batch.manufacturerCountry,
           manufactureredDate: productData.batch.manufactureredDate,
+          certification: productData.batch.certification,
+          userManuals: productData.batch.userManuals,
+          technicalSpecifications: productData.batch.technicalSpecifications,
         };
 
         await createEquipmentBatch({
@@ -258,6 +263,10 @@ export default function AddProductMultiSteps({ onClose }) {
       setCurrentStep(getTotalSteps()); // Move to success step
     } catch (err) {
       console.error("Error submitting product:", err);
+      productData.imageList.length > 0 &&
+        productData.imageList.forEach(async (image) => await deleteFile(image));
+      productData.batch?.certification && await deleteFile(productData.batch?.certification);
+      productData.batch?.userManuals && await deleteFile(productData.batch?.userManuals);
       setError(`Failed to submit product: ${err.message}`);
     } finally {
       setIsLoading(false);

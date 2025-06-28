@@ -1,7 +1,6 @@
-'use client';
+"use client";
 import { useState, useEffect } from "react";
 
-// Reusable FileUploader component
 export function FileUploader({
   label,
   accept,
@@ -10,11 +9,13 @@ export function FileUploader({
   initialFiles = null,
   showPreview = true,
   previewType = "image", // "image" or "document"
+  onRemoveFile, // Optional callback for when files are removed
   className = "",
+  disabled = false, // Add disabled prop
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState(initialFiles || (multiple ? [] : null));
-  
+
   useEffect(() => {
     // Make sure we're always handling initialFiles correctly
     if (initialFiles === null) {
@@ -30,48 +31,73 @@ export function FileUploader({
 
   const handleDragOver = (e) => {
     e.preventDefault();
-    setIsDragging(true);
+    if (!disabled) {
+      setIsDragging(true);
+    }
   };
 
   const handleDragLeave = () => {
-    setIsDragging(false);
+    if (!disabled) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    if (disabled) return;
+
     setIsDragging(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFiles(e.dataTransfer.files);
     }
   };
 
   const handleChange = (e) => {
+    if (disabled) return;
+
     if (e.target.files && e.target.files.length > 0) {
       handleFiles(e.target.files);
     }
   };
 
   const handleFiles = (selectedFiles) => {
+    const fileArray = Array.from(selectedFiles);
+
     if (multiple) {
-      const newFiles = [...(Array.isArray(files) ? files : []), ...Array.from(selectedFiles)];
-      setFiles(newFiles);
-      onFileUpload(newFiles);
+      // For multiple files, replace the current files with new ones
+      // This prevents accumulation and lets the parent handle the upload
+      setFiles(fileArray);
+      onFileUpload(fileArray);
     } else {
-      const file = selectedFiles[0];
+      const file = fileArray[0];
       setFiles(file);
       onFileUpload(file);
     }
   };
 
   const removeFile = (fileToRemove, index) => {
+    if (disabled) return;
+
     if (multiple) {
       const newFiles = files.filter((_, i) => i !== index);
       setFiles(newFiles);
-      onFileUpload(newFiles);
+
+      // Call onRemoveFile callback if provided (for parent to handle server deletion)
+      if (onRemoveFile) {
+        onRemoveFile( index ,fileToRemove);
+      }
+
+      // Don't call onFileUpload here - let parent handle removal logic
     } else {
       setFiles(null);
-      onFileUpload(null);
+
+      // Call onRemoveFile callback if provided
+      if (onRemoveFile) {
+        onRemoveFile( 0 ,fileToRemove);
+      }
+
+      // Don't call onFileUpload here - let parent handle removal logic
     }
   };
 
@@ -84,91 +110,121 @@ export function FileUploader({
       if (previewType === "image" && files) {
         return (
           <div className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
-            <img 
-              src={typeof files === 'string' ? files : URL.createObjectURL(files)} 
-              alt="Preview" 
-              className="w-full h-full object-cover rounded-full" 
+            <img
+              src={
+                typeof files === "string" ? files : URL.createObjectURL(files)
+              }
+              alt="Preview"
+              className="w-full h-full object-cover rounded-full"
+              onError={(e) => {
+                // Fallback for broken image URLs
+                e.target.style.display = "none";
+              }}
             />
-            <button 
+            <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 removeFile(files);
               }}
-              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
+              disabled={disabled}
+              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ×
             </button>
           </div>
         );
       }
-      
+
       // For document preview type
       return (
         <div className="flex items-center justify-between bg-gray-100 p-2 rounded mb-2 w-full">
           <span className="text-xs md:text-sm truncate max-w-[85%]">
-            {typeof files === 'string' ? files.split('/').pop() : files.name}
+            {typeof files === "string" ? files.split("/").pop() : files.name}
           </span>
-          <button 
+          <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               removeFile(files);
             }}
-            className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
+            disabled={disabled}
+            className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ×
           </button>
         </div>
       );
     }
-    
+
     // Handle multiple files
     return (
       <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
-        {files.map((file, index) => (
+        {files.map((file, index) =>
           previewType === "image" ? (
-            <div key={index} className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
-              <img 
-                src={typeof file === 'string' ? file : URL.createObjectURL(file)} 
-                alt="Preview" 
-                className="w-full h-full object-cover rounded-full" 
+            <div
+              key={index}
+              className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2"
+            >
+              <img
+                src={
+                  typeof file === "string" ? file : URL.createObjectURL(file)
+                }
+                alt="Preview"
+                className="w-full h-full object-cover rounded-full"
+                onError={(e) => {
+                  // Fallback for broken image URLs
+                  e.target.style.display = "none";
+                }}
               />
-              <button 
+              <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeFile(file, index);
                 }}
-                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
+                disabled={disabled}
+                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ×
               </button>
             </div>
           ) : (
-            <div key={index} className="flex items-center justify-between bg-gray-100 p-2 rounded">
+            <div
+              key={index}
+              className="flex items-center justify-between bg-gray-100 p-2 rounded"
+            >
               <span className="text-xs md:text-sm truncate max-w-[80%]">
-                {typeof file === 'string' ? file.split('/').pop() : file.name}
+                {typeof file === "string" ? file.split("/").pop() : file.name}
               </span>
-              <button 
+              <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeFile(file, index);
                 }}
-                className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0"
+                disabled={disabled}
+                className="text-red-500 hover:text-red-700 ml-2 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ×
               </button>
             </div>
           )
-        ))}
+        )}
       </div>
     );
   };
 
   // Check if we have files to display
-  const hasFiles = multiple ? (Array.isArray(files) && files.length > 0) : files !== null;
+  const hasFiles = multiple
+    ? Array.isArray(files) && files.length > 0
+    : files !== null;
+
+  const handleClick = () => {
+    if (!disabled) {
+      document.getElementById(`fileInput-${label}`).click();
+    }
+  };
 
   return (
     <div className={`mb-4 ${className}`}>
@@ -176,38 +232,53 @@ export function FileUploader({
         {label}
       </label>
       <div
-        className={`border-2 border-dashed rounded-lg p-3 md:p-6 flex flex-col items-center justify-center cursor-pointer transition-all ${
-          isDragging ? 'border-primary bg-primary/5' : 'border-gray-300'
+        className={`border-2 border-dashed rounded-lg p-3 md:p-6 flex flex-col items-center justify-center transition-all ${
+          disabled
+            ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-50"
+            : isDragging
+            ? "border-primary bg-primary/5 cursor-pointer"
+            : "border-gray-300 cursor-pointer hover:border-gray-400"
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => document.getElementById(`fileInput-${label}`).click()}
+        onClick={handleClick}
       >
         {hasFiles ? (
           <div className="text-center w-full">
             {renderPreview()}
             <p className="text-xs md:text-sm text-secondary/60 mt-1">
-              Click to {multiple ? "add more" : "change"}
+              {disabled
+                ? "Upload in progress..."
+                : `Click to ${multiple ? "add more" : "change"}`}
             </p>
           </div>
         ) : (
           <>
             <div className="w-10 h-10 md:w-14 md:h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3 md:mb-4">
-              <svg 
-                className="w-6 h-6 md:w-8 md:h-8 text-gray-400" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="w-6 h-6 md:w-8 md:h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
             </div>
             <p className="text-xs md:text-sm text-center text-secondary/70 mb-1">
-              {multiple ? "Upload files" : "Upload file"}
+              {disabled
+                ? "Upload in progress..."
+                : multiple
+                ? "Upload files"
+                : "Upload file"}
             </p>
             <p className="text-xs text-center text-secondary/50">
-              {accept.replace(/\./g, '').replace(/,/g, ', ')}
+              {accept.replace(/\./g, "").replace(/,/g, ", ")}
             </p>
           </>
         )}
@@ -218,6 +289,7 @@ export function FileUploader({
           className="hidden"
           onChange={handleChange}
           multiple={multiple}
+          disabled={disabled}
         />
       </div>
     </div>

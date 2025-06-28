@@ -1675,10 +1675,60 @@ export const EditableTextAreaField = ({
   );
 };
 
-export const EditableFileField = ({ label, value, onChange, name }) => {
-  const [fileName, setFileName] = useState(
-    value ? value.split("/").pop() : "No file selected"
-  );
+
+export const EditableFileField = ({ label, value, onChange, name, uploading }) => {
+  // Function to extract filename from the full path (similar to CertificatesList)
+  const extractFilename = (fullPath) => {
+    if (!fullPath) return "No file selected";
+
+    // Split by '/' and get the last part
+    const parts = fullPath.split("/");
+    const filename = parts[parts.length - 1];
+
+    // Remove the timestamp prefix (everything before the first '-')
+    const dashIndex = filename.indexOf("-");
+    if (dashIndex !== -1) {
+      return filename.substring(dashIndex + 1);
+    }
+
+    return filename;
+  };
+
+  // Function to truncate long filenames
+  const truncateFilename = (filename, maxLength = 25) => {
+    if (!filename || filename.length <= maxLength) return filename;
+    
+    // Find the last dot for file extension
+    const lastDotIndex = filename.lastIndexOf('.');
+    
+    if (lastDotIndex === -1) {
+      // No extension, just truncate
+      return filename.substring(0, maxLength - 3) + '...';
+    }
+    
+    const extension = filename.substring(lastDotIndex);
+    const nameWithoutExt = filename.substring(0, lastDotIndex);
+    
+    // If even the extension is too long, just truncate everything
+    if (extension.length > maxLength - 3) {
+      return filename.substring(0, maxLength - 3) + '...';
+    }
+    
+    // Truncate the name part but keep the extension
+    const availableLength = maxLength - 3 - extension.length;
+    if (nameWithoutExt.length > availableLength) {
+      return nameWithoutExt.substring(0, availableLength) + '...' + extension;
+    }
+    
+    return filename;
+  };
+
+  const [fileName, setFileName] = useState(() => {
+    if (value) {
+      return typeof value === 'string' ? extractFilename(value) : value.name;
+    }
+    return "No file selected";
+  });
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -1688,22 +1738,64 @@ export const EditableFileField = ({ label, value, onChange, name }) => {
     }
   };
 
+  // Function to handle existing file click
+  const handleFileClick = () => {
+    if (value && typeof value === 'string' && value !== "No file selected") {
+      window.open(value, "_blank");
+    }
+  };
+
+  // Determine if the existing file is clickable
+  const isClickable = value && typeof value === 'string' && value !== "No file selected";
+  const displayName = truncateFilename(fileName);
+
   return (
     <FormField label={label}>
       <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
-        <FileText className="text-primary mr-2" size={20} />
-        <span className="text-secondary flex-grow">{fileName}</span>
+        <div 
+          className={`flex items-center flex-grow min-w-0 ${
+            isClickable ? 'cursor-pointer group' : ''
+          }`}
+          onClick={isClickable ? handleFileClick : undefined}
+          title={fileName} // Show full filename on hover
+        >
+          <FileText 
+            className={`mr-2 flex-shrink-0 ${
+              isClickable 
+                ? 'text-green-500 group-hover:text-primary' 
+                : 'text-primary'
+            }`} 
+            size={20} 
+          />
+          <span className={`flex-grow truncate ${
+            isClickable 
+              ? 'text-secondary group-hover:text-secondary/80' 
+              : 'text-secondary'
+          }`}>
+            {displayName}
+          </span>
+          {isClickable && (
+            <span className="text-xs text-primary/60 group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity mr-2 flex-shrink-0">
+              Click to view
+            </span>
+          )}
+        </div>
+        
         <input
           type="file"
           onChange={handleFileChange}
           className="hidden"
           id={`file-upload-${name}`}
+          disabled={uploading}
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
         />
         <label
           htmlFor={`file-upload-${name}`}
-          className="bg-primary text-white text-xs px-2 py-1 rounded cursor-pointer"
+          className={`text-white text-xs px-2 py-1 rounded cursor-pointer flex-shrink-0 ml-2 ${
+            uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'
+          }`}
         >
-          Browse
+          {uploading ? 'Uploading...' : 'Browse'}
         </label>
       </div>
     </FormField>

@@ -70,7 +70,7 @@ const productSchema = gql`
     modelNumber: String
     warrantyInfo: String
     sparePartInfo: [String]
-    documentUrls: [String]
+    
   }
 
   "Interface for common batch fields"
@@ -135,6 +135,9 @@ const productSchema = gql`
 
     # EquipmentBatch-specific fields
     serialNumbers: [String]
+    technicalSpecifications: String
+    userManuals: [String]
+    certification: String
   }
 
   # Input types for creating products
@@ -163,7 +166,6 @@ const productSchema = gql`
     modelNumber: String
     warrantyInfo: String
     sparePartInfo: [String]
-    documentUrls: [String]
   }
 
   # Input types for updating products
@@ -188,7 +190,6 @@ const productSchema = gql`
     modelNumber: String
     warrantyInfo: String
     sparePartInfo: [String]
-    documentUrls: [String]
   }
 
   # Input types for creating batches
@@ -217,6 +218,9 @@ const productSchema = gql`
     manufacturer: String
     manufacturerCountry: String
     manufactureredDate: Date
+    technicalSpecifications: String
+    userManuals: [String]
+    certification: String
   }
 
   # Input types for updating batches
@@ -239,6 +243,9 @@ const productSchema = gql`
     manufacturer: String
     manufacturerCountry: String
     manufactureredDate: Date
+    technicalSpecifications: String
+    userManuals: [String]
+    certification: String
   }
 
   # Input for purchasing a product (will create a copy for the buyer)

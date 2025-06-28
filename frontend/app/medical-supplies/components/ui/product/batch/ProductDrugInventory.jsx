@@ -28,8 +28,6 @@ export default function ProductDrugInventory({
     manufacturer: productData.batch?.manufacturer || "",
     manufacturerCountry: productData.batch?.manufacturerCountry || "Ethiopia",
     manufactureredDate: productData.batch?.manufactureredDate || "",
-    fdaCertificate: productData.batch?.fdaCertificate || null,
-    license: productData.batch?.license || null,
   });
 
   // Track validation errors
@@ -54,8 +52,6 @@ export default function ProductDrugInventory({
         manufacturer: productData.batch.manufacturer || "",
         manufacturerCountry: productData.batch.manufacturerCountry || "",
         manufactureredDate: productData.batch.manufactureredDate || "",
-        fdaCertificate: productData.batch.fdaCertificate || null,
-        license: productData.batch.license || null,
       });
     }
   }, [productData]);
@@ -353,31 +349,12 @@ export default function ProductDrugInventory({
           />
         </div>
 
-        {/* Optional Documentation */}
-        <div className="grid md:grid-cols-2 md:gap-4">
-          <FileInput
-            name="fdaCertificate"
-            label="FDA Certificate (Optional)"
-            onChange={(file) => handleFileChange("fdaCertificate", file)}
-            accept=".pdf,.doc,.docx"
-            className="w-full"
-          />
-
-          <FileInput
-            name="license"
-            label="License (Optional)"
-            onChange={(file) => handleFileChange("license", file)}
-            accept=".pdf,.doc,.docx"
-            className="w-full"
-          />
-        </div>
-
         <div className="pt-4">
           <StepButtons
-            onNext={isFormValid && handleSubmit}
-            onPrevious={onPrevious}
-            nextDisabled={false} // We'll handle validation on submit
             isLoading={isLoading}
+            onPrevious={onPrevious}
+            onNext={handleSubmit}
+            isNextDisabled={!isFormValid}
           />
         </div>
       </form>
