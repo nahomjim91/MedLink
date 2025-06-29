@@ -14,7 +14,7 @@ import {
   CircleDollarSignIcon,
 } from "lucide-react";
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useState , useEffect } from "react";
 import { Button, IconButton, TablePageButtons } from "./Button";
 import { OrderRowActions } from "./order/OrderRowActions";
 import { OrderSelectInput } from "./Input";
@@ -22,6 +22,8 @@ import {
   getAvailableStatusTransitions,
   getStatusColor,
 } from "../../utils/orderUtils";
+import { useQuery } from '@apollo/client';
+import { GET_MS_USER_BY_ID } from "../../api/graphql/queries";
 
 // Define types for our props
 export const MetricCard = ({
@@ -113,10 +115,74 @@ export const MetricCard = ({
     </div>
   );
 };
-// Dynamic Order Card Component
-export const DynamicMinOrderCard = ({ orders, userRole  }) => {
+
+
+export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
+  // console.log("rders are ", orders);
+  const [otherUsersData, setOtherUsersData] = useState({});
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Get unique other user IDs from orders
+  const getOtherUserIds = () => {
+    const otherUserIds = orders.map((order) =>
+    {
+      console.log('order', order);
+      console.log('userId', userId);
+      console.log('order.sellerId', order.sellerId);
+      console.log('order.buyerId', order.buyerId);
+      return userId === order.sellerId ? order.buyerId : order.sellerId
+    }
+      
+    );
+    // console.log('otherUserIds', otherUserIds);
+    return [...new Set(otherUserIds)];
+  };
+
+  const { refetch } = useQuery(GET_MS_USER_BY_ID, {
+    skip: true // Skip initial execution
+  });
+
+  // Fetch user data for all other users
+  useEffect(() => {
+    const fetchOtherUsersData = async () => {
+
+      const otherUserIds = getOtherUserIds();
+      if (otherUserIds.length === 0) return;
+
+      setLoadingUsers(true);
+      
+      try {
+        
+        const userPromises = otherUserIds.map(id => 
+          refetch({ userId: id })
+        );
+        
+        const results = await Promise.all(userPromises);
+        const usersMap = {};
+        
+        results.forEach(result => {
+          if (result.data?.msUserById) {
+            const user = result.data.msUserById;
+            usersMap[user.userId] = {
+              companyName: user.companyName,
+              profileImageUrl: user.profileImageUrl,
+              contactName: user.contactName
+            };
+          }
+        });
+        console.log('Fetched user data:', usersMap);
+        setOtherUsersData(usersMap);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchOtherUsersData();
+  }, [orders, userId]);
+
   const getOrderIcon = (order) => {
-    // Check if order has drug items, equipment items, or both
     const hasEquipment = order.items?.some(
       (item) =>
         item.productName?.toLowerCase().includes("equipment") ||
@@ -137,41 +203,78 @@ export const DynamicMinOrderCard = ({ orders, userRole  }) => {
     return <Pill className="text-primary" />;
   };
 
-  const OrderItem = ({ order }) => (
-    <div className="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
-      <div className="flex items-center">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 bg-secondary/10">
-          {getOrderIcon(order)}
+  const getOtherUserInfo = (order) => {
+    const otherUserId = userId === order.sellerId ? order.buyerId : order.sellerId;
+    const userData = otherUsersData[otherUserId];
+    
+    // Fallback to order data if user data not available yet
+    const fallbackName = userId !== order.sellerId ? order.sellerName : order.buyerCompanyName;
+    const fallbackImage = userId !== order.sellerId ? order.sellerImage : order.buyerImage;
+    
+    return {
+      name: userData?.companyName || userData?.contactName || fallbackName,
+      image: userData?.profileImageUrl || fallbackImage,
+      isLoading: loadingUsers && !userData
+    };
+  };
+
+  const OrderItem = ({ order }) => {
+    const otherUserInfo = getOtherUserInfo(order);
+    
+    return (
+      <div className="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
+        <div className="flex items-center">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center mr-4 bg-secondary/10">
+            {getOrderIcon(order)}
+          </div>
+          <div>
+            <p className="font-medium text-secondary/90">{order.orderNumber}</p>
+            <p className="text-xs text-secondary/60">
+              {new Date(order.orderDate).toLocaleDateString()}
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="font-medium text-secondary/90">{order.orderNumber}</p>
-          <p className="text-xs text-secondary/60">
-            {new Date(order.orderDate).toLocaleDateString()}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center">
-        <div className="mr-3 text-right">
-          <p className="font-medium text-secondary/80">
-            {userRole === "healthcare-facility"
-              ? order.sellerName
-              : order.buyerName}
-          </p>
-          <p className="text-xs text-secondary/60">
-            ${order.totalCost?.toLocaleString() || 0}
-          </p>
-        </div>
-        <div className="w-10 h-10 rounded-full overflow-hidden">
-          <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
-            {(userRole === "healthcare-facility"
-              ? order.sellerName
-              : order.buyerName
-            )?.charAt(0) || "?"}
+        <div className="flex items-center">
+          <div className="mr-3 text-right">
+            <p className="font-medium text-secondary/80">
+              {otherUserInfo.isLoading ? (
+                <span className="animate-pulse bg-gray-200 h-4 w-20 rounded"></span>
+              ) : (
+                otherUserInfo.name
+              )}
+            </p>
+            <p className="text-xs text-secondary/60">
+              ${order.totalCost?.toLocaleString() || 0}
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-full overflow-hidden">
+            {otherUserInfo.image && !otherUserInfo.isLoading ? (
+              <img
+                src={otherUserInfo.image}
+                alt={otherUserInfo.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold"
+              style={{ display: otherUserInfo.image && !otherUserInfo.isLoading ? 'none' : 'flex' }}
+            >
+              {otherUserInfo.isLoading ? (
+                <span className="animate-pulse bg-gray-300 w-6 h-6 rounded-full"></span>
+              ) : (
+                otherUserInfo.name?.charAt(0) || "?"
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="bg-white rounded-2xl px-6 py-2 shadow-md w-full">
@@ -179,11 +282,12 @@ export const DynamicMinOrderCard = ({ orders, userRole  }) => {
         <h2 className="text-lg font-semibold text-secondary/80">
           Ongoing Orders
         </h2>
-        <button className="text-sm text-secondary/50 hover:text-secondary/70"  onClick={() => {
-          // Navigate to products page or show all products
+        <button
+          className="text-sm text-secondary/50 hover:text-secondary/70"
+          onClick={() => {
             window.location.href = `/medical-supplies/${userRole}/orders`;
-          
-        }}>
+          }}
+        >
           See All
         </button>
       </div>
@@ -210,7 +314,7 @@ export const DynamicMinOrderCard = ({ orders, userRole  }) => {
 };
 
 // Dynamic Transaction Card Component
-export const DynamicMinTransactionCard = ({ transactions , onSeeAll }) => {
+export const DynamicMinTransactionCard = ({ transactions, onSeeAll }) => {
   const TransactionItem = ({ transaction }) => (
     <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
       <div className="flex items-center">
@@ -241,19 +345,25 @@ export const DynamicMinTransactionCard = ({ transactions , onSeeAll }) => {
         <h2 className="text-lg font-semibold text-secondary/80">
           Recent Transactions
         </h2>
-        <button onClick={onSeeAll} className="text-sm text-secondary/50 hover:text-secondary/70">
+        <button
+          onClick={onSeeAll}
+          className="text-sm text-secondary/50 hover:text-secondary/70"
+        >
           See All
         </button>
       </div>
       <div>
-         { transactions.length > 0 ? transactions.slice(0, 3).map((transaction, index) => (
-          <TransactionItem
-            key={transaction.orderId || index}
-            transaction={transaction}
-          />
-        ))
-        : (
-           <div className="flex flex-col items-center justify-center space-y-4 py-13">
+        {transactions.length > 0 ? (
+          transactions
+            .slice(0, 3)
+            .map((transaction, index) => (
+              <TransactionItem
+                key={transaction.orderId || index}
+                transaction={transaction}
+              />
+            ))
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-4 py-13">
             <div className="w-20 h-20 rounded-full flex items-center justify-center bg-primary/20">
               <CircleDollarSignIcon size={52} className="text-primary" />
             </div>
@@ -261,8 +371,7 @@ export const DynamicMinTransactionCard = ({ transactions , onSeeAll }) => {
               No recent transactions found.
             </p>
           </div>
-        )
-      }
+        )}
       </div>
     </div>
   );
@@ -340,14 +449,14 @@ export function TableCard({
   const [expandedRows, setExpandedRows] = useState({});
 
   // Handle tab change
- const handleTabChange = (tabId) => {
-  if (onTabChange) {
-    onTabChange(tabId);
-  }
-};
+  const handleTabChange = (tabId) => {
+    if (onTabChange) {
+      onTabChange(tabId);
+    }
+  };
 
   // Determine which data to display based on active tab
-const displayData = tabData[activeTab] || data || [];
+  const displayData = tabData[activeTab] || data || [];
 
   const toggleRowExpand = (index) => {
     setExpandedRows((prev) => ({
@@ -472,36 +581,36 @@ const displayData = tabData[activeTab] || data || [];
       </div>
 
       {/* Tab navigation */}
-     {tabs && tabs.length > 0 && (
-  <div className="border-b border-gray-200">
-    <nav className="flex px-4 -mb-px">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => handleTabChange(tab.id)}
-          className={`py-3 px-4 text-sm font-medium relative ${
-            activeTab === tab.id // Changed from currentTab to activeTab
-              ? "text-primary border-b-2 border-primary"
-              : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          }`}
-        >
-          {tab.label}
-          {tab.count !== undefined && (
-            <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
-                activeTab === tab.id // Changed from currentTab to activeTab
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {tab.count}
-            </span>
-          )}
-        </button>
-      ))}
-    </nav>
-  </div>
-)}
+      {tabs && tabs.length > 0 && (
+        <div className="border-b border-gray-200">
+          <nav className="flex px-4 -mb-px">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`py-3 px-4 text-sm font-medium relative ${
+                  activeTab === tab.id // Changed from currentTab to activeTab
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span
+                    className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                      activeTab === tab.id // Changed from currentTab to activeTab
+                        ? "bg-primary text-white"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         {isLoading ? (

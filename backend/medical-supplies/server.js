@@ -45,8 +45,20 @@ app.use(
   cors({
     origin: process.env.CLIENT_URL || "*",
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-requested-with"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    allowedHeaders: [
+      "Content-Type", 
+      "Authorization", 
+      "x-requested-with",
+      "Origin",
+      "Accept",
+      "Range"
+    ],
+    exposedHeaders: [
+      "Content-Length",
+      "Content-Range",
+      "Accept-Ranges"
+    ]
   })
 );
 
@@ -57,7 +69,20 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 const httpServer = http.createServer(app);
 
 // Static file serving for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for static files
+  res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+}, express.static(path.join(__dirname, 'uploads')));
 
 // Configure Multer for file uploads
 const storage = multer.diskStorage({

@@ -678,6 +678,7 @@ export default function DynamicDashboard() {
           <DynamicMinOrderCard
             orders={dashboardData.ongoingOrdersList}
             userRole={userRole}
+            userId={userData.userId}
           />
         </div>
       </div>
