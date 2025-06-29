@@ -24,6 +24,7 @@ import {
 } from "../../../components/ui/Input";
 import { useRouter } from "next/navigation";
 import { ConfirmationModal } from "../../../components/modal/ConfirmationModal";
+import useFileUpload from "../../../hooks/useFileUpoload";
 
 export default function ProductPage() {
   const searchParams = useSearchParams();
@@ -40,6 +41,15 @@ export default function ProductPage() {
   const [editingBatchId, setEditingBatchId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const router = useRouter();
+  const [tempUploadedImages, setTempUploadedImages] = useState([]);
+  const [imagesToDelete, setImagesToDelete] = useState([]);
+  const {
+    uploadMultiple,
+    deleteFile,
+    uploading: fileUploading,
+    error: uploadError,
+    reset: resetUpload,
+  } = useFileUpload();
 
   // Pagination
   const ITEMS_PER_PAGE = 10;
@@ -86,24 +96,27 @@ export default function ProductPage() {
 
   const handleSaveChanges = async () => {
     try {
-      // Prepare the input object based on product type
       const commonInput = {
         name: editedProductData.name,
         category: editedProductData.category,
         description: editedProductData.description,
       };
 
-      // Handle image list updates
-      if (newImages.length > 0 || removedImages.length > 0) {
-        // Filter out removed images and add new ones
-        commonInput.imageList = [
-          ...editedProductData.imageList.filter(
-            (img) => !removedImages.includes(img)
-          ),
-          ...newImages,
-        ];
+      const finalImageList = [
+        // Keep existing images that weren't removed
+        ...editedProductData.imageList.filter(
+          (img) => !removedImages.includes(img)
+        ),
+        // Add new uploaded images
+        ...tempUploadedImages.map((img) => img.fileUrl || img.url),
+      ];
+
+      // Only update imageList if there are changes
+      if (tempUploadedImages.length > 0 || removedImages.length > 0) {
+        commonInput.imageList = finalImageList;
       }
 
+      // Rest of your save logic...
       if (
         editedProductData.__typename === "DrugProduct" ||
         editedProductData.productType === "DRUG"
@@ -116,13 +129,9 @@ export default function ProductPage() {
         };
 
         const { data } = await updateDrugProduct({
-          variables: {
-            productId,
-            input: drugInput,
-          },
+          variables: { productId, input: drugInput },
         });
 
-        // Update local state with returned data
         setProductData(data.updateDrugProduct);
         setEditedProductData(data.updateDrugProduct);
       } else {
@@ -135,22 +144,30 @@ export default function ProductPage() {
         };
 
         const { data } = await updateEquipmentProduct({
-          variables: {
-            productId,
-            input: equipmentInput,
-          },
+          variables: { productId, input: equipmentInput },
         });
 
-        // Update local state with returned data
         setProductData(data.updateEquipmentProduct);
         setEditedProductData(data.updateEquipmentProduct);
       }
 
-      // Reset image tracking arrays
+      // Delete removed images from server
+      if (imagesToDelete.length > 0) {
+        for (const imageUrl of imagesToDelete) {
+          try {
+            const filename = imageUrl.split("/").pop();
+            await deleteFile(filename);
+          } catch (error) {
+            console.error("Error deleting image:", error);
+          }
+        }
+      }
+
+      // Reset all tracking arrays
       setNewImages([]);
       setRemovedImages([]);
-
-      // Exit edit mode
+      setTempUploadedImages([]);
+      setImagesToDelete([]);
       setIsEditing(false);
 
       toast.success("Product updated successfully!");
@@ -229,17 +246,70 @@ export default function ProductPage() {
     setEditingBatchId(editingBatchId === batchId ? null : batchId);
   };
 
-  const handleImageUpload = (imageUrls) => {
-    setNewImages([...newImages, ...imageUrls]);
+  const getAllImages = () => {
+    const existingImages = editedProductData.imageList || [];
+    const newImageUrls = tempUploadedImages.map(
+      (img) => img.fileUrl || img.url
+    );
+    return [...existingImages, ...newImageUrls];
   };
 
+  // Update the handleImageUpload function to be more explicit
+  const handleImageUpload = async (files) => {
+    try {
+      const uploadResult = await uploadMultiple(files, {
+        metadata: {
+          productId: productId,
+          type: "product-image",
+        },
+      });
+
+      if (uploadResult && uploadResult.files) {
+        // Add to temp uploaded images
+        setTempUploadedImages((prev) => [...prev, ...uploadResult.files]);
+
+        // Add URLs to newImages array for tracking
+        const newUrls = uploadResult.files.map((f) => f.fileUrl || f.url);
+        setNewImages((prev) => [...prev, ...newUrls]);
+
+        // Optional: Show success message
+        toast.success(
+          `${uploadResult.files.length} image(s) uploaded successfully!`
+        );
+      }
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      toast.error("Failed to upload images: " + error.message);
+    }
+  };
+
+  // Update the handleImageRemove function
   const handleImageRemove = (imageUrl) => {
     if (editedProductData.imageList.includes(imageUrl)) {
       // If it's an existing image, mark it for removal
-      setRemovedImages([...removedImages, imageUrl]);
+      setRemovedImages((prev) => [...prev, imageUrl]);
+      setImagesToDelete((prev) => [...prev, imageUrl]);
     } else {
-      // If it's a newly added image, remove it from new images
-      setNewImages(newImages.filter((img) => img !== imageUrl));
+      // If it's a newly added image, remove it from temp uploads and delete from server
+      const tempImage = tempUploadedImages.find(
+        (img) => (img.fileUrl || img.url) === imageUrl
+      );
+
+      if (tempImage) {
+        // Remove from temp uploads
+        setTempUploadedImages((prev) =>
+          prev.filter((img) => (img.fileUrl || img.url) !== imageUrl)
+        );
+
+        // Delete from server immediately
+        const filename = tempImage.fileName || imageUrl.split("/").pop();
+        deleteFile(filename).catch((error) => {
+          console.error("Error deleting temporary image:", error);
+        });
+      }
+
+      // Remove from new images array
+      setNewImages((prev) => prev.filter((img) => img !== imageUrl));
     }
   };
 
@@ -336,12 +406,35 @@ export default function ProductPage() {
     });
   };
 
+  const handleCancelEdit = async () => {
+    // Delete any temporarily uploaded images
+    if (tempUploadedImages.length > 0) {
+      for (const image of tempUploadedImages) {
+        try {
+          const filename =
+            image.fileName || (image.fileUrl || image.url).split("/").pop();
+          await deleteFile(filename);
+        } catch (error) {
+          console.error("Error deleting temporary image:", error);
+        }
+      }
+    }
+
+    setIsEditing(false);
+    setEditedProductData(productData);
+    setNewImages([]);
+    setRemovedImages([]);
+    setTempUploadedImages([]);
+    setImagesToDelete([]);
+    resetUpload();
+  };
+
   const allProductsData = productData.batches
     ? formatProductsData(productData.batches, productData.productType)
     : [];
   const totalCount = productData.batches?.length || 0;
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-  console.log("prodcut details", productData);
+  // console.log("prodcut details", productData);
 
   return (
     <div className="relative bg-white rounded-lg py-1.5 shadow-sm h-full">
@@ -382,12 +475,7 @@ export default function ProductPage() {
               variant="outline"
               color="error"
               className="flex gap-1 items-center text-red-500 hover:bg-red-50"
-              onClick={() => {
-                setIsEditing(false);
-                setEditedProductData(productData);
-                setNewImages([]);
-                setRemovedImages([]);
-              }}
+              onClick={handleCancelEdit}
             >
               <X className="w-4 h-4" />
               Cancel
@@ -605,7 +693,6 @@ export default function ProductPage() {
                           label="Spare Parts"
                           value={productData.sparePartInfo?.join(", ") || "-"}
                         />
-                        
                       </>
                     )}
 
@@ -641,15 +728,14 @@ export default function ProductPage() {
             <div className="w-1/2 pl-4">
               {console.log(editedProductData)}
               <EditableImageGallery
-                // images={editedProductData.imageList || []}
-                images={[
-                  "https://www.imexpharm.com/Data/Sites/1/Product/8809/Paracetamol-IMEX-500mg-hop-100v.png",
-                ]}
+                images={getAllImages()}
                 type={editedProductData.productType}
                 isEditing={isEditing}
                 onUpload={handleImageUpload}
                 onRemove={handleImageRemove}
                 removedImages={removedImages}
+                uploading={fileUploading}
+                uploadError={uploadError}
               />
             </div>
           </div>

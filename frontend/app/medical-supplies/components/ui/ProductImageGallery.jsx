@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useRef } from "react";
+import { useState, useRef , useEffect } from "react";
 import { Syringe, Pill, Upload, Trash, Plus, X } from "lucide-react";
 
 export const ProductImageGallery = ({
@@ -21,8 +21,7 @@ export const ProductImageGallery = ({
           <div className={`relative w-full ${imageSize} mb-4`}>
             <Image
               // src={selectedImage}
-                          src={"/image/Untitled.jpeg"}
-
+              src={"/image/Untitled.jpeg"}
               alt={`${type} image`}
               fill
               className="object-contain"
@@ -78,6 +77,8 @@ export const ProductImageGallery = ({
     </div>
   );
 };
+
+
 export const EditableImageGallery = ({
   images = [],
   type,
@@ -85,60 +86,73 @@ export const EditableImageGallery = ({
   onUpload,
   onRemove,
   removedImages = [],
+  uploading = false,
+  uploadError = null,
 }) => {
   const [selectedImage, setSelectedImage] = useState(images[0] || null);
-  const [uploading, setUploading] = useState(false);
+  const [previewImages, setPreviewImages] = useState([]); // Store preview URLs
   const fileInputRef = useRef(null);
 
   // Determine which icon to use based on product type
   const isEquipment = type === "EQUIPMENT";
   const ProductIcon = isEquipment ? Syringe : Pill;
 
+  // Combine actual images with preview images
+  const allImages = [...images, ...previewImages.map(p => p.url)];
+  const effectiveImages = allImages.filter((img) => !removedImages.includes(img));
+
+  // Update selected image when images change
+  useEffect(() => {
+    if (!selectedImage && effectiveImages.length > 0) {
+      setSelectedImage(effectiveImages[0]);
+    }
+    // If selected image was removed, select another one
+    if (selectedImage && removedImages.includes(selectedImage)) {
+      const remainingImages = effectiveImages.filter(img => !removedImages.includes(img));
+      setSelectedImage(remainingImages[0] || null);
+    }
+  }, [effectiveImages, selectedImage, removedImages]);
+
+  // Clean up preview URLs when upload completes
+  useEffect(() => {
+    if (!uploading && previewImages.length > 0) {
+      // Clean up old preview URLs
+      previewImages.forEach(preview => {
+        URL.revokeObjectURL(preview.url);
+      });
+      setPreviewImages([]);
+    }
+  }, [uploading, previewImages]);
+
   // Function to handle file selection
   const handleFileSelect = async (e) => {
     const files = e.target.files;
     if (!files.length) return;
 
-    setUploading(true);
+    // Create preview URLs immediately
+    const newPreviews = Array.from(files).map(file => ({
+      url: URL.createObjectURL(file),
+      file: file
+    }));
+    
+    setPreviewImages(newPreviews);
+    
+    // Set the first preview as selected if no image is currently selected
+    if (!selectedImage && newPreviews.length > 0) {
+      setSelectedImage(newPreviews[0].url);
+    }
 
     try {
-      // In a real application, you would upload these files to your server or cloud storage
-      // This is a mock implementation that simulates an upload
-      // Replace this with your actual image upload API call
-
-      const uploadedUrls = await Promise.all(
-        Array.from(files).map(async (file) => {
-          // Simulate API call with a delay
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Create a temporary URL for the file
-          // In a real app, this would be the URL returned by your upload service
-          return URL.createObjectURL(file);
-
-          // Example of how a real upload might look:
-          // const formData = new FormData();
-          // formData.append('file', file);
-          // const response = await fetch('/api/upload', {
-          //   method: 'POST',
-          //   body: formData,
-          // });
-          // const data = await response.json();
-          // return data.url;
-        })
-      );
-
-      // Call the parent component's upload handler with the new URLs
-      onUpload(uploadedUrls);
-
-      // Select the first uploaded image
-      if (uploadedUrls.length > 0 && !selectedImage) {
-        setSelectedImage(uploadedUrls[0]);
-      }
+      // Call the parent component's upload handler with the files
+      await onUpload(files);
     } catch (error) {
       console.error("Error uploading images:", error);
-      alert("Failed to upload images. Please try again.");
+      // Clean up preview URLs on error
+      newPreviews.forEach(preview => {
+        URL.revokeObjectURL(preview.url);
+      });
+      setPreviewImages([]);
     } finally {
-      setUploading(false);
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -148,37 +162,70 @@ export const EditableImageGallery = ({
 
   // Handle removing an image
   const handleRemoveImage = (image) => {
-    onRemove(image);
+    // Check if it's a preview image
+    const previewIndex = previewImages.findIndex(p => p.url === image);
+    if (previewIndex !== -1) {
+      // Remove from preview images
+      const updatedPreviews = [...previewImages];
+      URL.revokeObjectURL(updatedPreviews[previewIndex].url);
+      updatedPreviews.splice(previewIndex, 1);
+      setPreviewImages(updatedPreviews);
+    } else {
+      // Handle regular image removal
+      onRemove(image);
+    }
 
     // If we're removing the currently selected image, select another one
     if (selectedImage === image) {
-      const remainingImages = images.filter(
+      const remainingImages = effectiveImages.filter(
         (img) => img !== image && !removedImages.includes(img)
       );
       setSelectedImage(remainingImages[0] || null);
     }
   };
 
-  // Get the effective list of images (accounting for removals)
-  const effectiveImages = images.filter((img) => !removedImages.includes(img));
+  // Show upload error if any
+  useEffect(() => {
+    if (uploadError) {
+      toast.error(uploadError);
+    }
+  }, [uploadError]);
+
+  // Check if an image is a preview (being uploaded)
+  const isPreviewImage = (imageUrl) => {
+    return previewImages.some(p => p.url === imageUrl);
+  };
 
   return (
-    <div className="rounded-md p-4 flex flex-col items-center">
+    <div className="rounded-md p-4 flex flex-col items-center bg-background">
       {/* Main product image */}
       {selectedImage ? (
         <div className="relative w-full h-48 mb-4">
-          <Image
-            // src={selectedImage}
-            src={"/image/Untitled.jpeg"}
-            alt={`${type} image`}
-            fill
-            className="object-contain"
-            sizes="(max-width: 768px) 100vw, 400px"
-          />
+          <div className={`relative w-full h-full ${isPreviewImage(selectedImage) ? 'opacity-75' : ''}`}>
+            <Image
+              src={selectedImage}
+              alt={`${type} image`}
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 400px"
+              onError={(e) => {
+                // Fallback to placeholder if image fails to load
+                e.target.src = "/image/Untitled.jpeg";
+              }}
+            />
+            {isPreviewImage(selectedImage) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+                <div className="bg-white px-2 py-1 rounded text-xs font-medium">
+                  Uploading...
+                </div>
+              </div>
+            )}
+          </div>
           {isEditing && (
             <button
               className="absolute top-2 right-2 bg-red-500 rounded-full p-1 text-white hover:bg-red-600"
               onClick={() => handleRemoveImage(selectedImage)}
+              disabled={uploading}
             >
               <Trash size={16} />
             </button>
@@ -196,38 +243,45 @@ export const EditableImageGallery = ({
           ? effectiveImages.map((image, index) => (
               <div
                 key={index}
-                className={`relative border rounded p-2 cursor-pointer ${
+                className={`relative border rounded p-2 cursor-pointer bg-white ${
                   selectedImage === image
                     ? "border-teal-500"
                     : "border-gray-200"
-                }`}
+                } ${isPreviewImage(image) ? 'opacity-75' : ''}`}
                 onClick={() => setSelectedImage(image)}
               >
                 <div className="relative w-16 h-8">
                   <Image
-                    // src={image}
-                    src={"/image/Untitled.jpeg"}
+                    src={image}
                     alt={`${type} thumbnail ${index + 1}`}
                     fill
                     className="object-contain"
                     sizes="64px"
+                    onError={(e) => {
+                      e.target.src = "/image/Untitled.jpeg";
+                    }}
                   />
+                  {isPreviewImage(image) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                 </div>
                 {isEditing && (
                   <button
                     className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 text-white hover:bg-red-600"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent clicking the parent
+                      e.stopPropagation();
                       handleRemoveImage(image);
                     }}
+                    disabled={uploading}
                   >
                     <X size={10} />
                   </button>
                 )}
               </div>
             ))
-          : // Placeholder thumbnails with icons if no images
-            [1, 2, 3].map((i) => (
+          : [1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="border border-gray-200 rounded p-2 flex items-center justify-center"
@@ -248,6 +302,7 @@ export const EditableImageGallery = ({
               onChange={handleFileSelect}
               className="hidden"
               ref={fileInputRef}
+              disabled={uploading}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -259,7 +314,7 @@ export const EditableImageGallery = ({
               } rounded p-2 flex items-center justify-center h-[40px] min-w-[40px]`}
             >
               {uploading ? (
-                <span className="text-xs text-gray-500">Uploading...</span>
+                <span className="text-xs text-gray-500">...</span>
               ) : (
                 <Plus size={20} className="text-teal-500" />
               )}
@@ -268,7 +323,7 @@ export const EditableImageGallery = ({
         )}
       </div>
 
-      {/* Upload area (visible in edit mode) */}
+      {/* Upload area */}
       {isEditing && (
         <div
           className={`mt-4 border-2 border-dashed ${
@@ -278,13 +333,18 @@ export const EditableImageGallery = ({
           } rounded-lg p-4 w-full text-center cursor-pointer`}
           onClick={() => !uploading && fileInputRef.current?.click()}
         >
-          <Upload className="mx-auto h-8 w-8 text-teal-500 mb-2" />
+          <Upload className={`mx-auto h-8 w-8 mb-2 ${uploading ? 'text-gray-400' : 'text-teal-500'}`} />
           <p className="text-sm text-gray-500">
             {uploading ? "Uploading..." : "Click or drag images here to upload"}
           </p>
           <p className="text-xs text-gray-400 mt-1">
             Supported formats: JPG, PNG, GIF
           </p>
+          {uploadError && (
+            <p className="text-xs text-red-500 mt-1">
+              Error: {uploadError}
+            </p>
+          )}
         </div>
       )}
     </div>
