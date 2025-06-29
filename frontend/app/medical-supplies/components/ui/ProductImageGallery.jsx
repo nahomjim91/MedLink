@@ -20,8 +20,8 @@ export const ProductImageGallery = ({
         {selectedImage ? (
           <div className={`relative w-full ${imageSize} mb-4`}>
             <Image
-              // src={selectedImage}
-              src={"/image/Untitled.jpeg"}
+              src={selectedImage}
+              // src={"/image/Untitled.jpeg"}
               alt={`${type} image`}
               fill
               className="object-contain"
@@ -51,8 +51,8 @@ export const ProductImageGallery = ({
                 >
                   <div className="relative w-16 h-8">
                     <Image
-                      // src={image}
-                      src={"/image/Untitled.jpeg"}
+                      src={image}
+                      // src={"/image/Untitled.jpeg"}
                       alt={`${type} thumbnail ${index + 1}`}
                       fill
                       className="object-contain"

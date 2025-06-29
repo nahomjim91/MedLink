@@ -3,19 +3,28 @@ const { db, FieldValue } = require("../medical-supplies/config/firebase");
 
 const formatDoc = (doc) => {
   if (!doc.exists) return null;
-  
+
   const data = doc.data();
   const id = doc.id;
-  
+
   // Convert all potential timestamp fields to Date objects
   const formatted = { ...data, id };
-  
+
   // Handle timestamp fields that might cause serialization issues
-  ['createdAt', 'updatedAt', 'lastUpdated', 'addedAt', 'approvedAt', 'expiryDate'].forEach(field => {
+  [
+    "createdAt",
+    "updatedAt",
+    "lastUpdated",
+    "addedAt",
+    "approvedAt",
+    "expiryDate",
+  ].forEach((field) => {
     if (formatted[field]) {
-      if (typeof formatted[field] === 'object' && 
-          (formatted[field]._seconds !== undefined || 
-           formatted[field].constructor?.name === 'ServerTimestampTransform')) {
+      if (
+        typeof formatted[field] === "object" &&
+        (formatted[field]._seconds !== undefined ||
+          formatted[field].constructor?.name === "ServerTimestampTransform")
+      ) {
         // Convert Firestore timestamp to JavaScript Date
         if (formatted[field]._seconds !== undefined) {
           formatted[field] = new Date(formatted[field]._seconds * 1000);
@@ -26,7 +35,7 @@ const formatDoc = (doc) => {
       }
     }
   });
-  
+
   return formatted;
 };
 const formatDocs = (docs) => {
@@ -101,6 +110,36 @@ const generateId = (length = 20) => {
   return result;
 };
 
+// Haversine formula to calculate distance between two points on Earth
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // Distance in kilometers
+
+  return distance;
+}
+
+// Helper function to format distance text
+function formatDistanceText(distance) {
+  if (distance === null || distance === undefined) {
+    return "Distance not available";
+  }
+  if (distance < 1) {
+    return `${Math.round(distance * 1000)} m away`;
+  }
+  return `${distance} km away`;
+}
+
 module.exports = {
   formatDoc,
   formatDocs,
@@ -109,4 +148,6 @@ module.exports = {
   formatError,
   timestamp,
   generateId,
+  formatDistanceText,
+  calculateDistance,
 };

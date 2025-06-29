@@ -328,6 +328,9 @@ export const SEARCH_PRODUCTS = gql`
       isActive
       createdAt
       lastUpdatedAt
+      distance
+      
+      distanceText
       ... on DrugProduct {
         packageType
         concentration

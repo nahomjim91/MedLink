@@ -2,138 +2,22 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@apollo/client";
-import {
-  GET_PRODUCT_BY_ID,
-  SEARCH_PRODUCTS,
-} from "../../../api/graphql/product/productQueries";
+import { GET_PRODUCT_BY_ID } from "../../../api/graphql/product/productQueries";
+import { GET_MS_USER_BY_ID } from "../../../api/graphql/queries";
 import { useMSAuth } from "../../../hooks/useMSAuth";
 import { ProductImageGallery } from "../../../components/ui/ProductImageGallery";
 import { Rating } from "../../../components/ui/FormField";
 import { NumberInput } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
-import { StarIcon } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { Syringe, Pill } from "lucide-react";
-
-// Move RelatedProducts component outside to prevent unnecessary re-renders
-const RelatedProducts = ({ currentProductId, productType, category, role }) => {
-  const [relatedProducts, setRelatedProducts] = useState([]);
-
-  const { data, loading, error } = useQuery(SEARCH_PRODUCTS, {
-    variables: {
-      searchInput: {
-        productType: productType,
-        category: category,
-        limit: 5, // Get 5 related products
-        offset: 0,
-        sortBy: "name",
-        sortOrder: "asc",
-      },
-    },
-    skip: !productType, // skip if no product type
-    fetchPolicy: "cache-first", // Use cache-first instead of network-only for better performance
-  });
-
-  useEffect(() => {
-    if (data?.searchProducts) {
-      // Filter out the current product and limit to 4 products
-      const filtered = data.searchProducts
-        .filter((product) => product.productId !== currentProductId)
-        .slice(0, 4);
-      setRelatedProducts(filtered);
-    }
-  }, [data, currentProductId]);
-
-  if (loading) return <div className="py-4">Loading related products...</div>;
-  if (error)
-    return (
-      <div className="py-4 text-red-500">
-        Error loading related products: {error.message}
-      </div>
-    );
-  if (!relatedProducts || relatedProducts.length === 0) return null;
-
-  const isEquipment = productType === "EQUIPMENT";
-  const ProductIcon = isEquipment ? Syringe : Pill;
-
-  return (
-    <div className="mt-10 pb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-secondary/70">
-          Related Products
-        </h2>
-        <Link
-          href={`/products?type=${productType}`}
-          className="text-sm text-secondary/60 hover:text-secondary/80 pr-5"
-        >
-          View All
-        </Link>
-      </div>
-
-      <div className="relative w-full overflow-x-auto pb-4">
-        <div className="flex space-x-4 w-max">
-          {relatedProducts.map((product) => (
-            <Link
-              href={`/medical-supplies/${role}/marketplace/product?id=${product.productId}`}
-              key={product.productId}
-            >
-              <div className="border border-gray-200 rounded-md overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col w-48 md:w-56 lg:w-64">
-                <div className="h-32 md:h-40 relative bg-gray-100 flex justify-center items-center">
-                  {product.imageList && product.imageList.length > 0 ? (
-                    <Image
-                      src={product.imageList[0]=== 'Untitled.jpeg' ? '/image/Untitled.jpeg' : product.imageList[0]}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <ProductIcon size={64} className="text-primary" />
-                  )}
-                </div>
-
-                <div className="p-3 flex-grow flex flex-col">
-                  <div className="text-xs text-secondary/50 mb-1">
-                    {product.originalListerName || "John Lewis"}
-                  </div>
-                  <h3 className="font-medium text-sm mb-1 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <div className="mt-auto">
-                    <div className="font-bold text-secondary/90 mt-1">
-                      $
-                      {(product.batches &&
-                        product.batches[0]?.sellingPrice?.toFixed(2)) ||
-                        "32"}
-                    </div>
-                    <div className="flex items-center mt-1">
-                      <div className="flex items-center">
-                        <StarIcon className="h-3 w-3 text-green-500 fill-green-500" />
-                        <span className="text-xs ml-1 text-secondary/70">
-                          {(Math.random() * (5 - 4) + 4).toFixed(1)}
-                        </span>
-                      </div>
-                      <span className="text-xs text-secondary/50 ml-2">
-                        {Math.floor(Math.random() * 1000) + 200} Sold
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+import { RelatedProducts } from "../../../components/ui/Cards";
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const productId = searchParams.get("id");
+  const [ownerId, setOwnerId] = useState(null);
 
-  // GraphQL query
+  // GraphQL query for product
   const {
     data: rawData,
     loading,
@@ -142,7 +26,20 @@ export default function ProductDetails() {
   } = useQuery(GET_PRODUCT_BY_ID, {
     variables: { productId },
     skip: !productId,
-    fetchPolicy: "cache-and-network", // Better caching strategy
+    fetchPolicy: "cache-and-network",
+    errorPolicy: "all",
+  });
+
+  // GraphQL query for owner - only runs when ownerId is set
+  const {
+    data: rawOwnerData,
+    loading: ownerLoading,
+    error: ownerError,
+    refetch: refetchOwner,
+  } = useQuery(GET_MS_USER_BY_ID, {
+    variables: { userId: ownerId },
+    skip: !ownerId,
+    fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
 
@@ -191,6 +88,11 @@ export default function ProductDetails() {
     const product = rawData.productById;
     const originalBatches = product.batches || [];
 
+    // Set ownerId when product data is available
+    if (product.ownerId && product.ownerId !== ownerId) {
+      setOwnerId(product.ownerId);
+    }
+
     // Filter out batches with no available quantity
     const processedBatches = originalBatches
       .map((batch) => ({
@@ -204,7 +106,21 @@ export default function ProductDetails() {
       ...product,
       batches: processedBatches,
     };
-  }, [rawData, getAvailableQuantity]);
+  }, [rawData, getAvailableQuantity, ownerId]);
+
+  // Process owner data - removed refetchOwner call from here
+  const ownerData = useMemo(() => {
+    if (!rawOwnerData?.msUserById) return null;
+    return rawOwnerData.msUserById;
+  }, [rawOwnerData]);
+
+  // Effect to handle owner data refetching if needed
+  useEffect(() => {
+    if (ownerId && !rawOwnerData && !ownerLoading) {
+      // Only refetch if we have ownerId but no data and not currently loading
+      refetchOwner();
+    }
+  }, [ownerId, rawOwnerData, ownerLoading, refetchOwner]);
 
   // Memoized total available quantity
   const totalAvailableQuantity = useMemo(() => {
@@ -440,12 +356,12 @@ export default function ProductDetails() {
   };
 
   const InfoRow = ({ label, value }) => (
-    <div className="flex flex-col md:flex-row">
+    <div className="flex flex-col md:flex-row justify-between">
       <div className="w-full md:w-1/3">
         <h2 className="text-lg font-semibold text-secondary/80">{label}</h2>
       </div>
-      <div className="w-full md:w-2/3">
-        <p className="text-secondary/60">{value || "N/A"}</p>
+      <div className="w-full md:w-2/3 flex justify-end  ">
+        <p className="text-secondary/60 ">{value || "-"}</p>
       </div>
     </div>
   );
@@ -537,14 +453,20 @@ export default function ProductDetails() {
             </div>
 
             {/* Main product info */}
-            <div className="max-w-4xl mx-auto px-6 rounded-lg">
-              <div className="space-y-2">
+            <div className="flex justify-between px-2 rounded-lg gap-6">
+              {/* Left Side - Product Information */}
+              <div className="flex-1 space-y-2 bg-background/40 p-2 rounded-lg shadow-2xl ">
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-secondary/80 mb-2">
+                    Product Information
+                  </h2>
+                </div>
+
                 <InfoRow label="Category" value={processedData.category} />
                 <InfoRow
                   label="Product Type"
                   value={isDrugProduct ? "Drug" : "Equipment"}
                 />
-                <InfoRow label="Owner" value={processedData.ownerName} />
 
                 {isDrugProduct ? (
                   <>
@@ -598,21 +520,74 @@ export default function ProductDetails() {
                   </>
                 ) : null}
 
-                <div className="flex flex-col min-w-0">
-                  {" "}
-                  {/* min-w-0 allows flex item to shrink */}
+                <div className="flex flex-col min-w-0 mt-4">
                   <div>
-                    <h2 className="text-lg font-bold text-secondary/80">
+                    <h3 className="text-lg font-bold text-secondary/80">
                       Description:
-                    </h2>
+                    </h3>
                   </div>
                   <div className="mt-2 min-w-0">
-                    {" "}
-                    {/* min-w-0 here too */}
                     <p className="text-secondary/60 break-words overflow-hidden">
                       {processedData.description || "No description available"}
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Right Side - Owner Information */}
+              <div className="flex-1 space-y-2 bg-background/40 p-2 rounded-lg shadow-2xl ">
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-secondary/80 mb-2">
+                    Owner Information
+                  </h2>
+                </div>
+
+                <InfoRow label="Company" value={ownerData?.companyName} />
+                <InfoRow label="Email" value={ownerData?.email} />
+                <InfoRow label="Phone" value={ownerData?.phoneNumber} />
+                <InfoRow label="Role" value={ownerData?.role} />
+
+                {/* Address Information */}
+                {ownerData?.address && (
+                  <>
+                    <div className="mt-4 mb-2">
+                      <h3 className="text-md font-semibold text-secondary/60">
+                        Address:
+                      </h3>
+                    </div>
+                    <InfoRow label="Street" value={ownerData.address.street} />
+                    <InfoRow label="City" value={ownerData.address.city} />
+                    <InfoRow label="State" value={ownerData.address.state} />
+                    <InfoRow
+                      label="Country"
+                      value={ownerData.address.country}
+                    />
+                    <InfoRow
+                      label="Postal Code"
+                      value={ownerData.address.postalCode}
+                    />
+                  </>
+                )}
+
+                {/* License Information */}
+                <div className="mt-4">
+                  <h3 className="text-md font-semibold text-secondary/80 mb-2">
+                    Licenses:
+                  </h3>
+                  <InfoRow
+                    label="EFDA License"
+                    value={
+                      ownerData?.efdaLicenseUrl ? "Verified" : "Not provided"
+                    }
+                  />
+                  <InfoRow
+                    label="Business License"
+                    value={
+                      ownerData?.businessLicenseUrl
+                        ? "Verified"
+                        : "Not provided"
+                    }
+                  />
                 </div>
               </div>
             </div>
@@ -829,3 +804,4 @@ export default function ProductDetails() {
     </div>
   );
 }
+3;

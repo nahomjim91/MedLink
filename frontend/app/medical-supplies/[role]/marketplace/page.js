@@ -10,6 +10,8 @@ import {
   X,
   Calendar,
   ShoppingBag,
+  Package,
+  MapPin,
 } from "lucide-react";
 import { useQuery } from "@apollo/client";
 import { SEARCH_PRODUCTS } from "../../api/graphql/product/productQueries";
@@ -54,8 +56,7 @@ const categories = [
 const Marketplace = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
-    const {user} = useMSAuth();
-
+  const { user } = useMSAuth();
 
   // Initialize filters with a stable object to prevent recreation
   const [filters, setFilters] = useState(() => ({
@@ -66,7 +67,7 @@ const Marketplace = () => {
     sortBy: "name",
     sortOrder: "asc",
   }));
-  
+
   const [showFilters, setShowFilters] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -81,33 +82,39 @@ const Marketplace = () => {
   } = filters;
 
   // Configure search parameters for GraphQL query using useMemo
-  const searchInput = useMemo(() => ({
-    searchTerm: debouncedSearchTerm,
-    productType: productType || null,
-    category: category || null,
-    expiryDateStart: expiryDateStart || null,
-    expiryDateEnd: expiryDateEnd || null,
-    sortBy: sortBy || null,
-    sortOrder: sortOrder || null,
-    limit: 50,
-    offset: 0,
-  }), [
-    debouncedSearchTerm,
-    productType,
-    category,
-    expiryDateStart,
-    expiryDateEnd,
-    sortBy,
-    sortOrder
-  ]);
+  const searchInput = useMemo(
+    () => ({
+      searchTerm: debouncedSearchTerm,
+      productType: productType || null,
+      category: category || null,
+      expiryDateStart: expiryDateStart || null,
+      expiryDateEnd: expiryDateEnd || null,
+      sortByDistance: true,
+
+      sortBy: sortBy || null,
+      sortOrder: sortOrder || null,
+      limit: 50,
+      offset: 0,
+    }),
+    [
+      debouncedSearchTerm,
+      productType,
+      category,
+      expiryDateStart,
+      expiryDateEnd,
+      sortBy,
+      sortOrder,
+    ]
+  );
 
   // GraphQL query
   const { loading, error, data } = useQuery(SEARCH_PRODUCTS, {
     variables: { searchInput },
     fetchPolicy: "network-only",
   });
-  
+
   const products = data?.searchProducts || [];
+  console.log("Products:", products);
 
   // Handle search input change
   const handleSearchChange = useCallback((e) => {
@@ -121,10 +128,15 @@ const Marketplace = () => {
       [name]: value,
     }));
   }, []);
- 
-  const handleProductClick = useCallback((product) => {
-    router.push(`/medical-supplies/${user.role}/marketplace/product?id=${product.productId}`);
-  }, [router]);
+
+  const handleProductClick = useCallback(
+    (product) => {
+      router.push(
+        `/medical-supplies/${user.role}/marketplace/product?id=${product.productId}`
+      );
+    },
+    [router]
+  );
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -145,15 +157,55 @@ const Marketplace = () => {
       product.batches && product.batches[0]
         ? product.batches[0].sellingPrice
         : 0;
+    const isOutStock = product.batches.every((batch) => batch.quantity === 0);
     const isEquipment = product.productType === "EQUIPMENT";
     const ProductIcon = isEquipment ? Syringe : Pill;
-    
+
+    // Helper function to format distance display
+    const formatDistance = (distance, distanceText) => {
+      if (distance === null || distance === undefined) {
+        return null;
+      }
+      // You can choose to show either the number or the text
+      // Option 1: Show just the number with "km"
+      if (distance < 1) {
+        return `${Math.round(distance * 1000)}m`;
+      }
+      return `${distance}km`;
+
+      // Option 2: Show the full text (uncomment this instead)
+      // return distanceText;
+    };
+
     return (
-      <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100">
-        <div className="h-32 bg-gray-100 flex items-center justify-center">
+      <div className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-100 relative">
+        {/* Out of Stock Badge */}
+        {isOutStock && (
+          <div className="absolute top-2 left-2 z-10">
+            <span className="bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-full">
+              Out of Stock
+            </span>
+          </div>
+        )}
+
+        {/* Distance Badge */}
+        {formatDistance(product.distance, product.distanceText) && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="bg-primary text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+              <MapPin size={10}  />
+              {formatDistance(product.distance, product.distanceText)}
+            </span>
+          </div>
+        )}
+
+        <div className={`h-32 bg-gray-100 flex items-center justify-center`}>
           {product.imageList && product.imageList.length > 0 ? (
             <Image
-              src={product.imageList[0] === 'Untitled.jpeg' ? '/image/Untitled.jpeg' : product.imageList[0]}
+              src={
+                product.imageList[0] === "Untitled.jpeg"
+                  ? "/image/Untitled.jpeg"
+                  : product.imageList[0]
+              }
               alt={product.name}
               className="h-full w-full object-contain"
               width={400}
@@ -163,11 +215,13 @@ const Marketplace = () => {
             <ProductIcon size={64} className="text-primary" />
           )}
         </div>
+
         <div className="p-4">
-          <h3 className="font-medium text-secondary/80">{product.name}</h3>
+          <h3 className={`font-mediumtext-secondary/80`}>{product.name}</h3>
+
           <div className="flex justify-between items-center mt-1">
-            <p className="font-bold text-secondary">
-              ${productPrice ? productPrice.toFixed(2) : '0.00'}
+            <p className={`font-boldtext-secondary`}>
+              ${productPrice ? productPrice.toFixed(2) : "0.00"}
             </p>
             {product.rating && (
               <div className="flex items-center">
@@ -178,9 +232,21 @@ const Marketplace = () => {
               </div>
             )}
           </div>
-          <Button 
-            className="mt-3 w-full py-2 px-4 flex items-center justify-center gap-3" 
-            onClick={() => handleProductClick(product)}
+
+          {/* Distance info in the card body (alternative placement) */}
+          {formatDistance(product.distance, product.distanceText) && (
+            <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
+              <MapPin size={12} className="text-primary"  />
+              <span>
+                {formatDistance(product.distance, product.distanceText)} away
+              </span>
+            </div>
+          )}
+
+          <Button
+            className={`mt-3 w-full py-2 px-4 flex items-center justify-center gap-3 `}
+            onClick={() =>  handleProductClick(product)}
+            // disabled={isOutStock}
           >
             See Detail
             <ShoppingBag size={16} className="mr-2" />
@@ -189,6 +255,7 @@ const Marketplace = () => {
       </div>
     );
   });
+
   ProductCard.displayName = "ProductCard";
 
   // Filter panel component
@@ -207,7 +274,7 @@ const Marketplace = () => {
           <X size={18} />
         </button>
       </div>
-  
+
       <div className="flex flex-col gap-4">
         {/* Product Type & Category Filters */}
         <div className="w-full flex flex-col md:flex-row gap-4">
@@ -219,13 +286,13 @@ const Marketplace = () => {
             options={[
               { value: "", label: "All Products" },
               { value: "DRUG", label: "Drugs" },
-              { value: "EQUIPMENT", label: "Equipment" }
+              { value: "EQUIPMENT", label: "Equipment" },
             ]}
             placeholder="Select product type"
             className="flex-grow"
             defaultToFirstOption={false}
           />
-  
+
           <SelectInput
             label="Category"
             name="category"
@@ -233,17 +300,17 @@ const Marketplace = () => {
             onChange={(e) => handleFilterChange("category", e.target.value)}
             options={[
               { value: "", label: "All Categories" },
-              ...categories.map(category => ({
+              ...categories.map((category) => ({
                 value: category,
-                label: category
-              }))
+                label: category,
+              })),
             ]}
             placeholder="Select category"
             className="flex-grow"
             defaultToFirstOption={false}
           />
         </div>
-  
+
         {/* Sort By Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,8 +323,8 @@ const Marketplace = () => {
               onChange={(e) => handleFilterChange("sortBy", e.target.value)}
               options={[
                 { value: "name", label: "Name" },
-                { value: "createdAt", label: "Newest"},
-                { value: "category", label: "Category" }
+                { value: "createdAt", label: "Newest" },
+                { value: "category", label: "Category" },
               ]}
               className="flex-grow"
               defaultToFirstOption={false}
@@ -268,14 +335,14 @@ const Marketplace = () => {
               onChange={(e) => handleFilterChange("sortOrder", e.target.value)}
               options={[
                 { value: "asc", label: "Ascending" },
-                { value: "desc", label: "Descending" }
+                { value: "desc", label: "Descending" },
               ]}
               className="w-36"
               defaultToFirstOption={false}
             />
           </div>
         </div>
-  
+
         {/* Date Range Filters (for expiry date) - Only shown for DRUG products */}
         {filters.productType === "DRUG" && (
           <div className="space-y-2">
@@ -306,7 +373,7 @@ const Marketplace = () => {
             </div>
           </div>
         )}
-  
+
         {/* Clear Filters Button */}
         <div className="pt-2">
           <button
@@ -322,7 +389,7 @@ const Marketplace = () => {
   FilterPanel.displayName = "FilterPanel";
 
   return (
-    <div className="relative overflow-hidden mx-auto p-4 bg-white rounded-xl">
+    <div className="relative overflow-hidden h-[89vh] mx-auto p-4 bg-white rounded-xl">
       {/* Search and Filter Bar */}
       <div className="mb-6 flex flex-col md:flex-row gap-4">
         <div className="relative flex-grow">
@@ -377,7 +444,7 @@ const Marketplace = () => {
 
       {/* Products Grid */}
       {!loading && !error && products.length > 0 && (
-        <div className="h-[70vh] overflow-y-scroll">
+        <div className="h-[75vh] overflow-y-scroll scrollbar-hide">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {products.map((product) => (
               <ProductCard key={product.productId} product={product} />

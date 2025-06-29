@@ -17,6 +17,8 @@ const productSchema = gql`
     imageList: [String] # URLs for images
     isActive: Boolean!
     createdAt: Date!
+    distanceText: String
+    distance: Float
     lastUpdatedAt: Date!
     # Relationship to batches
     batches: [Batch]
@@ -38,6 +40,8 @@ const productSchema = gql`
     isActive: Boolean!
     createdAt: Date!
     lastUpdatedAt: Date!
+    distanceText: String
+    distance: Float
     batches: [Batch]
 
     # Drug-specific fields
@@ -62,6 +66,8 @@ const productSchema = gql`
     isActive: Boolean!
     createdAt: Date!
     lastUpdatedAt: Date!
+    distanceText: String
+    distance: Float
     batches: [Batch]
 
     # Equipment-specific fields
@@ -70,7 +76,6 @@ const productSchema = gql`
     modelNumber: String
     warrantyInfo: String
     sparePartInfo: [String]
-    
   }
 
   "Interface for common batch fields"
@@ -264,6 +269,8 @@ const productSchema = gql`
     category: String
     expiryDateStart: Date
     expiryDateEnd: Date
+    sortByDistance: Boolean
+    maxDistance: Float
     limit: Int
     offset: Int
     sortBy: String
