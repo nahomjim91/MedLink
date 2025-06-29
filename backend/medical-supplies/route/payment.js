@@ -38,6 +38,8 @@ router.post('/initialize', async (req, res) => {
       });
     }
 
+    console.log("infonfo", customerInfo);
+    console.log("orderDetails", orderDetails);
     // Generate unique transaction reference
     const txRef = `tx_${orderId}_${Date.now()}`;
     // console.log('orderDetails:', orderDetails);
@@ -45,10 +47,10 @@ router.post('/initialize', async (req, res) => {
     const paymentData = {
       amount: parseFloat(amount),
       currency,
-      email: 'test@gmail.com',//customerInfo.email,
+      email: customerInfo.email,
       first_name: customerInfo.firstName,
       last_name: customerInfo.lastName || '',
-      phone_number: customerInfo.phone || '0900000000', // Use test phone for test mode
+      phone_number: customerInfo.phoneNumber || '0900000000', // Use test phone for test mode
       tx_ref: txRef,
       // callback_url: `${process.env.BACKEND_URL}/api/payments/callback`,
       // return_url: `${process.env.FRONTEND_URL}/checkout/success?tx_ref=${txRef}`,

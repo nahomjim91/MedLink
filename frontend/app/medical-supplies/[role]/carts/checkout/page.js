@@ -17,6 +17,7 @@ import { GET_MS_USER_BY_ID } from "../../../api/graphql/queries";
 import client from "../../../api/graphql/client";
 import { MapPin } from "lucide-react";
 import { CREATE_TRANSACTION } from "../../../api/graphql/transaction/transactionMutation";
+import MapModal from "../../../components/ui/MapCard";
 
 // Method 1: Popup Window Approach
 function ChapaPopup({
@@ -501,96 +502,6 @@ function OrderSummaryStep({
     (order) => pickupDates[order.orderId]
   );
 
-  // Map Modal Component
-  const MapModal = () => {
-    if (!showMapModal) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" >
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Pickup Location</h3>
-            <button
-              onClick={() => setShowMapModal(false)}
-              className="text-gray-500 hover:text-gray-700 text-xl"
-            >
-              ×
-            </button>
-          </div>
-
-          {/* Seller Info */}
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-gray-800 mb-2">
-              {currentOrder.sellerName}
-            </h4>
-            <div className="space-y-1 text-sm text-gray-600">
-              <p>
-                <span className="font-medium">Street:</span>{" "}
-                {seller?.address?.street || "N/A"}
-              </p>
-              <p>
-                <span className="font-medium">City:</span>{" "}
-                {seller?.address?.city || "N/A"}
-              </p>
-              <p>
-                <span className="font-medium">State:</span>{" "}
-                {seller?.address?.state || "N/A"}
-              </p>
-              <p>
-                <span className="font-medium">Country:</span>{" "}
-                {seller?.address?.country || "N/A"}
-              </p>
-              <p>
-                <span className="font-medium">Postal Code:</span>{" "}
-                {seller?.address?.postalCode || "N/A"}
-              </p>
-              {seller?.address?.geoLocation && (
-                <p>
-                  <span className="font-medium">Coordinates:</span>{" "}
-                  {seller.address.geoLocationText}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Map Placeholder */}
-          <div className="bg-gray-100 rounded-lg h-60 flex items-center justify-center mb-4">
-            <div className="text-center text-gray-500">
-              <div className="text-4xl mb-2">🗺️</div>
-              <p className="text-sm">Google Maps will be displayed here</p>
-              <p className="text-xs mt-1">Integration pending</p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => {
-                if (seller?.address?.geoLocation) {
-                  const { latitude, longitude } = seller.address.geoLocation;
-                  window.open(
-                    `https://www.google.com/maps?q=${latitude},${longitude}`,
-                    "_blank"
-                  );
-                }
-              }}
-              disabled={!seller?.address?.geoLocation}
-              className="flex-1 bg-primary/70 text-white py-2 px-4 rounded-lg hover:bg-primary disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
-            >
-              Open in Google Maps
-            </button>
-            <button
-              onClick={() => setShowMapModal(false)}
-              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-white hover:border-error hover:border hover:text-error text-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <div className="flex gap-6">
@@ -780,7 +691,15 @@ function OrderSummaryStep({
       </div>
 
       {/* Map Modal */}
-      <MapModal />
+      <MapModal
+        isOpen={showMapModal}
+        onClose={() => setShowMapModal(false)}
+        location={{
+          name: seller?.companyName,
+          address: seller?.address,
+        }}
+        title="Pickup Location"
+      />
     </>
   );
 }
@@ -1113,8 +1032,8 @@ export default function CheckoutPage() {
 
   // console.log("CheckoutPage - cart", cart);
   // Categorize cart items by seller
-const isDataReady = !loading && user && cart;
-  
+  const isDataReady = !loading && user && cart;
+
   const ordersBySeller = useMemo(
     () => {
       if (!isDataReady) {
@@ -1282,7 +1201,7 @@ const isDataReady = !loading && user && cart;
   // Initialize payment with backend
   const initializePayment = async (order) => {
     try {
-      console.log("Initializing payment for order:", order.orderId); 
+      console.log("Initializing payment for order:", order.orderId);
 
       const response = await apiRequest("/api/payments/initialize", {
         method: "POST",
@@ -1777,7 +1696,7 @@ const isDataReady = !loading && user && cart;
           />
         )}
 
-        {currentStep === 2  && ordersBySeller.length > 0 && (
+        {currentStep === 2 && ordersBySeller.length > 0 && (
           <PaymentStep
             orders={ordersBySeller}
             pickupDates={pickupDates}
