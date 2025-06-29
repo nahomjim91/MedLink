@@ -39,7 +39,7 @@ export default function MultiStepSignup({ email }) {
       },
       geoLocationText: user?.address?.geoLocationText || "",
     },
-    profileImage: null,
+    profileImageUrl: user?.profileImageUrl || "",
     efdaLicenseUrl: user?.efdaLicenseUrl || "",
     businessLicenseUrl: user?.businessLicenseUrl || "",
   });
@@ -70,6 +70,7 @@ export default function MultiStepSignup({ email }) {
           geoLocationText:
             user?.address?.geoLocationText || prevData.address.geoLocationText,
         },
+        profileImageUrl: user.profileImageUrl || prevData.profileImageUrl,
         efdaLicenseUrl: user.efdaLicenseUrl || prevData.efdaLicenseUrl,
         businessLicenseUrl:
           user.businessLicenseUrl || prevData.businessLicenseUrl,
@@ -145,7 +146,7 @@ export default function MultiStepSignup({ email }) {
 
   // Handle profile image upload
   const handleProfileImageUpload = (file) => {
-    updateUserData({ profileImage: file });
+    updateUserData({ profileImageUrl: file });
   };
 
   // Handle license uploads
@@ -224,7 +225,7 @@ export default function MultiStepSignup({ email }) {
           geoLocation: userData.address.geoLocation,
           geoLocationText: userData.address.geoLocationText,
         },
-        profileImageUrl: userData.profileImage?.url || null,
+        profileImageUrl: userData.profileImageUrl || null,
         efdaLicenseUrl: userData.efdaLicenseUrl,
         businessLicenseUrl: userData.businessLicenseUrl,
       };
@@ -297,7 +298,7 @@ export default function MultiStepSignup({ email }) {
       case 3:
         return (
           <ProfileUpload
-            profileImage={userData.profileImage}
+            profileImageUrl={userData.profileImageUrl}
             onProfileImageUpload={handleProfileImageUpload}
             onNext={handleNext}
             onPrevious={handlePrevious}

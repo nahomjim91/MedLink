@@ -54,7 +54,7 @@ export default function ConfirmationStep({
         </div>
       </div>
 
-      <StepButtons onNext={onNext} onPrevious={onPrevious} />
+      <StepButtons onNext={onNext} onPrevious={onPrevious} isLoading={isLoading} />
     </div>
   );
 }

@@ -562,7 +562,7 @@ app.post('/uploads', upload.array('files', 10), (req, res) => {
     res.status(500).json({ message: 'Upload failed', error: error.message });
   }
 });
-
+ 
 // Delete file endpoint
 app.delete('/delete/:filename', (req, res) => {
   try {

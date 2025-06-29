@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { StepButtons } from "../../ui/Button";
 import { TextInput, AddressInput } from "../../ui/Input";
 import { FileUploader } from "../../ui/FileUploader";
+import useFileUpload from "../../../hooks/useFileUpoload";
 
 export default function CompanyInfoForm({
   userData,
@@ -37,6 +38,13 @@ export default function CompanyInfoForm({
       : null,
   });
 
+  // Initialize the file upload hook
+  const {
+    uploading: imageUploading,
+       uploadSingle,
+       deleteFile
+  } = useFileUpload();
+
   // Update local form state when userData prop changes
   useEffect(() => {
     setFormData({
@@ -61,6 +69,9 @@ export default function CompanyInfoForm({
       businessLicense: userData.businessLicenseUrl
         ? { url: userData.businessLicenseUrl }
         : null,
+      companyImage: userData.companyImageUrl
+        ? { url: userData.companyImageUrl }
+        : null,
     });
   }, [userData]);
 
@@ -73,7 +84,6 @@ export default function CompanyInfoForm({
       return "";
     }
 
-    // You could customize this format based on your needs
     return `${geoLocation.latitude.toFixed(6)}, ${geoLocation.longitude.toFixed(
       6
     )}`;
@@ -119,7 +129,6 @@ export default function CompanyInfoForm({
           latitude: geoLocation.latitude,
           longitude: geoLocation.longitude,
         },
-        // Update the text representation as well
         geoLocationText: formatGeoLocationText(geoLocation),
       },
     }));
@@ -127,6 +136,24 @@ export default function CompanyInfoForm({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log("Form submitted:", formData);
+
+    if (
+      !formData.companyName ||
+      !formData.contactName ||
+      !formData.phoneNumber ||
+      !isValidEthiopianPhone(formData.phoneNumber) ||
+      !formData.address.street ||
+      !formData.address.city ||
+      !formData.address.state ||
+      !formData.address.country ||
+      !formData.address.postalCode ||
+      !formData.efdaLicense ||
+      !formData.businessLicense
+    ) {
+      alert("Please fill in all required fields.");
+      return;
+    }
 
     // Update parent component with form data
     onUpdate({
@@ -134,20 +161,40 @@ export default function CompanyInfoForm({
       contactName: formData.contactName,
       phoneNumber: formData.phoneNumber,
       address: formData.address,
+      efdaLicenseUrl: formData.efdaLicense?.url,
+      businessLicenseUrl: formData.businessLicense?.url,
     });
 
     onNext();
   };
 
-  const handleEFDAUpload = (file) => {
-    setFormData((prev) => ({ ...prev, efdaLicense: file }));
-    onEFDAUpload(file.url);
+  const handleEFDAUpload = async (file) => {
+    console.log("EFDA uploaded:", file);
+    let uploadResult = await uploadSingle(file);
+    setFormData((prev) => ({ ...prev, efdaLicense: uploadResult.fileUrl }));
+    onEFDAUpload(uploadResult.fileUrl);
   };
 
-  const handleLicenseUpload = (file) => {
-    setFormData((prev) => ({ ...prev, businessLicense: file }));
-    onLicenseUpload(file.url);
+  const handleLicenseUpload = async (file) => {
+    console.log("License uploaded:", file);
+    let uploadResult = await uploadSingle(file);
+    setFormData((prev) => ({ ...prev, businessLicense: uploadResult.fileUrl }));
+    onLicenseUpload(uploadResult.fileUrl);
   };
+  const handleEFDARemove = async (file) => {
+    console.log("EFDA Removed:" , formData.efdaLicense );
+    await deleteFile(formData.efdaLicense.url);
+    setFormData((prev) => ({ ...prev, efdaLicense: null}));
+    onEFDAUpload('');
+  };
+
+  const handleLicenseRemove = async (file) => {
+    console.log("License Removed:");
+    await deleteFile(formData.businessLicense.url);
+    setFormData((prev) => ({ ...prev, businessLicense: null }));
+    onLicenseUpload('');
+  };
+
 
   const isValidEthiopianPhone = (phone) => {
     const digitsOnly = phone.replace(/\D/g, "");
@@ -161,7 +208,7 @@ export default function CompanyInfoForm({
     formData.companyName &&
     formData.contactName &&
     formData.phoneNumber &&
-    isValidEthiopianPhone(formData.phoneNumber) && // Add phone validation
+    isValidEthiopianPhone(formData.phoneNumber) &&
     formData.address.street &&
     formData.address.city &&
     formData.address.state &&
@@ -258,7 +305,7 @@ export default function CompanyInfoForm({
               placeholder="Enter country"
               value={formData.address.country}
               onChange={handleAddressChange}
-              isDesabled={true} // Assuming country is fixed to Ethiopia
+              isDesabled={true}
             />
             <TextInput
               name="postalCode"
@@ -293,6 +340,7 @@ export default function CompanyInfoForm({
               multiple={false}
               accept="image/png,image/jpeg,application/pdf"
               onFileUpload={handleEFDAUpload}
+              onRemoveFile={handleEFDARemove}
               initialFiles={formData.efdaLicense}
               showPreview={true}
               required={true}
@@ -304,6 +352,7 @@ export default function CompanyInfoForm({
               multiple={false}
               accept="image/png,image/jpeg,application/pdf"
               onFileUpload={handleLicenseUpload}
+              onRemoveFile={handleLicenseRemove}
               initialFiles={formData.businessLicense}
               showPreview={true}
               required={true}
@@ -316,7 +365,8 @@ export default function CompanyInfoForm({
         <StepButtons
           onNext={isFormValid && handleSubmit}
           onPrevious={onPrevious}
-          isLoading={isLoading}
+          isLoading={isLoading || imageUploading}
+          
         />
       </form>
     </div>

@@ -16,6 +16,31 @@ export function FileUploader({
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState(initialFiles || (multiple ? [] : null));
 
+  // Helper function to extract filename from URL or get file name
+  const getFileName = (file) => {
+    
+    if (typeof file.url === "string") {
+      // Extract filename from URL
+      console.log("Received file:", file);
+
+      const urlParts = file.url.split("/");
+      const fullFileName = urlParts[urlParts.length - 1];
+      
+      // Check if filename contains a dash (timestamp prefix)
+      const dashIndex = fullFileName.indexOf('-');
+      if (dashIndex !== -1) {
+        // Return the part after the dash
+        return fullFileName.substring(dashIndex + 1);
+      }
+      
+      // If no dash found, return the full filename
+      return fullFileName;
+    } else {
+      // It's a File object, return its name
+      return file.url;
+    }
+  };
+
   useEffect(() => {
     // Make sure we're always handling initialFiles correctly
     if (initialFiles === null) {
@@ -85,7 +110,7 @@ export function FileUploader({
 
       // Call onRemoveFile callback if provided (for parent to handle server deletion)
       if (onRemoveFile) {
-        onRemoveFile( index ,fileToRemove);
+        onRemoveFile(index, fileToRemove);
       }
 
       // Don't call onFileUpload here - let parent handle removal logic
@@ -94,7 +119,7 @@ export function FileUploader({
 
       // Call onRemoveFile callback if provided
       if (onRemoveFile) {
-        onRemoveFile( 0 ,fileToRemove);
+        onRemoveFile(0, fileToRemove);
       }
 
       // Don't call onFileUpload here - let parent handle removal logic
@@ -108,6 +133,7 @@ export function FileUploader({
     if (!multiple) {
       // For image preview type
       if (previewType === "image" && files) {
+        console.log("files", typeof files === "string" ? files : URL.createObjectURL(files));
         return (
           <div className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
             <img
@@ -140,7 +166,7 @@ export function FileUploader({
       return (
         <div className="flex items-center justify-between bg-gray-100 p-2 rounded mb-2 w-full">
           <span className="text-xs md:text-sm truncate max-w-[85%]">
-            {typeof files === "string" ? files.split("/").pop() : files.name}
+            {getFileName(files)}
           </span>
           <button
             type="button"
@@ -195,7 +221,7 @@ export function FileUploader({
               className="flex items-center justify-between bg-gray-100 p-2 rounded"
             >
               <span className="text-xs md:text-sm truncate max-w-[80%]">
-                {typeof file === "string" ? file.split("/").pop() : file.name}
+                {getFileName(file)}
               </span>
               <button
                 type="button"
