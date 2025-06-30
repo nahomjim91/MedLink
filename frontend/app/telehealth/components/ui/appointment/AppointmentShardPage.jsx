@@ -5,9 +5,7 @@ import {
   Calendar,
   Clock,
   Filter,
-  X,
-  ChevronLeft,
-  ChevronRight,
+
   Users,
   CheckCircle,
   XCircle,

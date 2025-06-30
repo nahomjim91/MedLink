@@ -8,9 +8,7 @@ import { useState } from "react";
 // import { ToastProvider } from "./components/ui/use-toast";
 // import { VideoCallProvider } from "./hooks/useVideoCall";
 
-const NavbarWrapper = ({ children }) => {
-  const pathname = usePathname();
-
+const NavbarWrapper = ({ children, pathname }) => {
   // Define paths where navbar should be hidden
   const hideNavbarPaths = [
     "/telehealth/admin",
@@ -38,18 +36,20 @@ const NavbarWrapper = ({ children }) => {
 };
 
 export default function TelehealthLayout({ children }) {
+  const pathname = usePathname();
   const [isOpener, setIsOpener] = useState(false);
   return (
     <ApolloWrapper>
       <AuthProvider>
-        <NavbarWrapper>
+        <NavbarWrapper pathname={pathname}>
           {children}
-          <MedLinkChatBot
-            isOpener={isOpener}
-            setIsOpener={(value) => { setIsOpener(value) }}
-            lang="english"
-
-          />
+          {pathname.includes("/telehealth") && (
+            <MedLinkChatBot
+              isOpener={isOpener}
+              setIsOpener={(value) => setIsOpener(value)}
+              lang="english"
+            />
+          )}
         </NavbarWrapper>
       </AuthProvider>
     </ApolloWrapper>

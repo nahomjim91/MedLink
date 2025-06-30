@@ -5,28 +5,17 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { Button } from "./Button";
-import CancelModal from "./modal/AppointmentModal "; 
+import CancelModal from "./modal/AppointmentModal ";
+import Link from "next/link";
 // Cancel Modal Component
 
-
-const AppointmentCard = ({
-  appointment,
-  onClose,
-  onCancel,
-  loading,
-}) => {
+const AppointmentCard = ({ appointment, onClose, onCancel, loading }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const canCancel = ["REQUESTED", "PENDING"].includes(appointment.status);
-  const canReschedule = [
-    "REQUESTED",
-    "PENDING",
-    "CONFIRMED",
-    "SCHEDULED",
-  ].includes(appointment.status);
 
   const handleCancelConfirm = async (appointmentId, reason) => {
     try {
@@ -44,7 +33,7 @@ const AppointmentCard = ({
       <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50 md:hidden">
         <div className="bg-white rounded-2xl p-6 m-4 max-w-sm w-full">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-secondary">
               Appointment Details
             </h3>
             <button
@@ -64,7 +53,7 @@ const AppointmentCard = ({
               />
             </div>
             <div className="flex-1">
-              <h4 className="font-semibold text-gray-900 text-lg">
+              <h4 className="font-semibold text-secondary text-lg">
                 {appointment.doctorName}
               </h4>
               <p className="text-sm text-gray-500">{appointment.specialty}</p>
@@ -95,7 +84,7 @@ const AppointmentCard = ({
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
                   Date
                 </p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-secondary">
                   {appointment.formattedDate}
                 </p>
               </div>
@@ -107,7 +96,7 @@ const AppointmentCard = ({
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
                   Time
                 </p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-secondary">
                   {appointment.time}
                 </p>
               </div>
@@ -157,7 +146,7 @@ export default function CalendarAppointments({
   loading = false,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
@@ -382,7 +371,7 @@ export default function CalendarAppointments({
         <div className="bg-white rounded-l-2xl shadow-sm border border-gray-100">
           <div className="p-2 md:p-3">
             <div className="flex justify-between items-center mb-4 md:mb-0">
-              <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+              <h2 className="text-lg md:text-xl font-semibold text-secondary">
                 Calendar
               </h2>
 
@@ -533,7 +522,7 @@ export default function CalendarAppointments({
 
           {/* Mobile Appointments List */}
           <div className="md:hidden border-t border-gray-100 p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">
+            <h3 className="font-semibold text-secondary mb-3">
               {selectedDate
                 ? "Appointments for Selected Date"
                 : "Upcoming Appointments"}
@@ -554,7 +543,7 @@ export default function CalendarAppointments({
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">
+                      <p className="font-medium text-secondary text-sm truncate">
                         {appointment.doctorName}
                       </p>
                       <p className="text-xs text-gray-500">
@@ -600,7 +589,7 @@ export default function CalendarAppointments({
           {selectedAppointmentsForDesktop.length > 0 ? (
             <div className="bg-white shadow-sm border border-gray-100 p-2 rounded-r-2xl">
               <div className="flex justify-between items-center mb-5">
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-xl font-semibold text-secondary">
                   {selectedAppointmentsForDesktop.length > 1
                     ? `${selectedAppointmentsForDesktop.length} Appointments`
                     : "Appointment Details"}
@@ -615,7 +604,6 @@ export default function CalendarAppointments({
 
               <div className="space-y-3 h-[28vh] overflow-y-auto scrollbar-hide">
                 {selectedAppointmentsForDesktop.map((appointment, index) => (
-                
                   <div
                     key={appointment.id}
                     className={`${
@@ -662,7 +650,7 @@ export default function CalendarAppointments({
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
                             Date
                           </p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-secondary">
                             {appointment.formattedDate}
                           </p>
                         </div>
@@ -674,7 +662,7 @@ export default function CalendarAppointments({
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
                             Time
                           </p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-secondary">
                             {appointment.time}
                           </p>
                         </div>
@@ -690,7 +678,7 @@ export default function CalendarAppointments({
             <div className="bg-white rounded-r-2xl shadow-sm border border-gray-100 p-4">
               <div className="text-center py-12">
                 <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-secondary mb-2">
                   Select a Date
                 </h3>
                 <p className="text-gray-500">
@@ -709,6 +697,434 @@ export default function CalendarAppointments({
           onClose={() => setSelectedAppointment(null)}
           onCancel={onCancelAppointment}
           loading={loading}
+        />
+      )}
+    </div>
+  );
+}
+
+export function MinimalCalendar({ appointments, userRole ,  }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const dayNames = ["S", "M", "T", "W", "TH", "F", "SA"];
+
+  const getCurrentMonthYear = () => {
+    return `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+  };
+
+  const navigateMonth = (direction) => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + direction);
+    setCurrentDate(newDate);
+  };
+
+  const generateCalendarDays = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const firstDayOfWeek = firstDay.getDay(); // Remove the +7 % 7 calculation
+    const daysInMonth = lastDay.getDate();
+
+    const days = [];
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      days.push(null);
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      days.push({
+        day,
+        date,
+        dateKey: date.toISOString().split("T")[0],
+      });
+    }
+
+    return days;
+  };
+
+  const getAppointmentsForDate = (dateKey) => {
+    return appointments.filter((apt) => apt.date === dateKey);
+  };
+
+  const hasAppointments = (dateKey) => {
+    return getAppointmentsForDate(dateKey).length > 0;
+  };
+
+  const handleDateClick = (dayObj) => {
+    if (!dayObj) return;
+    setSelectedDate(dayObj.dateKey);
+  };
+
+  const isToday = (dateKey) => {
+    const today = new Date().toISOString().split("T")[0];
+    // console.log("today", today);
+    // console.log("datekey", dateKey);
+    return dateKey === today;
+  };
+
+  const AppointmentModal = ({ appointment, onClose }) => (
+    <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Appointment Details</h3>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-4">
+          <img
+            src={appointment.avatar}
+            alt={appointment.patientName}
+            className="w-12 h-12 rounded-full object-cover"
+          />
+          <div>
+            <h4 className="font-medium">{appointment.patientName}</h4>
+            <p className="text-sm text-gray-500">{appointment.note}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">
+              {new Date(appointment.date).toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Clock className="w-4 h-4 text-gray-500" />
+            <span className="text-sm">{appointment.time}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+            Reschedule
+          </button>
+          <button className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+            View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full md:flex-2/3  ">
+      <div className="flex">
+        {/* Calendar */}
+        <div className=" flex-2/5 bg-white rounded-l-2xl shadow-2xl border border-gray-100 md:h-65 overflow-y-clip  ">
+          <div className="p-2 md:p-3">
+            <div className="flex justify-between items-center mb-4 md:mb-1">
+              <h2 className="text-lg font-semibold secondary/70">Calendar</h2>
+
+              {/* Desktop Month Navigation */}
+              <div className="hidden md:flex items-center gap-2">
+                <button
+                  onClick={() => navigateMonth(-1)}
+                  className="p-1 md:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 text-teal-500" />
+                </button>
+                <span className="text-sm md:text-base font-medium text-gray-600 min-w-24 md:min-w-32 text-center">
+                  {getCurrentMonthYear()}
+                </span>
+                <button
+                  onClick={() => navigateMonth(1)}
+                  className="p-1 md:p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-teal-500" />
+                </button>
+              </div>
+
+              {/* Mobile Calendar Icon */}
+              <div className="md:hidden">
+                <Calendar className="w-5 h-5 text-gray-600" />
+              </div>
+            </div>
+
+            {/* Mobile Month Navigation */}
+            <div className="md:hidden mb-4">
+              <div className="flex justify-between items-center mb-2 px-2">
+                <button
+                  onClick={() => navigateMonth(-1)}
+                  className="text-sm text-gray-600 hover:text-teal-500"
+                >
+                  ← Prev
+                </button>
+                <span className="text-sm font-medium text-gray-600">
+                  {getCurrentMonthYear()}
+                </span>
+                <button
+                  onClick={() => navigateMonth(1)}
+                  className="text-sm text-gray-600 hover:text-teal-500"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="flex flex-col justify-center items-center">
+              <div className="grid grid-cols-7 gap-1 w-72 ">
+                {dayNames.map((day) => (
+                  <div
+                    key={day}
+                    className="text-center text-xs font-medium text-teal-500 py-1"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 mb-1 w-72">
+                {generateCalendarDays().map((dayObj, index) => {
+                  if (!dayObj) {
+                    return <div key={index} className="h-7"></div>;
+                  }
+
+                  const hasAppts = hasAppointments(dayObj.dateKey);
+                  const appointmentCount = getAppointmentsForDate(
+                    dayObj.dateKey
+                  ).length;
+                  const isTodayDate = isToday(dayObj.dateKey);
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleDateClick(dayObj)}
+                      className={`
+    h-7 rounded-lg text-sm font-medium transition-all relative
+    ${
+      selectedDate === dayObj.dateKey
+        ? "bg-primary text-white" // Selected date styling
+        : hasAppts
+        ? "bg-primary/50 text-white hover:bg-teal-600"
+        : isTodayDate
+        ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+        : "text-gray-700 hover:bg-gray-100"
+    }
+  `}
+                    >
+                      {dayObj.day}
+                      {hasAppts && appointmentCount > 0 && (
+                        <div className="absolute -top-1 -right-1">
+                          {appointmentCount > 1 ? (
+                            <span className="bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                              {appointmentCount}
+                            </span>
+                          ) : (
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Appointments List */}
+          <div className="md:hidden border-t border-gray-100 p-4">
+            <h3 className="font-semibold text-secondary mb-3">
+              {selectedDate
+                ? `${new Date(selectedDate).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}`
+                : "Recent Appointments"}
+            </h3>
+            <div className="space-y-2">
+              {(() => {
+                const appointmentsToShow = selectedDate
+                  ? getAppointmentsForDate(selectedDate)
+                  : appointments.slice(0, 3);
+
+                if (selectedDate && appointmentsToShow.length === 0) {
+                  return (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center text-gray-500">
+                        <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No appointments for this date</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return appointmentsToShow.map((appointment) => (
+                  <div
+                    key={appointment.id}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                    onClick={() => setSelectedAppointment(appointment)}
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0">
+                      <img
+                        src={appointment.avatar}
+                        alt={appointment.patientName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-secondary text-sm truncate">
+                        {appointment.patientName}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {appointment.note}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {new Date(appointment.date).toLocaleDateString(
+                              "en-US",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                weekday: "short",
+                              }
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-gray-400" />
+                          <span className="text-xs text-gray-500">
+                            {appointment.time}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Appointments List */}
+        <div className="hidden md:block md:flex-3/5 bg-white rounded-r-2xl shadow-sm border border-gray-100 px-4 pt-4 ">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="text-lg font-semibold secondary/70">
+              {selectedDate
+                ? `Appointments for ${new Date(selectedDate).toLocaleDateString(
+                    "en-US",
+                    {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    }
+                  )}`
+                : "Appointments"}
+            </h3>
+            <Link href={`/telehealth/${userRole}/appointments`} className="text-teal-500 text-sm font-medium hover:text-teal-600">
+              See All
+            </Link>
+          </div>
+
+          <div className="space-y-2 md:h-[26vh] overflow-y-auto">
+            {(() => {
+              const appointmentsToShow = selectedDate
+                ? getAppointmentsForDate(selectedDate)
+                : appointments;
+
+              if (selectedDate && appointmentsToShow.length === 0) {
+                return (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-gray-500">
+                      <Calendar className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                      <p className="text-sm">
+                        No appointments for the selected date
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+
+              return appointmentsToShow.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  onClick={() => setSelectedAppointment(appointment)}
+                  className="flex items-center gap-3 p-2 bg-secondary/1 rounded-xl cursor-pointer shadow hover:bg-gray-100 transition-colors"
+                >
+                  <img
+                    src={appointment.avatar}
+                    alt={appointment.patientName}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  />
+                  <div className="flex-1 flex justify-between min-w-0 px-2">
+                    <div>
+                      <h4 className="font-medium text-gray-800 truncate">
+                        {appointment.patientName}
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        {appointment.note}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center gap-4 mt-1">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-500">
+                          {new Date(appointment.date).toLocaleDateString(
+                            "en-US",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              weekday: "short",
+                            }
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-500">
+                          {appointment.time}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* Appointment Modal */}
+      {selectedAppointment && (
+        <AppointmentModal
+          appointment={selectedAppointment}
+          onClose={() => setSelectedAppointment(null)}
         />
       )}
     </div>

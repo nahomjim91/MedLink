@@ -494,7 +494,7 @@ export default function DoctorProfileResponsive() {
                   <div className="text-center py-4">
                     <p className="text-red-500 text-sm">Error loading slots</p>
                   </div>
-                ) : availableSlots.length === 0 ? (
+                ) : doctor.pricePerSession <= 0 ||  availableSlots.length === 0 ? (
                   <div className="text-center py-4">
                     <p className="text-gray-500 text-sm">
                       {selectedDate

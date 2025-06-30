@@ -367,7 +367,7 @@ export default function TelehealthPatientPage() {
           status: appointment.status,
           avatar:
             appointment.doctor?.profilePicture ||
-            appointment.doctor?.user?.profileImageUrl ||
+            appointment.doctor?.profileImageUrl ||
             "/api/placeholder/60/60",
         };
       } catch (error) {

@@ -154,6 +154,7 @@ const TransactionModel = {
    */
   async getByPatientId(userId, limit = 20, offset = 0) {
     try {
+      console.log("transaction userId", userId);
       let query = transactionsRef
         .where('userId', '==', userId)
         .orderBy('createdAt', 'desc');

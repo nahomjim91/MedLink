@@ -126,13 +126,13 @@ const transactionResolvers = {
     // Get transactions for current user
     myTransactions: async (_, { limit = 20, offset = 0 }, context) => {
       const user = await UserModel.getById(context.user.uid); 
-      return await TransactionModel.getByPatientId(user.uid, limit, offset);
+      return await TransactionModel.getByPatientId(context.user.uid, limit, offset);
     },
 
     // Get refunds for current user
     myRefunds: async (_, { limit = 20, offset = 0 }, context) => {
       const user = await isPatient(context);
-      return await RefundModel.getByPatientId(user.uid, limit, offset);
+      return await RefundModel.getByPatientId(context.user.uid, limit, offset);
     },
 
     // Get transactions by patient ID (admin only)
@@ -288,7 +288,7 @@ const transactionResolvers = {
   const user = await UserModel.getById(context.user.uid);       
       const transactionData = {
         ...input,
-        userId: user.uid,
+        userId: context.user.uid,
         status: 'PENDING'
       };
       
@@ -328,7 +328,7 @@ const transactionResolvers = {
       
       const refundData = {
         ...input,
-        userId: user.uid,
+        userId: context.user.uid,
         status: 'REQUESTED'
       };
       
@@ -502,7 +502,7 @@ const transactionResolvers = {
       
       // Create pending deposit transaction
       const transactionData = {
-        userId: user.uid,
+        userId: context.user.uid,
         type: 'DEPOSIT',
         amount,
         reason: 'Wallet deposit',

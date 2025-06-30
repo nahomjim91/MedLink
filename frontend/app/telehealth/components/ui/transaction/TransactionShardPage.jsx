@@ -35,8 +35,6 @@ export default function Transactions() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState({});
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
-  const [isDetailModalOpen, setDetailModalOpen] = useState(false);
 
   const itemsPerPage = 5;
   const itemsPerPageForMobile = 2;
@@ -68,6 +66,7 @@ export default function Transactions() {
       offset: 0,
     },
     fetchPolicy: 'cache-and-network',
+    skip: user.role !== "doctor",
   });
 
   // GraphQL queries for statistics

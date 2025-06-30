@@ -49,6 +49,7 @@ const appointmentTypeDefs = gql`
     IN_PROGRESS
     COMPLETED
     NO_SHOW
+    ACTIVE
   }
 
   enum PaymentStatus {

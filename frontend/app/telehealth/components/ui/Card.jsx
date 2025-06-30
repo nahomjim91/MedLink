@@ -3,6 +3,7 @@ import React , { useState } from "react";
 import { Calendar, Clock, FileText } from 'lucide-react';
 import { Button } from "./Button";
 import { CancelModal } from "./modal/AppointmentModal ";
+import Link from "next/link";
 
 
 export default function IconCard({ icon, label, onClick, isSelected }) {
@@ -79,7 +80,8 @@ export function UpcomingAppointmentCard({
   upcomingAppointment, 
   onCancelAppointment,
   onViewProfile,
-  loading = false 
+  loading = false ,
+  userRole
 }) {
   const [showCancelModal, setShowCancelModal] = useState(false);
 
@@ -115,9 +117,9 @@ export function UpcomingAppointmentCard({
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
               Upcoming Appointment
             </h2>
-            <button className="text-teal-500 text-sm font-medium hover:text-teal-600 transition-colors">
+            <Link href={`/telehealth/${userRole}/appointments`}  className="text-teal-500 text-sm font-medium hover:text-teal-600 transition-colors">
               See More
-            </button>
+            </Link >
           </div>
           
           {/* Doctor Profile */}
