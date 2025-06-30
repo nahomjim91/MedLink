@@ -15,7 +15,7 @@ import {
   StarIcon,
 } from "lucide-react";
 import Image from "next/image";
-import React, { useState , useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, IconButton, TablePageButtons } from "./Button";
 import { OrderRowActions } from "./order/OrderRowActions";
 import { OrderSelectInput } from "./Input";
@@ -23,10 +23,9 @@ import {
   getAvailableStatusTransitions,
   getStatusColor,
 } from "../../utils/orderUtils";
-import {
-  SEARCH_PRODUCTS} from "../../api/graphql/product/productQueries";
+import { SEARCH_PRODUCTS } from "../../api/graphql/product/productQueries";
 
-import { useQuery } from '@apollo/client';
+import { useQuery } from "@apollo/client";
 import { GET_MS_USER_BY_ID } from "../../api/graphql/queries";
 import Link from "next/link";
 
@@ -121,7 +120,6 @@ export const MetricCard = ({
   );
 };
 
-
 export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
   // console.log("rders are ", orders);
   const [otherUsersData, setOtherUsersData] = useState({});
@@ -129,56 +127,49 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
 
   // Get unique other user IDs from orders
   const getOtherUserIds = () => {
-    const otherUserIds = orders.map((order) =>
-    {
-      console.log('order', order);
-      console.log('userId', userId);
-      console.log('order.sellerId', order.sellerId);
-      console.log('order.buyerId', order.buyerId);
-      return userId === order.sellerId ? order.buyerId : order.sellerId
-    }
-      
-    );
+    const otherUserIds = orders.map((order) => {
+      // console.log('order', order);
+      // console.log('userId', userId);
+      // console.log('order.sellerId', order.sellerId);
+      // console.log('order.buyerId', order.buyerId);
+      return userId === order.sellerId ? order.buyerId : order.sellerId;
+    });
     // console.log('otherUserIds', otherUserIds);
     return [...new Set(otherUserIds)];
   };
 
   const { refetch } = useQuery(GET_MS_USER_BY_ID, {
-    skip: true // Skip initial execution
+    skip: true, // Skip initial execution
   });
 
   // Fetch user data for all other users
   useEffect(() => {
     const fetchOtherUsersData = async () => {
-
       const otherUserIds = getOtherUserIds();
       if (otherUserIds.length === 0) return;
 
       setLoadingUsers(true);
-      
+
       try {
-        
-        const userPromises = otherUserIds.map(id => 
-          refetch({ userId: id })
-        );
-        
+        const userPromises = otherUserIds.map((id) => refetch({ userId: id }));
+
         const results = await Promise.all(userPromises);
         const usersMap = {};
-        
-        results.forEach(result => {
+
+        results.forEach((result) => {
           if (result.data?.msUserById) {
             const user = result.data.msUserById;
             usersMap[user.userId] = {
               companyName: user.companyName,
               profileImageUrl: user.profileImageUrl,
-              contactName: user.contactName
+              contactName: user.contactName,
             };
           }
         });
-        console.log('Fetched user data:', usersMap);
+        console.log("Fetched user data:", usersMap);
         setOtherUsersData(usersMap);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error("Error fetching user data:", error);
       } finally {
         setLoadingUsers(false);
       }
@@ -209,23 +200,26 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
   };
 
   const getOtherUserInfo = (order) => {
-    const otherUserId = userId === order.sellerId ? order.buyerId : order.sellerId;
+    const otherUserId =
+      userId === order.sellerId ? order.buyerId : order.sellerId;
     const userData = otherUsersData[otherUserId];
-    
+
     // Fallback to order data if user data not available yet
-    const fallbackName = userId !== order.sellerId ? order.sellerName : order.buyerCompanyName;
-    const fallbackImage = userId !== order.sellerId ? order.sellerImage : order.buyerImage;
-    
+    const fallbackName =
+      userId !== order.sellerId ? order.sellerName : order.buyerCompanyName;
+    const fallbackImage =
+      userId !== order.sellerId ? order.sellerImage : order.buyerImage;
+
     return {
       name: userData?.companyName || userData?.contactName || fallbackName,
       image: userData?.profileImageUrl || fallbackImage,
-      isLoading: loadingUsers && !userData
+      isLoading: loadingUsers && !userData,
     };
   };
 
   const OrderItem = ({ order }) => {
     const otherUserInfo = getOtherUserInfo(order);
-    
+
     return (
       <div className="flex items-center justify-between py-4 border-b border-gray-200 last:border-b-0">
         <div className="flex items-center">
@@ -233,7 +227,9 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
             {getOrderIcon(order)}
           </div>
           <div>
-            <p className="font-medium text-secondary/90">{order.orderNumber}</p>
+            <p className="font-medium text-secondary/90">
+              #{order.orderId.split("_")[1].slice(0, 9)}...
+            </p>{" "}
             <p className="text-xs text-secondary/60">
               {new Date(order.orderDate).toLocaleDateString()}
             </p>
@@ -260,14 +256,19 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   // Fallback to initials if image fails to load
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
+                  e.target.style.display = "none";
+                  e.target.nextSibling.style.display = "flex";
                 }}
               />
             ) : null}
-            <div 
+            <div
               className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold"
-              style={{ display: otherUserInfo.image && !otherUserInfo.isLoading ? 'none' : 'flex' }}
+              style={{
+                display:
+                  otherUserInfo.image && !otherUserInfo.isLoading
+                    ? "none"
+                    : "flex",
+              }}
             >
               {otherUserInfo.isLoading ? (
                 <span className="animate-pulse bg-gray-300 w-6 h-6 rounded-full"></span>
@@ -282,7 +283,7 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl px-6 py-2 shadow-md w-full">
+    <div className="bg-white rounded-2xl px-6 py-4 shadow-xl w-full h-[40vh]">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-lg font-semibold text-secondary/80">
           Ongoing Orders
@@ -345,7 +346,7 @@ export const DynamicMinTransactionCard = ({ transactions, onSeeAll }) => {
   );
 
   return (
-    <div className="bg-white rounded-2xl px-6 py-2 shadow-md w-full">
+    <div className="bg-white rounded-2xl px-6 py-6 shadow-xl w-full h-[40vh]">
       <div className="flex justify-between items-center mb-2">
         <h2 className="text-lg font-semibold text-secondary/80">
           Recent Transactions
@@ -1170,9 +1171,13 @@ export const OrderStatCard = ({ title, metrics = [], subtitle = "" }) => {
   );
 };
 
-
 // Move RelatedProducts component outside to prevent unnecessary re-renders
-export const RelatedProducts = ({ currentProductId, productType, category, role }) => {
+export const RelatedProducts = ({
+  currentProductId,
+  productType,
+  category,
+  role,
+}) => {
   const [relatedProducts, setRelatedProducts] = useState([]);
 
   const { data, loading, error } = useQuery(SEARCH_PRODUCTS, {
@@ -1237,7 +1242,11 @@ export const RelatedProducts = ({ currentProductId, productType, category, role 
                 <div className="h-32 md:h-40 relative bg-gray-100 flex justify-center items-center">
                   {product.imageList && product.imageList.length > 0 ? (
                     <Image
-                      src={product.imageList[0]=== 'Untitled.jpeg' ? '/image/Untitled.jpeg' : product.imageList[0]}
+                      src={
+                        product.imageList[0] === "Untitled.jpeg"
+                          ? "/image/Untitled.jpeg"
+                          : product.imageList[0]
+                      }
                       alt={product.name}
                       fill
                       className="object-cover"

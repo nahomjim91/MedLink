@@ -894,7 +894,7 @@ const OrderModel = {
       }
 
       const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
-      console.log("ordersSnapshot: ", ordersSnapshot.docs);
+      // console.log("ordersSnapshot: ", ordersSnapshot.docs);
 
       return await Promise.all(
         formatDocs(ordersSnapshot.docs).map(async (order) => {

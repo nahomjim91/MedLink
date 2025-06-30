@@ -674,7 +674,7 @@ export default function DynamicDashboard() {
             }}
           />
         </div>
-        <div className="w-10/12">
+        <div className="w-10/12 ">
           <DynamicMinOrderCard
             orders={dashboardData.ongoingOrdersList}
             userRole={userRole}
