@@ -149,6 +149,7 @@ export const ChatProvider = ({ children }) => {
         ...prev,
         [data.appointmentId]: data.messages || [],
       }));
+      console.log("📚 Chat setMessages received:", messages);
     });
 
     // Message events

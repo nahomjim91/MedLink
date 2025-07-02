@@ -27,6 +27,7 @@ import {
   DELETE_MULTIPLE_SLOTS,
 } from "../../api/graphql/doctor/availabilitySlotMutations";
 import { DateInput } from "../../components/ui/Input";
+import { Button } from "../../components/ui/Button";
 
 const DoctorAvailabilityCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -785,7 +786,7 @@ const DoctorAvailabilityCalendar = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-4">
+    <div className="min-h-screen ">
       {/* Notification */}
       {notification && (
         <div
@@ -808,14 +809,21 @@ const DoctorAvailabilityCalendar = () => {
 
       <div className="max-w-7xl mx-auto">
         {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between mb-4 bg-white p-4 rounded-lg shadow-sm">
-          <h1 className="text-lg font-semibold">Availability</h1>
-          <button
+        <div className="lg:hidden flex items-center justify-between mb-4  p-4 ">
+          {/* <h1 className="text-lg font-semibold">Availability</h1> */}
+          <Button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4 inline mr-2" />
+            Add New Slot
+          </Button>
+          {/* <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </button> */}
         </div>
 
         {/* Mobile Sidebar Overlay */}

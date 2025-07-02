@@ -65,6 +65,8 @@ const MedicalChatInterface = ({ appointmentId }) => {
     api,
   } = useChat();
 
+  const [chatAppointments, setChatAppointments] = useState([]);
+  const [showAppointmentDropdown, setShowAppointmentDropdown] = useState(false);
   const [activeChat, setActiveChat] = useState(null);
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,14 +80,40 @@ const MedicalChatInterface = ({ appointmentId }) => {
   const [userWentBack, setUserWentBack] = useState(false);
 
   // Auto-join appointment room if appointmentId is provided
-  // Replace the existing useEffect that handles appointmentId joining
   useEffect(() => {
-    if (appointmentId && socket && isConnected) {
-      console.log("Joining appointment room:", appointmentId);
-      joinAppointmentRoom(appointmentId);
-      console.log("Joined appointment room:", appointmentId);
+    if (
+      appointmentId &&
+      chatRooms.length > 0 &&
+      !activeAppointment &&
+      !userWentBack
+    ) {
+      // Find the chat room that contains this appointmentId
+      const matchingChat = chatRooms.find(
+        (chat) =>
+          chat.appointmentIds && chat.appointmentIds.includes(appointmentId)
+      );
+
+      if (matchingChat) {
+        // Now, find the specific appointment object within that chat
+        const specificAppointment = matchingChat.appointments?.find(
+          (app) => app.appointmentId === appointmentId
+        );
+
+        if (specificAppointment) {
+          setActiveChat(matchingChat);
+          setActiveAppointment(specificAppointment); // Use the actual appointment object
+          setShowChatDetails(true);
+        } else {
+          console.log("Appointment object not found within the matching chat");
+        }
+      } else {
+        console.log(
+          "No matching chat room found for appointmentId:",
+          appointmentId
+        );
+      }
     }
-  }, [appointmentId, socket, isConnected, joinAppointmentRoom]);
+  }, [appointmentId, chatRooms, activeAppointment, userWentBack]);
 
   useEffect(() => {
     // Only run if we have an appointmentId and chatRooms, don't already have an activeAppointment, and user didn't manually go back
@@ -185,6 +213,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
       loadChatHistory();
     }
   }, [isConnected, api, chatRooms.length, checkOnlineStatus]);
+
   useEffect(() => {
     if (!isConnected || chatRooms.length === 0) return;
 
@@ -237,32 +266,33 @@ const MedicalChatInterface = ({ appointmentId }) => {
   };
 
   const handleChatSelect = async (chat) => {
-    setUserWentBack(false); // Reset the flag when user selects a chat
+    setUserWentBack(false);
     setActiveChat(chat);
     setShowChatDetails(true);
 
-    // Set the appointment as active
-    if (chat.appointmentId) {
-      const appointment = {
-        id: chat.appointmentId,
-        appointmentId: chat.appointmentId,
-        appointmentNumber: chat.appointmentNumber || `#${chat.appointmentId}`,
-        date: chat.appointmentDate || new Date().toLocaleDateString(),
-        startTime: chat.startTime || "12:00 PM",
-        endTime: chat.endTime || "12:30 PM",
-        status: chat.status || "CONFIRMED",
-      };
-      setActiveAppointment(appointment);
+    // Store all appointments from this chat
+    if (chat.appointments && chat.appointments.length > 0) {
+      setChatAppointments(chat.appointments);
 
-      // Join the appointment room
-      joinAppointmentRoom(chat.appointmentId);
+      // Sort appointments by scheduled start time descending
+      const sortedAppointments = [...chat.appointments].sort((a, b) => {
+        const timeA = a.scheduledStartTime?._seconds || 0;
+        const timeB = b.scheduledStartTime?._seconds || 0;
+        return timeB - timeA;
+      });
 
-      // Load messages for this appointment
+      // Set the latest appointment as active
+      const latestAppointment = sortedAppointments[0];
+      setActiveAppointment(latestAppointment);
+
+      // Join the room and fetch messages for the latest appointment
+      joinAppointmentRoom(latestAppointment.appointmentId);
       try {
-        await api.getMessagesForAppointment(chat.appointmentId);
+        await api.getMessagesForAppointment(latestAppointment.appointmentId);
 
-        // Mark messages as read
-        const appointmentMessages = messages[chat.appointmentId] || [];
+        // Mark messages as read logic
+        const appointmentMessages =
+          messages[latestAppointment.appointmentId] || [];
         const unreadMessageIds = appointmentMessages
           .filter((msg) => !msg.isRead && msg.senderId !== currentRoom?.userId)
           .map((msg) => msg.messageId);
@@ -271,8 +301,32 @@ const MedicalChatInterface = ({ appointmentId }) => {
           markMessagesAsRead(unreadMessageIds);
         }
       } catch (error) {
-        console.error("Failed to load messages:", error);
+        console.error("Failed to load messages for appointment:", error);
       }
+    }
+  };
+
+  const handleAppointmentSelect = async (appointment) => {
+    setActiveAppointment(appointment);
+    setShowAppointmentDropdown(false);
+
+    // Join the new appointment room
+    joinAppointmentRoom(appointment.appointmentId);
+
+    try {
+      await api.getMessagesForAppointment(appointment.appointmentId);
+
+      // Mark messages as read for the new appointment
+      const appointmentMessages = messages[appointment.appointmentId] || [];
+      const unreadMessageIds = appointmentMessages
+        .filter((msg) => !msg.isRead && msg.senderId !== currentRoom?.userId)
+        .map((msg) => msg.messageId);
+
+      if (unreadMessageIds.length > 0) {
+        markMessagesAsRead(unreadMessageIds);
+      }
+    } catch (error) {
+      console.error("Failed to load messages for appointment:", error);
     }
   };
 
@@ -351,7 +405,9 @@ const MedicalChatInterface = ({ appointmentId }) => {
 
   const canSendMessage = (status) => {
     return (
-      status === AppointmentStatus.IN_PROGRESS && chatAccess?.canSendMessages
+      status === AppointmentStatus.IN_PROGRESS &&
+      chatAccess?.canSendMessages === true &&
+      isConnected
     );
   };
 
@@ -369,15 +425,6 @@ const MedicalChatInterface = ({ appointmentId }) => {
       default:
         return null;
     }
-  };
-
-  const shouldShowAppointment = (status) => {
-    return ![
-      AppointmentStatus.CANCELLED_PATIENT,
-      AppointmentStatus.CANCELLED_DOCTOR,
-      AppointmentStatus.REJECTED,
-      AppointmentStatus.NO_SHOW,
-    ].includes(status);
   };
 
   const getInitials = (name) => {
@@ -406,6 +453,38 @@ const MedicalChatInterface = ({ appointmentId }) => {
   const typingUsers = activeAppointment
     ? getTypingUsers(activeAppointment.appointmentId)
     : [];
+
+  // Format appointment date for display
+  const formatAppointmentDate = (appointment) => {
+    if (!appointment?.scheduledStartTime) return "Unknown date";
+
+    const date = new Date(appointment.scheduledStartTime._seconds * 1000);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Format appointment time for display
+  const formatAppointmentTime = (appointment) => {
+    if (!appointment?.scheduledStartTime || !appointment?.scheduledEndTime) {
+      return "Unknown time";
+    }
+
+    const startTime = new Date(appointment.scheduledStartTime._seconds * 1000);
+    const endTime = new Date(appointment.scheduledEndTime._seconds * 1000);
+
+    return `${startTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })} - ${endTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })}`;
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -607,14 +686,91 @@ const MedicalChatInterface = ({ appointmentId }) => {
                   )}
                 </div>
               </div>
-
-              {/* Appointment Info */}
+              {/* Appointment Selector and Info */}
               {activeAppointment && (
                 <div className="mt-4">
+                  {/* New Appointment Selector */}
+                  {chatAppointments.length > 1 && (
+                    <div className="mb-3 relative">
+                      <button
+                        onClick={() =>
+                          setShowAppointmentDropdown(!showAppointmentDropdown)
+                        }
+                        className="w-full flex justify-between items-center bg-gray-100 p-2 rounded-lg text-sm text-gray-800 font-medium"
+                      >
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-2 text-gray-600" />
+                          <span>
+                            {formatAppointmentDate(activeAppointment)} (
+                            {activeAppointment.status})
+                          </span>
+                        </div>
+                        <svg
+                          className={`w-4 h-4 transition-transform ${
+                            showAppointmentDropdown
+                              ? "transform rotate-180"
+                              : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+
+                      {/* Appointment Dropdown */}
+                      {showAppointmentDropdown && (
+                        <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                          {chatAppointments.map((appointment) => (
+                            <button
+                              key={appointment.appointmentId}
+                              onClick={() =>
+                                handleAppointmentSelect(appointment)
+                              }
+                              className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
+                                activeAppointment.appointmentId ===
+                                appointment.appointmentId
+                                  ? "bg-teal-50 text-teal-600"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <div className="font-medium">
+                                    {formatAppointmentDate(appointment)}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {formatAppointmentTime(appointment)}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
+                                    appointment.status
+                                  )}`}
+                                >
+                                  {appointment.status.replace("_", " ")}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Appointment Info Card */}
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-xs text-gray-500">
-                        {activeAppointment.appointmentNumber}
+                        #
+                        {activeAppointment.appointmentId?.substring(0, 8) ||
+                          "Unknown"}
                       </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
@@ -625,17 +781,15 @@ const MedicalChatInterface = ({ appointmentId }) => {
                       </span>
                     </div>
                     <div className="text-sm font-medium text-gray-900 mb-1">
-                      {activeAppointment.date}
+                      {formatAppointmentDate(activeAppointment)}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {activeAppointment.startTime} -{" "}
-                      {activeAppointment.endTime}
+                      {formatAppointmentTime(activeAppointment)}
                     </div>
                   </div>
                 </div>
               )}
             </div>
-
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
               {activeAppointment ? (
@@ -759,59 +913,61 @@ const MedicalChatInterface = ({ appointmentId }) => {
             </div>
 
             {/* Message Input */}
-            {activeAppointment && canSendMessage(activeAppointment.status) && (
-              <div className="bg-white border-t border-gray-200 p-4">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept="image/*,application/pdf,.doc,.docx"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={selectedFile || isLoading}
-                    className="text-teal-500 hover:text-teal-600 disabled:opacity-50"
-                  >
-                    <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                      {selectedFile ? (
-                        <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4" />
-                      )}
-                    </div>
-                  </button>
-                  <div className="flex-1 flex items-center space-x-2">
+            {activeAppointment &&
+              canSendMessage(activeAppointment.status) &&
+              chatAccess?.allowed === true && (
+                <div className="bg-white border-t border-gray-200 p-4">
+                  <div className="flex items-center space-x-3">
                     <input
-                      type="text"
-                      value={message}
-                      onChange={(e) => {
-                        setMessage(e.target.value);
-                        handleTypingStart();
-                      }}
-                      onKeyPress={(e) =>
-                        e.key === "Enter" && handleSendMessage()
-                      }
-                      placeholder="Your message"
-                      disabled={!isConnected}
-                      className="flex-1 px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      accept="image/*,application/pdf,.doc,.docx"
                     />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={selectedFile || isLoading}
+                      className="text-teal-500 hover:text-teal-600 disabled:opacity-50"
+                    >
+                      <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
+                        {selectedFile ? (
+                          <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                      </div>
+                    </button>
+                    <div className="flex-1 flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={message}
+                        onChange={(e) => {
+                          setMessage(e.target.value);
+                          handleTypingStart();
+                        }}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && handleSendMessage()
+                        }
+                        placeholder="Your message"
+                        disabled={!isConnected}
+                        className="flex-1 px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={
+                        !message.trim() ||
+                        !isConnected ||
+                        !chatAccess?.canSendMessages
+                      }
+                      className="bg-teal-500 text-white p-2 rounded-full hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={
-                      !message.trim() ||
-                      !isConnected ||
-                      !chatAccess?.canSendMessages
-                    }
-                    className="bg-teal-500 text-white p-2 rounded-full hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* No message permission */}
             {activeAppointment && !canSendMessage(activeAppointment.status) && (
