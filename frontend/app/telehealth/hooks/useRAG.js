@@ -125,6 +125,9 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
     try {
       const response = await makeRequest('/initialize', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
       });
       setServiceStatus(response.data);
       return response.data;
@@ -139,7 +142,7 @@ const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
 
   useEffect(() => {
   initializeService();
-}, [token]);
+}, [token , initializeService]);
 
   // Clear error
   const clearError = useCallback(() => {

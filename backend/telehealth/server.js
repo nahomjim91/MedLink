@@ -17,9 +17,12 @@ const AvailabilitySlot = require("./models/availabilitySlot");
 const cron = require("node-cron");
 const paymentRoutes = require("./route/payment");
 const { auth } = require("./config/firebase");
+
 const ChatRoutes = require("./route/chatRoutes");
 const AppointmentModel = require("./models/appointment");
 const ragRoutes = require("./route/ragRoutes");
+
+
 
 // Load environment variables if not already loaded
 if (!process.env.NODE_ENV) {
@@ -108,6 +111,7 @@ io.use(async (socket, next) => {
     socket.userId = decodedToken.uid;
     socket.user = decodedToken;
 
+    console.log(`🔐 Socket authenticated: ${decodedToken.name || decodedToken.email} (${decodedToken.uid})`);
     next();
   } catch (error) {
     console.error("Socket authentication error:", error);
