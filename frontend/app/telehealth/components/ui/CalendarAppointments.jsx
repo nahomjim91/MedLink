@@ -703,10 +703,11 @@ export default function CalendarAppointments({
   );
 }
 
-export function MinimalCalendar({ appointments, userRole ,  }) {
+export function MinimalCalendar({ appointments, userRole }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  console.log("current: ", currentDate);
 
   const monthNames = [
     "January",
@@ -736,32 +737,34 @@ export function MinimalCalendar({ appointments, userRole ,  }) {
   };
 
   const generateCalendarDays = () => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const firstDayOfWeek = firstDay.getDay(); // Remove the +7 % 7 calculation
-    const daysInMonth = lastDay.getDate();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const firstDayOfWeek = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
 
-    const days = [];
+  const days = [];
 
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push(null);
-    }
+  // Add empty cells for days before the first day of the month
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    days.push(null);
+  }
 
-    // Add days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      days.push({
-        day,
-        date,
-        dateKey: date.toISOString().split("T")[0],
-      });
-    }
+  // Add days of the month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    // Create consistent date key format
+    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    days.push({
+      day,
+      date,
+      dateKey,
+    });
+  }
 
-    return days;
-  };
+  return days;
+};
 
   const getAppointmentsForDate = (dateKey) => {
     return appointments.filter((apt) => apt.date === dateKey);
@@ -776,12 +779,11 @@ export function MinimalCalendar({ appointments, userRole ,  }) {
     setSelectedDate(dayObj.dateKey);
   };
 
-  const isToday = (dateKey) => {
-    const today = new Date().toISOString().split("T")[0];
-    // console.log("today", today);
-    // console.log("datekey", dateKey);
-    return dateKey === today;
-  };
+ const isToday = (dateKey) => {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return dateKey === todayKey;
+};
 
   const AppointmentModal = ({ appointment, onClose }) => (
     <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -918,6 +920,7 @@ export function MinimalCalendar({ appointments, userRole ,  }) {
                     dayObj.dateKey
                   ).length;
                   const isTodayDate = isToday(dayObj.dateKey);
+                  console.log("isTodayDate", isTodayDate , "dayObj.dateKey", dayObj.dateKey);
 
                   return (
                     <button
@@ -1047,7 +1050,10 @@ export function MinimalCalendar({ appointments, userRole ,  }) {
                   )}`
                 : "Appointments"}
             </h3>
-            <Link href={`/telehealth/${userRole}/appointments`} className="text-teal-500 text-sm font-medium hover:text-teal-600">
+            <Link
+              href={`/telehealth/${userRole}/appointments`}
+              className="text-teal-500 text-sm font-medium hover:text-teal-600"
+            >
               See All
             </Link>
           </div>
