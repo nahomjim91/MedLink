@@ -14,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useChat } from "../../context/ChatContext";
+import { useAuth } from "../../hooks/useAuth";
 
 const AppointmentStatus = {
   REQUESTED: "REQUESTED",
@@ -64,6 +65,8 @@ const MedicalChatInterface = ({ appointmentId }) => {
     // API methods
     api,
   } = useChat();
+
+  const { user } = useAuth();
 
   const [chatAppointments, setChatAppointments] = useState([]);
   const [showAppointmentDropdown, setShowAppointmentDropdown] = useState(false);
@@ -437,7 +440,13 @@ const MedicalChatInterface = ({ appointmentId }) => {
   };
 
   const formatMessageTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString("en-US", {
+    if (!timestamp) return "";
+
+    // Convert Firestore timestamp to milliseconds
+    const millis =
+      timestamp._seconds * 1000 + Math.floor(timestamp._nanoseconds / 1e6);
+
+    return new Date(millis).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -456,6 +465,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
 
   // Format appointment date for display
   const formatAppointmentDate = (appointment) => {
+    // console.log("Appointment:", appointment);
     if (!appointment?.scheduledStartTime) return "Unknown date";
 
     const date = new Date(appointment.scheduledStartTime._seconds * 1000);
@@ -486,107 +496,129 @@ const MedicalChatInterface = ({ appointmentId }) => {
     })}`;
   };
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Connection Status */}
-      {!isConnected && (
-        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">
-          <span className="text-sm">
+return (
+  <div className="flex h-[89vh] bg-amber-300 overflow-hidden bg-gradient-to-br rounded-none sm:rounded-2xl">
+    {/* Connection Status */}
+    {!isConnected && (
+      <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-2 sm:py-3 z-50 shadow-lg">
+        <div className="flex items-center justify-center space-x-2">
+          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+          <span className="text-xs sm:text-sm font-medium">
             Disconnected from chat server. Attempting to reconnect...
           </span>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Error Message */}
-      {error && (
-        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">
-          <span className="text-sm">{error}</span>
-          <button onClick={clearError} className="ml-2 underline">
+    {/* Error Message */}
+    {error && (
+      <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-2 sm:py-3 z-50 shadow-lg">
+        <div className="flex items-center justify-center space-x-2 px-4">
+          <span className="text-xs sm:text-sm font-medium flex-1">{error}</span>
+          <button
+            onClick={clearError}
+            className="ml-2 bg-white bg-opacity-20 hover:bg-opacity-30 px-2 sm:px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 flex-shrink-0"
+          >
             Dismiss
           </button>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Contacts Sidebar */}
-      <div
-        className={`${
-          showChatDetails ? "hidden lg:flex" : "flex"
-        } w-full lg:w-80 bg-white border-r border-gray-200 flex-col`}
-      >
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Contacts</h2>
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-              {filteredChats.length}
-            </span>
-          </div>
-
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-            />
-          </div>
+    {/* Contacts Sidebar */}
+    <div
+      className={`${
+        showChatDetails ? "hidden md:flex" : "flex"
+      } w-full lg:w-80 h-[89vh] overflow-y-auto scrollbar-hide flex-col shadow-lg bg-white`}
+    >
+      {/* Header */}
+      <div className="p-3 sm:p-4 lg:p-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-primary/20 flex-shrink-0">
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 bg-gradient-to-r from-teal-600 to-primary bg-clip-text text-transparent">
+            Contacts
+          </h2>
+          <span className="text-xs sm:text-sm text-teal-600 bg-teal-100 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-semibold shadow-sm">
+            {filteredChats.length}
+          </span>
         </div>
 
-        {/* Contacts List */}
-        <div className="flex-1 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">Loading chats...</div>
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white shadow-sm transition-all duration-200 hover:shadow-md"
+          />
+        </div>
+      </div>
+
+      {/* Contacts List */}
+      <div className="flex-1 overflow-y-auto overscroll-contain">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8 sm:py-12">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 sm:border-3 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="textsecondary/20 font-medium text-sm sm:text-base">
+                Loading chats...
+              </div>
             </div>
-          ) : filteredChats.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">No chats found</div>
+          </div>
+        ) : filteredChats.length === 0 ? (
+          <div className="flex items-center justify-center py-8 sm:py-12">
+            <div className="text-center px-4">
+              <MessageCircle className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
+              <div className="textsecondary/20 font-medium text-sm sm:text-base">No chats found</div>
+              <div className="text-gray-400 text-xs sm:text-sm mt-1">
+                Try adjusting your search
+              </div>
             </div>
-          ) : (
-            filteredChats.map((chat) => (
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {filteredChats.map((chat) => (
               <div
                 key={chat.appointmentId || chat.id}
-                className={`flex items-center p-4 cursor-pointer hover:bg-gray-50 ${
+                className={`flex items-center p-3 sm:p-4 cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-teal-50 active:bg-gray-100 ${
                   activeChat?.appointmentId === chat.appointmentId
-                    ? "bg-teal-50 border-r-2 border-teal-500"
+                    ? "bg-gradient-to-r from-teal-50 to-cyan-50 border-r-4 border-primary shadow-sm"
                     : ""
                 }`}
                 onClick={() => handleChatSelect(chat)}
               >
-                <div className="relative">
-                  <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                     {chat.avatar ? (
                       <img
                         src={chat.avatar}
                         alt={chat.doctorName || chat.patientName}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full object-cover"
                       />
                     ) : (
-                      <span className="text-teal-600 font-semibold text-sm">
+                      <span className="text-teal-600 font-bold text-sm sm:text-base lg:text-lg">
                         {getInitials(chat.doctorName || chat.patientName)}
                       </span>
                     )}
                   </div>
                   {chat.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse"></div>
                   )}
                 </div>
 
-                <div className="ml-3 flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">
+                <div className="ml-3 sm:ml-4 flex-1 min-w-0">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="text-sm sm:text-base font-semibold textsecondary/90 truncate pr-2">
                       {chat.doctorName || chat.patientName || "Unknown"}
                     </h3>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                       {unreadCounts[chat.appointmentId] > 0 && (
-                        <span className="bg-orange-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center">
+                        <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full px-1.5 sm:px-2.5 py-0.5 sm:py-1 min-w-[18px] sm:min-w-[20px] h-[18px] sm:h-[20px] flex items-center justify-center shadow-sm animate-pulse">
                           {unreadCounts[chat.appointmentId]}
                         </span>
                       )}
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs textsecondary/20 font-medium">
                         {chat.lastMessageTime ||
                           new Date(
                             chat.updatedAt || Date.now()
@@ -598,407 +630,522 @@ const MedicalChatInterface = ({ appointmentId }) => {
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 truncate mt-1">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate font-medium">
                     {chat.lastMessage || "No messages yet"}
                   </p>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+    </div>
 
-      {/* Main Chat Area */}
-      <div
-        className={`${
-          showChatDetails ? "flex" : "hidden lg:flex"
-        } flex-1 flex-col`}
-      >
-        {activeChat ? (
-          <>
-            {/* Chat Header */}
-            <div className="bg-white border-b border-gray-200 p-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  {/* Back Button for Mobile */}
-                  <button
-                    onClick={handleBackToChats}
-                    className="lg:hidden mr-3 p-1 hover:bg-gray-100 rounded-full"
-                  >
-                    <ArrowLeft className="w-5 h-5 text-gray-600" />
-                  </button>
+    {/* Main Chat Area */}
+    <div
+      className={`${
+        showChatDetails ? "flex" : "hidden lg:flex"
+      } flex-1 flex-col bg-white h-[89vh] overflow-clip`}
+    >
+      {activeChat ? (
+        <>
+          {/* Chat Header */}
+          <div className="bg-white border-b border-gray-100 p-2 sm:p-3 lg:p-6 shadow-sm flex-shrink-0">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center min-w-0 flex-1">
+                {/* Back Button for Mobile */}
+                <button
+                  onClick={handleBackToChats}
+                  className="lg:hidden mr-2 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 flex-shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5 text-gray-600" />
+                </button>
 
-                  <div className="relative">
-                    <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                      {activeChat.avatar ? (
-                        <img
-                          src={activeChat.avatar}
-                          alt={activeChat.doctorName || activeChat.patientName}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-teal-600 font-semibold text-sm">
-                          {getInitials(
-                            activeChat.doctorName || activeChat.patientName
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    {activeChat.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></div>
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                    {activeChat.avatar ? (
+                      <img
+                        src={activeChat.avatar}
+                        alt={
+                          activeChat.doctorName || activeChat.patientName
+                        }
+                        className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-teal-600 font-bold text-sm sm:text-base lg:text-xl">
+                        {getInitials(
+                          activeChat.doctorName || activeChat.patientName
+                        )}
+                      </span>
                     )}
                   </div>
-                  <div className="ml-3">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {activeChat.doctorName ||
-                        activeChat.patientName ||
-                        "Unknown"}
-                    </h2>
-                    <p className="text-sm text-gray-500">
+                  {activeChat.isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse"></div>
+                  )}
+                </div>
+
+                <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+                  <h2 className="text-sm sm:text-base lg:text-xl font-bold textsecondary/90 truncate">
+                    {activeChat.doctorName ||
+                      activeChat.patientName ||
+                      "Unknown"}
+                  </h2>
+                  <p className="text-xs sm:text-sm font-medium">
+                    <span
+                      className={`${
+                        isConnected
+                          ? activeChat.isOnline
+                            ? "text-green-600"
+                            : "textsecondary/20"
+                          : "text-red-500"
+                      }`}
+                    >
                       {isConnected
                         ? activeChat.isOnline
-                          ? "Online"
-                          : "Offline"
-                        : "Disconnected"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  {shouldShowVideoButton(activeAppointment?.status) && (
-                    <button className="bg-teal-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-teal-600 transition-colors">
-                      <Video className="w-4 h-4" />
-                      <span className="hidden sm:inline">Video</span>
-                    </button>
-                  )}
-
-                  {activeAppointment?.status ===
-                    AppointmentStatus.IN_PROGRESS && (
-                    <button
-                      onClick={() =>
-                        requestExtension(activeAppointment.appointmentId)
-                      }
-                      className="bg-orange-500 text-white px-3 py-2 rounded-lg flex items-center space-x-1 hover:bg-orange-600 transition-colors text-sm"
-                    >
-                      <Clock className="w-4 h-4" />
-                      <span className="hidden sm:inline">Extend</span>
-                    </button>
-                  )}
+                          ? "● Online"
+                          : "○ Offline"
+                        : "● Disconnected"}
+                    </span>
+                  </p>
                 </div>
               </div>
-              {/* Appointment Selector and Info */}
-              {activeAppointment && (
-                <div className="mt-4">
-                  {/* New Appointment Selector */}
-                  {chatAppointments.length > 1 && (
-                    <div className="mb-3 relative">
-                      <button
-                        onClick={() =>
-                          setShowAppointmentDropdown(!showAppointmentDropdown)
-                        }
-                        className="w-full flex justify-between items-center bg-gray-100 p-2 rounded-lg text-sm text-gray-800 font-medium"
-                      >
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-2 text-gray-600" />
-                          <span>
-                            {formatAppointmentDate(activeAppointment)} (
-                            {activeAppointment.status})
-                          </span>
-                        </div>
-                        <svg
-                          className={`w-4 h-4 transition-transform ${
-                            showAppointmentDropdown
-                              ? "transform rotate-180"
-                              : ""
-                          }`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </button>
 
-                      {/* Appointment Dropdown */}
-                      {showAppointmentDropdown && (
-                        <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-                          {chatAppointments.map((appointment) => (
-                            <button
-                              key={appointment.appointmentId}
-                              onClick={() =>
-                                handleAppointmentSelect(appointment)
-                              }
-                              className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
-                                activeAppointment.appointmentId ===
-                                appointment.appointmentId
-                                  ? "bg-teal-50 text-teal-600"
-                                  : "text-gray-700"
-                              }`}
+              <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
+                {shouldShowVideoButton(activeAppointment?.status) && (
+                  <button className="bg-gradient-to-r from-teal-500 to-primary text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-5 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-teal-600 hover:to-cyan-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                    <Video className="w-4 h-4" />
+                    <span className="hidden sm:inline font-medium text-xs sm:text-sm lg:text-base">
+                      Video
+                    </span>
+                  </button>
+                )}
+
+                {activeAppointment?.status === 'IN_PROGRESS' && (
+                  <button
+                    onClick={() =>
+                      requestExtension(activeAppointment.appointmentId)
+                    }
+                    className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span className="hidden sm:inline font-medium text-xs sm:text-sm lg:text-base">
+                      Extend
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Appointment Timeline - Horizontal */}
+          {activeAppointment && chatAppointments.length > 1 && (
+            <div className="lg:hidden bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-3 sm:p-4 flex-shrink-0">
+              <h3 className="text-sm font-bold text-gray-700 mb-2 sm:mb-3 flex items-center">
+                <Clock className="w-4 h-4 mr-2 text-teal-500" />
+                Appointment History ({chatAppointments.length})
+              </h3>
+              <div className="overflow-x-auto scrollbar-hide">
+                <div
+                  className="flex space-x-2 sm:space-x-3 pb-1 sm:pb-2"
+                  style={{ width: "max-content" }}
+                >
+                  {chatAppointments.map((appointment, index) => (
+                    <div
+                      key={appointment.appointmentId}
+                      className="flex items-center"
+                    >
+                      <div
+                        className={`flex-shrink-0 cursor-pointer transition-all duration-300 ${
+                          activeAppointment.appointmentId ===
+                          appointment.appointmentId
+                            ? "ring-2 ring-teal-500 shadow-lg scale-105"
+                            : "hover:shadow-md hover:scale-102"
+                        }`}
+                        onClick={() => handleAppointmentSelect(appointment)}
+                      >
+                        <div className="bg-gradient-to-br from-white to-gray-50 rounded-lg sm:rounded-xl p-2 sm:p-3 min-w-[140px] sm:min-w-[160px] border border-gray-200 shadow-sm">
+                          <div className="flex justify-between items-start mb-1 sm:mb-2">
+                            <span className="text-xs textsecondary/20 font-mono bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
+                              #
+                              {appointment.appointmentId?.substring(0, 6) ||
+                                "Unknown"}
+                            </span>
+                            <span
+                              className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-semibold ${getStatusColor(
+                                appointment.status
+                              )}`}
                             >
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <div className="font-medium">
-                                    {formatAppointmentDate(appointment)}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {formatAppointmentTime(appointment)}
-                                  </div>
-                                </div>
-                                <span
-                                  className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                                    appointment.status
-                                  )}`}
-                                >
-                                  {appointment.status.replace("_", " ")}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
+                              {appointment.status.replace("_", " ")}
+                            </span>
+                          </div>
+                          <div className="text-xs sm:text-sm font-bold textsecondary/90 mb-1">
+                            {formatAppointmentDate(appointment)}
+                          </div>
+                          <div className="text-xs text-gray-600 font-medium">
+                            {formatAppointmentTime(appointment)}
+                          </div>
+                        </div>
+                      </div>
+                      {/* Timeline connector */}
+                      {index < chatAppointments.length - 1 && (
+                        <div className="flex-shrink-0 mx-1 sm:mx-2">
+                          <div className="w-4 sm:w-8 h-px bg-gradient-to-r from-gray-300 to-gray-400"></div>
                         </div>
                       )}
                     </div>
-                  )}
-
-                  {/* Appointment Info Card */}
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs text-gray-500">
-                        #
-                        {activeAppointment.appointmentId?.substring(0, 8) ||
-                          "Unknown"}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                          activeAppointment.status
-                        )}`}
-                      >
-                        {activeAppointment.status.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="text-sm font-medium text-gray-900 mb-1">
-                      {formatAppointmentDate(activeAppointment)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {formatAppointmentTime(activeAppointment)}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              )}
+              </div>
             </div>
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-              {activeAppointment ? (
-                <>
-                  {/* Date Header */}
-                  <div className="text-center mb-4">
-                    <span className="bg-white text-gray-500 text-xs px-3 py-1 rounded-full shadow-sm">
-                      {activeAppointment.date}
-                    </span>
-                  </div>
+          )}
 
-                  {/* Messages */}
-                  {currentMessages.map((msg) => (
+          {/* Messages Area */}
+          <div className="flex-1  overflow-y-auto overscroll-contain bg-gradient-to-b from-gray-50 to-white p-3 sm:p-4 lg:p-6">
+            {activeAppointment ? (
+              <>
+                {/* Date Header */}
+                <div className="text-center mb-4 sm:mb-6">
+                  <span className="bg-white text-gray-600 text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-sm border border-gray-100 font-medium">
+                    {formatAppointmentDate(activeAppointment)}
+                  </span>
+                </div>
+
+                {/* Messages */}
+                {currentMessages.map((msg) => (
+                  <div
+                    key={msg.messageId}
+                    className={`mb-3 sm:mb-4 lg:mb-6 flex ${
+                      msg.senderId === user?.id
+                        ? "justify-end"
+                        : "justify-start"
+                    }`}
+                  >
                     <div
-                      key={msg.messageId}
-                      className={`mb-4 flex ${
-                        msg.senderId === currentRoom?.userId
-                          ? "justify-end"
-                          : "justify-start"
+                      className={`max-w-[85%] sm:max-w-[75%] lg:max-w-md px-3 sm:px-4 lg:px-5 py-2 sm:py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
+                        msg.senderId === user?.id
+                          ? "bg-gradient-to-br from-teal-500 to-primary/80 text-white"
+                          : "bg-white textsecondary/90 border border-gray-100"
                       }`}
                     >
-                      <div
-                        className={`max-w-xs sm:max-w-sm lg:max-w-md px-4 py-2 rounded-2xl ${
-                          msg.senderId === currentRoom?.userId
-                            ? "bg-teal-500 text-white"
-                            : "bg-white text-gray-900 shadow-sm"
-                        }`}
-                      >
-                        {msg.fileUrl ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <FileText className="w-4 h-4" />
-                              <a
-                                href={msg.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm underline break-all"
-                              >
-                                {msg.fileName || "Download file"}
-                              </a>
-                            </div>
-                            {msg.textContent && (
-                              <p className="text-sm break-words">
-                                {msg.textContent}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm break-words">
-                            {msg.textContent}
-                          </p>
-                        )}
-
-                        <div
-                          className={`flex items-center mt-1 ${
-                            msg.senderId === currentRoom?.userId
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
-                        >
-                          <span
-                            className={`text-xs ${
-                              msg.senderId === currentRoom?.userId
-                                ? "text-teal-100"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {formatMessageTime(msg.createdAt)}
-                          </span>
-                          {msg.senderId === currentRoom?.userId && (
-                            <Check
-                              className={`w-3 h-3 ml-1 ${
-                                msg.isRead ? "text-teal-100" : "text-teal-200"
+                      {/* File Message */}
+                      {msg.fileUrl ? (
+                        <div className="space-y-2 sm:space-y-3">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <div
+                              className={`p-1.5 sm:p-2 rounded-lg ${
+                                msg.senderId === user?.id
+                                  ? "bg-white bg-opacity-20"
+                                  : "bg-gray-100"
                               }`}
-                            />
+                            >
+                              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                            </div>
+                            <a
+                              href={msg.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs sm:text-sm underline break-all hover:opacity-80 font-medium transition-opacity duration-200"
+                            >
+                              {msg.fileName || "Download file"}
+                            </a>
+                          </div>
+                          {msg.textContent && (
+                            <p className="text-xs sm:text-sm break-words leading-relaxed">
+                              {msg.textContent}
+                            </p>
                           )}
                         </div>
+                      ) : (
+                        /* Text Message */
+                        <p className="text-xs sm:text-sm break-words leading-relaxed">
+                          {msg.textContent}
+                        </p>
+                      )}
 
-                        {msg.editedAt && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            (edited)
-                          </div>
+                      {/* Message Footer */}
+                      <div
+                        className={`flex items-center mt-1 sm:mt-2 ${
+                          msg.senderId === user?.id
+                            ? "justify-end"
+                            : "justify-start"
+                        }`}
+                      >
+                        <span
+                          className={`text-xs font-medium ${
+                            msg.senderId === user?.id
+                              ? "text-white text-opacity-70"
+                              : "textsecondary/20"
+                          }`}
+                        >
+                          {formatMessageTime(msg.createdAt)}
+                        </span>
+                        {msg.senderId === user?.id && (
+                          <Check
+                            className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1 sm:ml-2 ${
+                              msg.readBy && msg.readBy.length > 1
+                                ? "text-white"
+                                : "text-white text-opacity-70"
+                            }`}
+                          />
                         )}
                       </div>
-                    </div>
-                  ))}
 
-                  {/* Typing Indicator */}
-                  {typingUsers.length > 0 && (
-                    <div className="mb-4 flex justify-start">
-                      <div className="bg-white text-gray-500 px-4 py-2 rounded-2xl shadow-sm">
-                        <p className="text-sm">
+                      {/* Edited Indicator */}
+                      {msg.editedAt && (
+                        <div
+                          className={`text-xs mt-1 font-medium ${
+                            msg.senderId === user?.id
+                              ? "text-white text-opacity-70"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          (edited)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Typing Indicator */}
+                {typingUsers.length > 0 && (
+                  <div className="mb-3 sm:mb-4 lg:mb-6 flex justify-start">
+                    <div className="bg-white textsecondary/20 px-3 sm:px-4 lg:px-5 py-2 sm:py-3 rounded-2xl shadow-sm border border-gray-100">
+                      <div className="flex items-center space-x-2 sm:space-x-3">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div
+                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: "0.1s" }}
+                          ></div>
+                          <div
+                            className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                            style={{ animationDelay: "0.2s" }}
+                          ></div>
+                        </div>
+                        <p className="text-xs sm:text-sm font-medium">
                           {typingUsers.join(", ")}{" "}
-                          {typingUsers.length === 1 ? "is" : "are"} typing...
+                          {typingUsers.length === 1 ? "is" : "are"}{" "}
+                          typing...
                         </p>
                       </div>
                     </div>
-                  )}
-
-                  {/* Status Message */}
-                  {getStatusMessage(activeAppointment.status) && (
-                    <div className="text-center py-4">
-                      <span className="bg-gray-200 text-gray-600 text-sm px-4 py-2 rounded-full">
-                        {getStatusMessage(activeAppointment.status)}
-                      </span>
-                    </div>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      Select an appointment to view messages
-                    </p>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Message Input */}
-            {activeAppointment &&
-              canSendMessage(activeAppointment.status) &&
-              chatAccess?.allowed === true && (
-                <div className="bg-white border-t border-gray-200 p-4">
-                  <div className="flex items-center space-x-3">
+                {/* Status Message */}
+                {getStatusMessage(activeAppointment.status) && (
+                  <div className="text-center py-4 sm:py-6">
+                    <span className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-xs sm:text-sm px-4 sm:px-6 py-2 sm:py-3 rounded-full font-medium shadow-sm">
+                      {getStatusMessage(activeAppointment.status)}
+                    </span>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center px-4">
+                  <MessageCircle className="w-16 h-16 sm:w-20 sm:h-20 text-gray-300 mx-auto mb-4 sm:mb-6" />
+                  <p className="text-gray-600 mb-2 sm:mb-3 text-base sm:text-lg font-semibold">
+                    Select an appointment to view messages
+                  </p>
+                  <p className="textsecondary/20 text-sm">
+                    Choose from your appointment history to start chatting
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Message Input */}
+          {activeAppointment &&
+            canSendMessage(activeAppointment.status) &&
+            chatAccess?.allowed === true && (
+              <div className="bg-white border-t border-gray-100 p-3 sm:p-4 shadow-lg flex-shrink-0">
+                <div className="flex items-end space-x-2 sm:space-x-3">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    accept="image/*,application/pdf,.doc,.docx"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={selectedFile || isLoading}
+                    className="text-teal-500 hover:text-teal-600 disabled:opacity-50 transition-all duration-200 transform hover:scale-110 flex-shrink-0"
+                  >
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-200">
+                      {selectedFile ? (
+                        <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+                      )}
+                    </div>
+                  </button>
+                  <div className="flex-1 flex items-center space-x-2 sm:space-x-3">
                     <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      accept="image/*,application/pdf,.doc,.docx"
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={selectedFile || isLoading}
-                      className="text-teal-500 hover:text-teal-600 disabled:opacity-50"
-                    >
-                      <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                        {selectedFile ? (
-                          <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Upload className="w-4 h-4" />
-                        )}
-                      </div>
-                    </button>
-                    <div className="flex-1 flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={message}
-                        onChange={(e) => {
-                          setMessage(e.target.value);
-                          handleTypingStart();
-                        }}
-                        onKeyPress={(e) =>
-                          e.key === "Enter" && handleSendMessage()
-                        }
-                        placeholder="Your message"
-                        disabled={!isConnected}
-                        className="flex-1 px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
-                      />
-                    </div>
-                    <button
-                      onClick={handleSendMessage}
-                      disabled={
-                        !message.trim() ||
-                        !isConnected ||
-                        !chatAccess?.canSendMessages
+                      type="text"
+                      value={message}
+                      onChange={(e) => {
+                        setMessage(e.target.value);
+                        handleTypingStart();
+                      }}
+                      onKeyPress={(e) =>
+                        e.key === "Enter" && handleSendMessage()
                       }
-                      className="bg-teal-500 text-white p-2 rounded-full hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
+                      placeholder="Type your message..."
+                      disabled={!isConnected}
+                      className="flex-1 px-3 sm:px-4 lg:px-5 py-2 sm:py-3 border border-gray-200 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 bg-gray-50 focus:bg-white transition-all duration-200 font-medium shadow-sm text-sm sm:text-base"
+                    />
                   </div>
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={
+                      !message.trim() ||
+                      !isConnected ||
+                      !chatAccess?.canSendMessages
+                    }
+                    className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white p-2 sm:p-3 rounded-full hover:from-teal-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-110 disabled:transform-none flex-shrink-0"
+                  >
+                    <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
-            {/* No message permission */}
-            {activeAppointment && !canSendMessage(activeAppointment.status) && (
-              <div className="bg-gray-100 border-t border-gray-200 p-4 text-center">
-                <p className="text-sm text-gray-600">
+          {/* No message permission */}
+          {activeAppointment &&
+            !canSendMessage(activeAppointment.status) && (
+              <div className="bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-200 p-4 sm:p-6 text-center flex-shrink-0">
+                <p className="text-xs sm:text-sm text-gray-700 font-medium">
                   {getStatusMessage(activeAppointment.status) ||
                     "Messaging is not available for this appointment"}
                 </p>
               </div>
             )}
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center px-4">
-              <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {isConnected
-                  ? "Select a conversation"
-                  : "Connecting to chat..."}
-              </h3>
-              <p className="text-gray-500">
-                {isConnected
-                  ? "Choose a conversation from the list to start messaging."
-                  : "Please wait while we connect you to the chat server."}
-              </p>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+          <div className="text-center px-4 sm:px-6">
+            <MessageCircle className="w-16 h-16 sm:w-20 sm:h-20 text-gray-300 mx-auto mb-4 sm:mb-6" />
+            <h3 className="text-lg sm:text-xl font-bold textsecondary/90 mb-2 sm:mb-3">
+              {isConnected
+                ? "Select a conversation"
+                : "Connecting to chat..."}
+            </h3>
+            <p className="text-sm sm:text-base text-gray-600 font-medium">
+              {isConnected
+                ? "Choose a conversation from the list to start messaging."
+                : "Please wait while we connect you to the chat server."}
+            </p>
+            {!isConnected && (
+              <div className="mt-4">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 border-2 sm:border-3 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Desktop Appointment Timeline Sidebar */}
+    {activeAppointment && chatAppointments.length > 1 && (
+      <div className="hidden lg:flex lg:w-80 xl:w-96 bg-gradient-to-b from-gray-50 to-white border-l border-gray-200 flex-col shadow-lg">
+        {/* Timeline Header */}
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-primary/20">
+          <h3 className="text-lg font-bold text-gray-800  flex items-center bg-gradient-to-r from-teal-500 to-primary bg-clip-text text-transparent">
+            <Clock className="w-5 h-5 mr-3 text-primary" />
+            Appointment Timeline
+          </h3>
+          <p className="text-sm text-gray-600 mt-1 font-medium">
+            {chatAppointments.length} appointments
+          </p>
+        </div>
+
+        {/* Vertical Timeline */}
+        <div className=" h-[76vh] overflow-y-auto scrollbar-hide p-6">
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-primary via-cyan-300 to-gray-300"></div>
+
+            <div className="space-y-6">
+              {chatAppointments.slice().reverse().map((appointment, index) => (
+                <div key={appointment.appointmentId} className="relative">
+                  {/* Timeline dot */}
+                  <div
+                    className={`absolute left-6 w-4 h-4 rounded-full border-2 border-white shadow-md z-10 ${
+                      activeAppointment.appointmentId ===
+                      appointment.appointmentId
+                        ? "bg-gradient-to-r from-primary to-primary/70 ring-2 ring-primary/50"
+                        : appointment.status === "COMPLETED"
+                        ? "bg-green-500"
+                        : appointment.status === "CANCELLED"
+                        ? "bg-red-500"
+                        : "bg-gray-400"
+                    }`}
+                  ></div>
+
+                  {/* Appointment Card */}
+                  <div
+                    className={`ml-16 cursor-pointer transition-all duration-300 rounded-xl ${
+                      activeAppointment.appointmentId ===
+                      appointment.appointmentId
+                        ? "ring-2 ring-primary shadow-lg scale-105 -translate-y-1"
+                        : "hover:shadow-md hover:scale-102 hover:-translate-y-0.5"
+                    }`}
+                    onClick={() => handleAppointmentSelect(appointment)}
+                  >
+                    <div className="bg-white rounded-xl p-4  shadow-sm">
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="text-xs textsecondary/20 font-mono bg-gray-100 px-2 py-1 rounded-lg">
+                          #
+                          {appointment.appointmentId?.substring(0, 8) ||
+                            "Unknown"}
+                        </span>
+                        <span
+                          className={`text-xs px-3 py-1 rounded-full font-semibold ${getStatusColor(
+                            appointment.status
+                          )}`}
+                        >
+                          {appointment.status.replace("_", " ")}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-sm font-bold textsecondary/90">
+                          {formatAppointmentDate(appointment)}
+                        </div>
+                        <div className="text-xs text-gray-600 font-medium flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {formatAppointmentTime(appointment)}
+                        </div>
+                      </div>
+
+                      {/* Quick stats */}
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between text-xs textsecondary/20">
+                          <span className="flex items-center">
+                            <MessageCircle className="w-3 h-3 mr-1" />
+                            Messages
+                          </span>
+                          <span className="font-medium">
+                            {currentMessages.length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
       </div>
-    </div>
-  );
+    )}
+  </div>
+);
 };
 
 export default MedicalChatInterface;

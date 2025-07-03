@@ -1,706 +1,3 @@
-// contexts/ChatContext.js
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
-import { io } from "socket.io-client";
-import { auth } from "../api/firebase/config";
-import { useAuthState } from "react-firebase-hooks/auth";
-
-const ChatContext = createContext();
-
-export const useChat = () => {
-  const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error("useChat must be used within a ChatProvider");
-  }
-  return context;
-};
-
-export const ChatProvider = ({ children }) => {
-  const [user] = useAuthState(auth);
-  const [socket, setSocket] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [currentRoom, setCurrentRoom] = useState(null);
-  const [messages, setMessages] = useState({});
-  const [chatRooms, setChatRooms] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState(new Set());
-  const [typingUsers, setTypingUsers] = useState({});
-  const [chatAccess, setChatAccess] = useState(null);
-  const [unreadCounts, setUnreadCounts] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const socketRef = useRef(null);
-  const typingTimeoutRef = useRef({});
-  const telehealthBackendUrl = "http://localhost:4002";
-  const [token, setToken] = useState(null);
-
-  // Get the current user token
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        user
-          .getIdToken()
-          .then((token) => {
-            setToken(token);
-            // console.log("Token:", token);
-          })
-          .catch((error) => {
-            console.error("Error getting token:", error);
-            setError("Failed to authenticate");
-            setToken(null);
-          });
-      } else {
-        setToken(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Initialize socket connection
-  useEffect(() => {
-    if (!user) {
-      // Disconnect socket if user logs out
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-        setSocket(null);
-        setIsConnected(false);
-      }
-      return;
-    }
-
-    const initializeSocket = async () => {
-      try {
-        console.log("Initializing socket...", "Token:", token);
-        const newSocket = io(
-          process.env.NEXT_PUBLIC_SOCKET_URL || telehealthBackendUrl,
-          {
-            auth: {
-              token: token,
-            },
-            autoConnect: true,
-          }
-        );
-
-        socketRef.current = newSocket;
-        setSocket(newSocket);
-
-        // Connection event listeners
-        newSocket.on("connect", () => {
-          console.log("🔌 Socket connected:", newSocket.id);
-          setIsConnected(true);
-          setError(null);
-        });
-
-        newSocket.on("disconnect", (reason) => {
-          console.log("🔌 Socket disconnected:", reason);
-          setIsConnected(false);
-        });
-
-        newSocket.on("connect_error", (error) => {
-          console.error("🔌 Socket connection error:", error);
-          setError("Failed to connect to chat server");
-          setIsConnected(false);
-        });
-
-        // Chat event listeners
-        setupChatEventListeners(newSocket);
-      } catch (error) {
-        console.error("Error initializing socket:", error);
-        setError("Failed to initialize chat connection");
-      }
-    };
-
-    initializeSocket();
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-    };
-  }, [token, user]);
-
-  // Setup chat event listeners
-  const setupChatEventListeners = (socket) => {
-    // Chat access and room events
-    socket.on("chatAccess", (data) => {
-      console.log("📝 Chat access:", data);
-      setChatAccess(data);
-      if (data.roomId) {
-        setCurrentRoom({
-          roomId: data.roomId,
-          appointmentId: data.appointmentId,
-          canSendMessages: data.canSendMessages,
-        });
-      }
-    });
-
-    socket.on("chatHistory", (data) => {
-      console.log("📚 Chat history received:", data);
-      setMessages((prev) => ({
-        ...prev,
-        [data.appointmentId]: data.messages || [],
-      }));
-      console.log("📚 Chat setMessages received:", messages);
-    });
-
-    // Message events
-    socket.on("newMessage", (message) => {
-      console.log("💬 New message:", message);
-      setMessages((prev) => ({
-        ...prev,
-        [message.appointmentId]: [
-          ...(prev[message.appointmentId] || []),
-          message,
-        ],
-      }));
-
-      // Update unread count if message is not from current user
-      if (message.senderId !== user?.uid) {
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [message.appointmentId]: (prev[message.appointmentId] || 0) + 1,
-        }));
-      }
-    });
-
-    socket.on("messageEdited", (data) => {
-      console.log("✏️ Message edited:", data);
-      setMessages((prev) => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach((appointmentId) => {
-          updated[appointmentId] = updated[appointmentId].map((msg) =>
-            msg.messageId === data.messageId
-              ? {
-                  ...msg,
-                  textContent: data.newContent,
-                  editedAt: data.editedAt,
-                }
-              : msg
-          );
-        });
-        return updated;
-      });
-    });
-
-    socket.on("messageDeleted", (data) => {
-      console.log("🗑️ Message deleted:", data);
-      setMessages((prev) => {
-        const updated = { ...prev };
-        Object.keys(updated).forEach((appointmentId) => {
-          updated[appointmentId] = updated[appointmentId].filter(
-            (msg) => msg.messageId !== data.messageId
-          );
-        });
-        return updated;
-      });
-    });
-
-    socket.on("fileShared", (data) => {
-      console.log("📎 File shared:", data);
-      // File messages are handled by newMessage event
-    });
-
-    // Listen for the actual event your server emits
-    socket.on("updateOnlineUsers", (users) => {
-      console.log("👥 Online users update:", users);
-      const onlineUserIds = users.map((user) => user.userId);
-      setOnlineUsers(new Set(onlineUserIds));
-
-      // Update chat rooms with online status
-      setChatRooms((prev) =>
-        prev.map((chat) => {
-          if (!chat.doctorId || !chat.patientId) return chat;
-
-          const isDoctorOnline = onlineUserIds.includes(chat.doctorId);
-          const isPatientOnline = onlineUserIds.includes(chat.patientId);
-
-          return {
-            ...chat,
-            isOnline: isDoctorOnline || isPatientOnline,
-          };
-        })
-      );
-    });
-    // Listen for individual user online status updates
-socket.on('onlineStatusUpdate', (statusMap) => {
-  console.log('📊 Online status update:', statusMap);
-
-  // Update online users set
-  setOnlineUsers(prev => {
-    const updated = new Set(prev);
-    Object.entries(statusMap).forEach(([userId, isOnline]) => {
-      if (isOnline) {
-        updated.add(userId);
-      } else {
-        updated.delete(userId);
-      }
-    });
-    return updated;
-  });
-
-  // Update chat rooms based on status map
-  setChatRooms(prev =>
-    prev.map(chat => {
-      if (!chat.doctorId || !chat.patientId) return chat;
-      
-      const isDoctorOnline = statusMap[chat.doctorId] === true;
-      const isPatientOnline = statusMap[chat.patientId] === true;
-      
-      return {
-        ...chat,
-        isOnline: isDoctorOnline || isPatientOnline,
-      };
-    })
-  );
-});
-    socket.on("userOnlineStatusChanged", (data) => {
-      console.log("👤 User online status changed:", data);
-
-      // Update online users set
-      setOnlineUsers((prev) => {
-        const updated = new Set(prev);
-        if (data.isOnline) {
-          updated.add(data.userId);
-        } else {
-          updated.delete(data.userId);
-        }
-        return updated;
-      });
-
-      // Update chat rooms with new online status
-      setChatRooms((prev) =>
-        prev.map((chat) => {
-          const isDoctorOnline =
-            data.userId === chat.doctorId
-              ? data.isOnline
-              : chat.doctorId
-              ? prev.some((c) => c.userId === chat.doctorId)
-              : false;
-          const isPatientOnline =
-            data.userId === chat.patientId
-              ? data.isOnline
-              : chat.patientId
-              ? prev.some((c) => c.userId === chat.patientId)
-              : false;
-
-          return {
-            ...chat,
-            isOnline: isDoctorOnline || isPatientOnline,
-          };
-        })
-      );
-    });
-
-    // Typing events
-    socket.on("userTyping", (data) => {
-      setTypingUsers((prev) => ({
-        ...prev,
-        [data.appointmentId]: {
-          ...prev[data.appointmentId],
-          [data.userId]: {
-            userName: data.userName,
-            timestamp: Date.now(),
-          },
-        },
-      }));
-
-      // Clear typing indicator after 3 seconds
-      if (typingTimeoutRef.current[data.userId]) {
-        clearTimeout(typingTimeoutRef.current[data.userId]);
-      }
-
-      typingTimeoutRef.current[data.userId] = setTimeout(() => {
-        setTypingUsers((prev) => {
-          const updated = { ...prev };
-          if (updated[data.appointmentId]) {
-            delete updated[data.appointmentId][data.userId];
-            if (Object.keys(updated[data.appointmentId]).length === 0) {
-              delete updated[data.appointmentId];
-            }
-          }
-          return updated;
-        });
-      }, 3000);
-    });
-
-    socket.on("userStoppedTyping", (data) => {
-      setTypingUsers((prev) => {
-        const updated = { ...prev };
-        if (updated[data.appointmentId]) {
-          delete updated[data.appointmentId][data.userId];
-          if (Object.keys(updated[data.appointmentId]).length === 0) {
-            delete updated[data.appointmentId];
-          }
-        }
-        return updated;
-      });
-
-      if (typingTimeoutRef.current[data.userId]) {
-        clearTimeout(typingTimeoutRef.current[data.userId]);
-        delete typingTimeoutRef.current[data.userId];
-      }
-    });
-
-    // Extension events
-    socket.on("extensionRequested", (data) => {
-      console.log("⏰ Extension requested:", data);
-      // Handle extension request UI
-    });
-
-    socket.on("extensionConfirmed", (data) => {
-      console.log("✅ Extension confirmed:", data);
-      // Handle extension confirmation UI
-    });
-
-    socket.on("systemMessage", (data) => {
-      console.log("🔔 System message:", data);
-      // Handle system messages
-    });
-
-    // Read receipts
-    socket.on("messagesMarkedAsRead", (data) => {
-      console.log("👁️ Messages marked as read:", data);
-    });
-
-    // Error handling
-    socket.on("error", (data) => {
-      console.error("❌ Socket error:", data);
-      setError(data.message || "An error occurred");
-    });
-
-    socket.on("extensionError", (data) => {
-      console.error("❌ Extension error:", data);
-      setError(data.message || "Extension request failed");
-    });
-  };
-
-  // Join appointment room
-  const joinAppointmentRoom = useCallback(
-    (appointmentId) => {
-      if (!socket || !appointmentId) return;
-
-      console.log("🚪 Joining appointment room:", appointmentId);
-      socket.emit("joinAppointmentRoom", appointmentId);
-    },
-    [socket]
-  );
-
-  // Send text message
-  const sendMessage = useCallback(
-    (appointmentId, textContent) => {
-      if (!socket || !appointmentId || !textContent?.trim()) return;
-
-      console.log("💬 Sending message:", { appointmentId, textContent });
-      socket.emit("sendMessage", {
-        appointmentId,
-        textContent: textContent.trim(),
-      });
-    },
-    [socket]
-  );
-
-  // Send typing indicator
-  const sendTypingIndicator = useCallback(
-    (appointmentId, isTyping) => {
-      if (!socket || !appointmentId) return;
-
-      socket.emit("typing", { appointmentId, isTyping });
-    },
-    [socket]
-  );
-
-  // Share file
-  const shareFile = useCallback(
-    (appointmentId, fileData) => {
-      if (!socket || !appointmentId || !fileData) return;
-
-      console.log("📎 Sharing file:", { appointmentId, fileData });
-      socket.emit("fileShare", { appointmentId, fileData });
-    },
-    [socket]
-  );
-
-  // Mark messages as read
-  const markMessagesAsRead = useCallback(
-    (messageIds) => {
-      if (!socket || !Array.isArray(messageIds) || messageIds.length === 0)
-        return;
-
-      console.log("👁️ Marking messages as read:", messageIds);
-      socket.emit("markAsRead", { messageIds });
-
-      // Update local unread counts
-      setUnreadCounts((prev) => {
-        const updated = { ...prev };
-        // This is simplified - you might want to track which messages belong to which appointment
-        Object.keys(updated).forEach((appointmentId) => {
-          updated[appointmentId] = Math.max(
-            0,
-            updated[appointmentId] - messageIds.length
-          );
-        });
-        return updated;
-      });
-    },
-    [socket]
-  );
-
-  // Edit message
-  const editMessage = useCallback(
-    (messageId, newContent, appointmentId) => {
-      if (!socket || !messageId || !newContent?.trim() || !appointmentId)
-        return;
-
-      console.log("✏️ Editing message:", {
-        messageId,
-        newContent,
-        appointmentId,
-      });
-      socket.emit("editMessage", {
-        messageId,
-        newContent: newContent.trim(),
-        appointmentId,
-      });
-    },
-    [socket]
-  );
-
-  // Delete message
-  const deleteMessage = useCallback(
-    (messageId, appointmentId) => {
-      if (!socket || !messageId || !appointmentId) return;
-
-      console.log("🗑️ Deleting message:", { messageId, appointmentId });
-      socket.emit("deleteMessage", { messageId, appointmentId });
-    },
-    [socket]
-  );
-
-  // Request appointment extension
-  const requestExtension = useCallback(
-    (appointmentId) => {
-      if (!socket || !appointmentId) return;
-
-      console.log("⏰ Requesting extension:", appointmentId);
-      socket.emit("requestExtension", { appointmentId });
-    },
-    [socket]
-  );
-
-  // Accept appointment extension
-  const acceptExtension = useCallback(
-    (appointmentId) => {
-      if (!socket || !appointmentId) return;
-
-      console.log("✅ Accepting extension:", appointmentId);
-      socket.emit("acceptExtension", { appointmentId });
-    },
-    [socket]
-  );
-
-  // API methods for HTTP requests
-  const api = useMemo(
-    () => ({
-      // Get chat history
-      getChatHistory: async () => {
-        try {
-          setIsLoading(true);
-          const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/history`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) throw new Error("Failed to fetch chat history");
-
-          const data = await response.json();
-          setChatRooms(data.data || []);
-          console.log("📚 Chat history received:", data);
-          return data.data;
-        } catch (error) {
-          console.error("Error fetching chat history:", error);
-          setError("Failed to load chat history");
-          throw error;
-        } finally {
-          setIsLoading(false);
-        }
-      },
-
-      // Get messages for past appointment
-      getMessagesForAppointment: async (appointmentId) => {
-        try {
-          setIsLoading(true);
-          const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/messages/${appointmentId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) throw new Error("Failed to fetch messages");
-
-          const data = await response.json();
-          setMessages((prev) => ({
-            ...prev,
-            [appointmentId]: data.data.messages || [],
-          }));
-          return data.data;
-        } catch (error) {
-          console.error("Error fetching messages:", error);
-          setError("Failed to load messages");
-          throw error;
-        } finally {
-          setIsLoading(false);
-        }
-      },
-
-      // Upload file
-      uploadFile: async (file, appointmentId) => {
-        try {
-          setIsLoading(true);
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("appointmentId", appointmentId);
-
-          const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/upload`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-              body: formData,
-            }
-          );
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "Failed to upload file");
-          }
-
-          const data = await response.json();
-          return data.data;
-        } catch (error) {
-          console.error("Error uploading file:", error);
-          setError("Failed to upload file");
-          throw error;
-        } finally {
-          setIsLoading(false);
-        }
-      },
-
-      // Get chat statistics
-      getChatStats: async () => {
-        try {
-          const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/stats`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-
-          if (!response.ok) throw new Error("Failed to fetch chat stats");
-
-          const data = await response.json();
-          return data.data;
-        } catch (error) {
-          console.error("Error fetching chat stats:", error);
-          throw error;
-        }
-      },
-    }),
-    [token, telehealthBackendUrl]
-  );
-
-  // Clear error
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  // Leave current room
-  const leaveRoom = useCallback(() => {
-    setCurrentRoom(null);
-    setChatAccess(null);
-  }, []);
-
-  // Get typing users for appointment
-  const getTypingUsers = useCallback(
-    (appointmentId) => {
-      const typing = typingUsers[appointmentId] || {};
-      return Object.entries(typing)
-        .filter(([userId]) => userId !== user?.uid)
-        .map(([userId, data]) => data.userName);
-    },
-    [typingUsers, user]
-  );
-  const checkOnlineStatus = useCallback(
-    (userIds) => {
-      if (!socket || !Array.isArray(userIds)) return;
-      socket.emit("checkOnlineStatus", userIds);
-    },
-    [socket]
-  );
-
-  const value = {
-    // Connection state
-    socket,
-    isConnected,
-    isLoading,
-    error,
-    clearError,
-
-    // Current session
-    currentRoom,
-    chatAccess,
-    leaveRoom,
-
-    // Messages and rooms
-    messages,
-    chatRooms,
-    unreadCounts,
-
-    // Typing indicators
-    onlineUsers,
-    checkOnlineStatus, // Add this new function
-    typingUsers,
-    getTypingUsers,
-
-    // Socket methods
-    joinAppointmentRoom,
-    sendMessage,
-    sendTypingIndicator,
-    shareFile,
-    markMessagesAsRead,
-    editMessage,
-    deleteMessage,
-    requestExtension,
-    acceptExtension,
-
-    // API methods
-    api,
-  };
-
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
-};
 import React, { useState, useRef, useEffect } from "react";
 import {
   Search,
@@ -717,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useChat } from "../../context/ChatContext";
+import { useAuth } from "../../hooks/useAuth";
 
 const AppointmentStatus = {
   REQUESTED: "REQUESTED",
@@ -768,6 +66,10 @@ const MedicalChatInterface = ({ appointmentId }) => {
     api,
   } = useChat();
 
+  const { user } = useAuth();
+
+  const [chatAppointments, setChatAppointments] = useState([]);
+  const [showAppointmentDropdown, setShowAppointmentDropdown] = useState(false);
   const [activeChat, setActiveChat] = useState(null);
   const [activeAppointment, setActiveAppointment] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -781,14 +83,40 @@ const MedicalChatInterface = ({ appointmentId }) => {
   const [userWentBack, setUserWentBack] = useState(false);
 
   // Auto-join appointment room if appointmentId is provided
-  // Replace the existing useEffect that handles appointmentId joining
   useEffect(() => {
-    if (appointmentId && socket && isConnected) {
-      console.log("Joining appointment room:", appointmentId);
-      joinAppointmentRoom(appointmentId);
-      console.log("Joined appointment room:", appointmentId);
+    if (
+      appointmentId &&
+      chatRooms.length > 0 &&
+      !activeAppointment &&
+      !userWentBack
+    ) {
+      // Find the chat room that contains this appointmentId
+      const matchingChat = chatRooms.find(
+        (chat) =>
+          chat.appointmentIds && chat.appointmentIds.includes(appointmentId)
+      );
+
+      if (matchingChat) {
+        // Now, find the specific appointment object within that chat
+        const specificAppointment = matchingChat.appointments?.find(
+          (app) => app.appointmentId === appointmentId
+        );
+
+        if (specificAppointment) {
+          setActiveChat(matchingChat);
+          setActiveAppointment(specificAppointment); // Use the actual appointment object
+          setShowChatDetails(true);
+        } else {
+          console.log("Appointment object not found within the matching chat");
+        }
+      } else {
+        console.log(
+          "No matching chat room found for appointmentId:",
+          appointmentId
+        );
+      }
     }
-  }, [appointmentId, socket, isConnected, joinAppointmentRoom]);
+  }, [appointmentId, chatRooms, activeAppointment, userWentBack]);
 
   useEffect(() => {
     // Only run if we have an appointmentId and chatRooms, don't already have an activeAppointment, and user didn't manually go back
@@ -888,6 +216,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
       loadChatHistory();
     }
   }, [isConnected, api, chatRooms.length, checkOnlineStatus]);
+
   useEffect(() => {
     if (!isConnected || chatRooms.length === 0) return;
 
@@ -940,32 +269,33 @@ const MedicalChatInterface = ({ appointmentId }) => {
   };
 
   const handleChatSelect = async (chat) => {
-    setUserWentBack(false); // Reset the flag when user selects a chat
+    setUserWentBack(false);
     setActiveChat(chat);
     setShowChatDetails(true);
 
-    // Set the appointment as active
-    if (chat.appointmentId) {
-      const appointment = {
-        id: chat.appointmentId,
-        appointmentId: chat.appointmentId,
-        appointmentNumber: chat.appointmentNumber || `#${chat.appointmentId}`,
-        date: chat.appointmentDate || new Date().toLocaleDateString(),
-        startTime: chat.startTime || "12:00 PM",
-        endTime: chat.endTime || "12:30 PM",
-        status: chat.status || "CONFIRMED",
-      };
-      setActiveAppointment(appointment);
+    // Store all appointments from this chat
+    if (chat.appointments && chat.appointments.length > 0) {
+      setChatAppointments(chat.appointments);
 
-      // Join the appointment room
-      joinAppointmentRoom(chat.appointmentId);
+      // Sort appointments by scheduled start time descending
+      const sortedAppointments = [...chat.appointments].sort((a, b) => {
+        const timeA = a.scheduledStartTime?._seconds || 0;
+        const timeB = b.scheduledStartTime?._seconds || 0;
+        return timeB - timeA;
+      });
 
-      // Load messages for this appointment
+      // Set the latest appointment as active
+      const latestAppointment = sortedAppointments[0];
+      setActiveAppointment(latestAppointment);
+
+      // Join the room and fetch messages for the latest appointment
+      joinAppointmentRoom(latestAppointment.appointmentId);
       try {
-        await api.getMessagesForAppointment(chat.appointmentId);
+        await api.getMessagesForAppointment(latestAppointment.appointmentId);
 
-        // Mark messages as read
-        const appointmentMessages = messages[chat.appointmentId] || [];
+        // Mark messages as read logic
+        const appointmentMessages =
+          messages[latestAppointment.appointmentId] || [];
         const unreadMessageIds = appointmentMessages
           .filter((msg) => !msg.isRead && msg.senderId !== currentRoom?.userId)
           .map((msg) => msg.messageId);
@@ -974,8 +304,32 @@ const MedicalChatInterface = ({ appointmentId }) => {
           markMessagesAsRead(unreadMessageIds);
         }
       } catch (error) {
-        console.error("Failed to load messages:", error);
+        console.error("Failed to load messages for appointment:", error);
       }
+    }
+  };
+
+  const handleAppointmentSelect = async (appointment) => {
+    setActiveAppointment(appointment);
+    setShowAppointmentDropdown(false);
+
+    // Join the new appointment room
+    joinAppointmentRoom(appointment.appointmentId);
+
+    try {
+      await api.getMessagesForAppointment(appointment.appointmentId);
+
+      // Mark messages as read for the new appointment
+      const appointmentMessages = messages[appointment.appointmentId] || [];
+      const unreadMessageIds = appointmentMessages
+        .filter((msg) => !msg.isRead && msg.senderId !== currentRoom?.userId)
+        .map((msg) => msg.messageId);
+
+      if (unreadMessageIds.length > 0) {
+        markMessagesAsRead(unreadMessageIds);
+      }
+    } catch (error) {
+      console.error("Failed to load messages for appointment:", error);
     }
   };
 
@@ -1052,13 +406,13 @@ const MedicalChatInterface = ({ appointmentId }) => {
     }
   };
 
-const canSendMessage = (status) => {
-  return (
-    status === AppointmentStatus.IN_PROGRESS && 
-    chatAccess?.canSendMessages === true && 
-    isConnected
-  );
-};
+  const canSendMessage = (status) => {
+    return (
+      status === AppointmentStatus.IN_PROGRESS &&
+      chatAccess?.canSendMessages === true &&
+      isConnected
+    );
+  };
 
   const shouldShowVideoButton = (status) => {
     return status === AppointmentStatus.IN_PROGRESS;
@@ -1076,15 +430,6 @@ const canSendMessage = (status) => {
     }
   };
 
-  const shouldShowAppointment = (status) => {
-    return ![
-      AppointmentStatus.CANCELLED_PATIENT,
-      AppointmentStatus.CANCELLED_DOCTOR,
-      AppointmentStatus.REJECTED,
-      AppointmentStatus.NO_SHOW,
-    ].includes(status);
-  };
-
   const getInitials = (name) => {
     if (!name) return "?";
     return name
@@ -1095,7 +440,13 @@ const canSendMessage = (status) => {
   };
 
   const formatMessageTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString("en-US", {
+    if (!timestamp) return "";
+
+    // Convert Firestore timestamp to milliseconds
+    const millis =
+      timestamp._seconds * 1000 + Math.floor(timestamp._nanoseconds / 1e6);
+
+    return new Date(millis).toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
@@ -1112,24 +463,160 @@ const canSendMessage = (status) => {
     ? getTypingUsers(activeAppointment.appointmentId)
     : [];
 
+  // Format appointment date for display
+  const formatAppointmentDate = (appointment) => {
+    // console.log("Appointment:", appointment);
+    if (!appointment?.scheduledStartTime) return "Unknown date";
+
+    const date = new Date(appointment.scheduledStartTime._seconds * 1000);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Format appointment time for display
+  const formatAppointmentTime = (appointment) => {
+    if (!appointment?.scheduledStartTime || !appointment?.scheduledEndTime) {
+      return "Unknown time";
+    }
+
+    const startTime = new Date(appointment.scheduledStartTime._seconds * 1000);
+    const endTime = new Date(appointment.scheduledEndTime._seconds * 1000);
+
+    return `${startTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })} - ${endTime.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })}`;
+  };
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-[90vh] overflow-hidden bg-gradient-to-br rounded-2xl ">
       {/* Connection Status */}
       {!isConnected && (
-        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">
-          <span className="text-sm">
-            Disconnected from chat server. Attempting to reconnect...
-          </span>
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-3 z-50 shadow-lg">
+          <div className="flex items-center justify-center space-x-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium">
+              Disconnected from chat server. Attempting to reconnect...
+            </span>
+          </div>
+
+          {/* Appointment Timeline Sidebar - Desktop Only */}
+          {activeAppointment && chatAppointments.length > 1 && (
+            <div className="hidden lg:flex lg:w-80 xl:w-96 bg-gradient-to-b from-gray-50 to-white border-l border-gray-200 flex-col shadow-lg">
+              {/* Timeline Header */}
+              <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-cyan-50">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                  <Clock className="w-5 h-5 mr-3 text-teal-500" />
+                  Appointment Timeline
+                </h3>
+                <p className="text-sm text-gray-600 mt-1 font-medium">
+                  {chatAppointments.length} appointments
+                </p>
+              </div>
+
+              {/* Vertical Timeline */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-teal-300 via-cyan-300 to-gray-300"></div>
+
+                  <div className="space-y-6">
+                    {chatAppointments.map((appointment, index) => (
+                      <div key={appointment.appointmentId} className="relative">
+                        {/* Timeline dot */}
+                        <div
+                          className={`absolute left-6 w-4 h-4 rounded-full border-2 border-white shadow-md z-10 ${
+                            activeAppointment.appointmentId ===
+                            appointment.appointmentId
+                              ? "bg-gradient-to-r from-teal-500 to-cyan-500 ring-2 ring-teal-200"
+                              : appointment.status === "COMPLETED"
+                              ? "bg-green-500"
+                              : appointment.status === "CANCELLED"
+                              ? "bg-red-500"
+                              : "bg-gray-400"
+                          }`}
+                        ></div>
+
+                        {/* Appointment Card */}
+                        <div
+                          className={`ml-16 cursor-pointer transition-all duration-300 ${
+                            activeAppointment.appointmentId ===
+                            appointment.appointmentId
+                              ? "ring-2 ring-teal-500 shadow-lg scale-105 -translate-y-1"
+                              : "hover:shadow-md hover:scale-102 hover:-translate-y-0.5"
+                          }`}
+                          onClick={() => handleAppointmentSelect(appointment)}
+                        >
+                          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                            <div className="flex justify-between items-start mb-3">
+                              <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded-lg">
+                                #
+                                {appointment.appointmentId?.substring(0, 8) ||
+                                  "Unknown"}
+                              </span>
+                              <span
+                                className={`text-xs px-3 py-1 rounded-full font-semibold ${getStatusColor(
+                                  appointment.status
+                                )}`}
+                              >
+                                {appointment.status.replace("_", " ")}
+                              </span>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="text-sm font-bold text-gray-900">
+                                {formatAppointmentDate(appointment)}
+                              </div>
+                              <div className="text-xs text-gray-600 font-medium flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {formatAppointmentTime(appointment)}
+                              </div>
+                            </div>
+
+                            {/* Quick stats */}
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="flex items-center justify-between text-xs text-gray-500">
+                                <span className="flex items-center">
+                                  <MessageCircle className="w-3 h-3 mr-1" />
+                                  Messages
+                                </span>
+                                <span className="font-medium">
+                                  {currentMessages.length}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Error Message */}
       {error && (
-        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-center py-2 z-50">
-          <span className="text-sm">{error}</span>
-          <button onClick={clearError} className="ml-2 underline">
-            Dismiss
-          </button>
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-red-500 to-red-600 text-white text-center py-3 z-50 shadow-lg">
+          <div className="flex items-center justify-center space-x-2">
+            <span className="text-sm font-medium">{error}</span>
+            <button
+              onClick={clearError}
+              className="ml-2 bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -1137,26 +624,28 @@ const canSendMessage = (status) => {
       <div
         className={`${
           showChatDetails ? "hidden lg:flex" : "flex"
-        } w-full lg:w-80 bg-white border-r border-gray-200 flex-col`}
+        } w-full lg:w-80 h-[90vh] md:h-[88vh] overflow-y-auto scrollbar-hide border-gray-200 flex-col shadow-lg rounded-2xl md:rounded-l-2xl md:rounded-r-none`}
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-cyan-50 rol">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Contacts</h2>
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+            <h2 className="text-xl font-bold text-gray-800 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+              Contacts
+            </h2>
+            <span className="text-sm text-teal-600 bg-teal-100 px-3 py-1.5 rounded-full font-semibold shadow-sm">
               {filteredChats.length}
             </span>
           </div>
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white shadow-sm transition-all duration-200 hover:shadow-md"
             />
           </div>
         </div>
@@ -1164,72 +653,85 @@ const canSendMessage = (status) => {
         {/* Contacts List */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">Loading chats...</div>
-            </div>
-          ) : filteredChats.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-gray-500">No chats found</div>
-            </div>
-          ) : (
-            filteredChats.map((chat) => (
-              <div
-                key={chat.appointmentId || chat.id}
-                className={`flex items-center p-4 cursor-pointer hover:bg-gray-50 ${
-                  activeChat?.appointmentId === chat.appointmentId
-                    ? "bg-teal-50 border-r-2 border-teal-500"
-                    : ""
-                }`}
-                onClick={() => handleChatSelect(chat)}
-              >
-                <div className="relative">
-                  <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
-                    {chat.avatar ? (
-                      <img
-                        src={chat.avatar}
-                        alt={chat.doctorName || chat.patientName}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-teal-600 font-semibold text-sm">
-                        {getInitials(chat.doctorName || chat.patientName)}
-                      </span>
-                    )}
-                  </div>
-                  {chat.isOnline && (
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                  )}
-                </div>
-
-                <div className="ml-3 flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">
-                      {chat.doctorName || chat.patientName || "Unknown"}
-                    </h3>
-                    <div className="flex items-center space-x-1">
-                      {unreadCounts[chat.appointmentId] > 0 && (
-                        <span className="bg-orange-500 text-white text-xs rounded-full px-2 py-0.5 min-w-[18px] h-[18px] flex items-center justify-center">
-                          {unreadCounts[chat.appointmentId]}
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500">
-                        {chat.lastMessageTime ||
-                          new Date(
-                            chat.updatedAt || Date.now()
-                          ).toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-500 truncate mt-1">
-                    {chat.lastMessage || "No messages yet"}
-                  </p>
+            <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center space-y-3">
+                <div className="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="text-gray-500 font-medium">
+                  Loading chats...
                 </div>
               </div>
-            ))
+            </div>
+          ) : filteredChats.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <div className="text-gray-500 font-medium">No chats found</div>
+                <div className="text-gray-400 text-sm mt-1">
+                  Try adjusting your search
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {filteredChats.map((chat) => (
+                <div
+                  key={chat.appointmentId || chat.id}
+                  className={`flex items-center p-4 cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-gray-50 hover:to-teal-50 ${
+                    activeChat?.appointmentId === chat.appointmentId
+                      ? "bg-gradient-to-r from-teal-50 to-cyan-50 border-r-4 border-teal-500 shadow-sm"
+                      : ""
+                  }`}
+                  onClick={() => handleChatSelect(chat)}
+                >
+                  <div className="relative">
+                    <div className="w-14 h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                      {chat.avatar ? (
+                        <img
+                          src={chat.avatar}
+                          alt={chat.doctorName || chat.patientName}
+                          className="w-14 h-14 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-teal-600 font-bold text-lg">
+                          {getInitials(chat.doctorName || chat.patientName)}
+                        </span>
+                      )}
+                    </div>
+                    {chat.isOnline && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse"></div>
+                    )}
+                  </div>
+
+                  <div className="ml-4 flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">
+                        {chat.doctorName || chat.patientName || "Unknown"}
+                      </h3>
+                      <div className="flex items-center space-x-2 ml-2">
+                        {unreadCounts[chat.appointmentId] > 0 && (
+                          <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full px-2.5 py-1 min-w-[20px] h-[20px] flex items-center justify-center shadow-sm animate-pulse">
+                            {unreadCounts[chat.appointmentId]}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-500 font-medium">
+                          {chat.lastMessageTime ||
+                            new Date(
+                              chat.updatedAt || Date.now()
+                            ).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 truncate font-medium">
+                      {chat.lastMessage || "No messages yet"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -1238,313 +740,421 @@ const canSendMessage = (status) => {
       <div
         className={`${
           showChatDetails ? "flex" : "hidden lg:flex"
-        } flex-1 flex-col`}
+        } flex-1 flex-col lg:flex-row bg-white`}
       >
-        {activeChat ? (
-          <>
-            {/* Chat Header */}
-            <div className="bg-white border-b border-gray-200 p-4">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  {/* Back Button for Mobile */}
-                  <button
-                    onClick={handleBackToChats}
-                    className="lg:hidden mr-3 p-1 hover:bg-gray-100 rounded-full"
-                  >
-                    <ArrowLeft className="w-5 h-5 text-gray-600" />
-                  </button>
+        {/* Chat Content */}
+        <div className="flex-1 flex flex-col">
+          {activeChat ? (
+            <>
+              {/* Chat Header */}
+              <div className="bg-white border-b border-gray-100 p-2 lg:p-6 shadow-sm">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
+                      {/* Back Button for Mobile */}
+                      <button
+                        onClick={handleBackToChats}
+                        className="lg:hidden mr-2 p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+                      >
+                        <ArrowLeft className="w-5 h-5 text-gray-600" />
+                      </button>
 
-                  <div className="relative">
-                    <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
-                      {activeChat.avatar ? (
-                        <img
-                          src={activeChat.avatar}
-                          alt={activeChat.doctorName || activeChat.patientName}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-teal-600 font-semibold text-sm">
-                          {getInitials(
-                            activeChat.doctorName || activeChat.patientName
+                      <div className="relative">
+                        <div className="w-12 h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                          {activeChat.avatar ? (
+                            <img
+                              src={activeChat.avatar}
+                              alt={
+                                activeChat.doctorName || activeChat.patientName
+                              }
+                              className="w-12 h-12 lg:w-14 lg:h-14 rounded-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-teal-600 font-bold text-lg lg:text-xl">
+                              {getInitials(
+                                activeChat.doctorName || activeChat.patientName
+                              )}
+                            </span>
                           )}
+                        </div>
+                        {activeChat.isOnline && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 lg:w-4 lg:h-4 bg-green-500 border-2 border-white rounded-full shadow-sm animate-pulse"></div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <h2 className="text-lg lg:text-xl font-bold text-gray-900">
+                        {activeChat.doctorName ||
+                          activeChat.patientName ||
+                          "Unknown"}
+                      </h2>
+                      <p className="text-sm font-medium">
+                        <span
+                          className={`${
+                            isConnected
+                              ? activeChat.isOnline
+                                ? "text-green-600"
+                                : "text-gray-500"
+                              : "text-red-500"
+                          }`}
+                        >
+                          {isConnected
+                            ? activeChat.isOnline
+                              ? "● Online"
+                              : "○ Offline"
+                            : "● Disconnected"}
                         </span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center space-x-2 lg:space-x-3">
+                      {shouldShowVideoButton(activeAppointment?.status) && (
+                        <button className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-3 py-2 lg:px-5 lg:py-2.5 rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-teal-600 hover:to-cyan-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                          <Video className="w-4 h-4" />
+                          <span className="hidden sm:inline font-medium text-sm lg:text-base">
+                            Video
+                          </span>
+                        </button>
+                      )}
+
+                      {activeAppointment?.status ===
+                        AppointmentStatus.IN_PROGRESS && (
+                        <button
+                          onClick={() =>
+                            requestExtension(activeAppointment.appointmentId)
+                          }
+                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-3 py-2 lg:px-4 lg:py-2.5 rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        >
+                          <Clock className="w-4 h-4" />
+                          <span className="hidden sm:inline font-medium text-sm lg:text-base">
+                            Extend
+                          </span>
+                        </button>
                       )}
                     </div>
-                    {activeChat.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></div>
-                    )}
                   </div>
-                  <div className="ml-3">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {activeChat.doctorName ||
-                        activeChat.patientName ||
-                        "Unknown"}
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      {isConnected
-                        ? activeChat.isOnline
-                          ? "Online"
-                          : "Offline"
-                        : "Disconnected"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  {shouldShowVideoButton(activeAppointment?.status) && (
-                    <button className="bg-teal-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-teal-600 transition-colors">
-                      <Video className="w-4 h-4" />
-                      <span className="hidden sm:inline">Video</span>
-                    </button>
-                  )}
-
-                  {activeAppointment?.status ===
-                    AppointmentStatus.IN_PROGRESS && (
-                    <button
-                      onClick={() =>
-                        requestExtension(activeAppointment.appointmentId)
-                      }
-                      className="bg-orange-500 text-white px-3 py-2 rounded-lg flex items-center space-x-1 hover:bg-orange-600 transition-colors text-sm"
-                    >
-                      <Clock className="w-4 h-4" />
-                      <span className="hidden sm:inline">Extend</span>
-                    </button>
-                  )}
                 </div>
               </div>
-
-              {/* Appointment Info */}
-              {activeAppointment && (
-                <div className="mt-4">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-xs text-gray-500">
-                        {activeAppointment.appointmentNumber}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                          activeAppointment.status
-                        )}`}
-                      >
-                        {activeAppointment.status.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="text-sm font-medium text-gray-900 mb-1">
-                      {activeAppointment.date}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {activeAppointment.startTime} -{" "}
-                      {activeAppointment.endTime}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
-              {activeAppointment ? (
-                <>
-                  {/* Date Header */}
-                  <div className="text-center mb-4">
-                    <span className="bg-white text-gray-500 text-xs px-3 py-1 rounded-full shadow-sm">
-                      {activeAppointment.date}
-                    </span>
-                  </div>
-
-                  {/* Messages */}
-                  {currentMessages.map((msg) => (
-                    <div
-                      key={msg.messageId}
-                      className={`mb-4 flex ${
-                        msg.senderId === currentRoom?.userId
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
+              <div>
+                {/* Mobile Appointment Timeline - Horizontal at top */}
+                {activeAppointment && chatAppointments.length > 1 && (
+                  <div className="mt-4 lg:hidden">
+                    <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center">
+                      <Clock className="w-4 h-4 mr-2 text-teal-500" />
+                      Appointment History
+                    </h3>
+                    <div className="overflow-x-auto scrollbar-hide">
                       <div
-                        className={`max-w-xs sm:max-w-sm lg:max-w-md px-4 py-2 rounded-2xl ${
-                          msg.senderId === currentRoom?.userId
-                            ? "bg-teal-500 text-white"
-                            : "bg-white text-gray-900 shadow-sm"
-                        }`}
+                        className="flex space-x-3 pb-2"
+                        style={{ width: "max-content" }}
                       >
-                        {msg.fileUrl ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center space-x-2">
-                              <FileText className="w-4 h-4" />
-                              <a
-                                href={msg.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm underline break-all"
-                              >
-                                {msg.fileName || "Download file"}
-                              </a>
+                        {chatAppointments.map((appointment, index) => (
+                          <div
+                            key={appointment.appointmentId}
+                            className="flex items-center"
+                          >
+                            <div
+                              className={`flex-shrink-0 cursor-pointer transition-all duration-300 ${
+                                activeAppointment.appointmentId ===
+                                appointment.appointmentId
+                                  ? "ring-2 ring-teal-500 shadow-lg scale-105"
+                                  : "hover:shadow-md hover:scale-102"
+                              }`}
+                              onClick={() =>
+                                handleAppointmentSelect(appointment)
+                              }
+                            >
+                              <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-3 min-w-[160px] border border-gray-200 shadow-sm">
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded-md">
+                                    #
+                                    {appointment.appointmentId?.substring(
+                                      0,
+                                      6
+                                    ) || "Unknown"}
+                                  </span>
+                                  <span
+                                    className={`text-xs px-2 py-1 rounded-full font-semibold ${getStatusColor(
+                                      appointment.status
+                                    )}`}
+                                  >
+                                    {appointment.status.replace("_", " ")}
+                                  </span>
+                                </div>
+                                <div className="text-sm font-bold text-gray-900 mb-1">
+                                  {formatAppointmentDate(appointment)}
+                                </div>
+                                <div className="text-xs text-gray-600 font-medium">
+                                  {formatAppointmentTime(appointment)}
+                                </div>
+                              </div>
                             </div>
-                            {msg.textContent && (
-                              <p className="text-sm break-words">
-                                {msg.textContent}
-                              </p>
+                            {/* Timeline connector */}
+                            {index < chatAppointments.length - 1 && (
+                              <div className="flex-shrink-0 mx-2">
+                                <div className="w-8 h-px bg-gradient-to-r from-gray-300 to-gray-400"></div>
+                              </div>
                             )}
                           </div>
-                        ) : (
-                          <p className="text-sm break-words">
-                            {msg.textContent}
-                          </p>
-                        )}
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                 <div>
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-50 to-white p-4 lg:p-6">
+                  {activeAppointment ? (
+                    <>
+                      {/* Date Header */}
+                      <div className="text-center mb-6">
+                        <span className="bg-white text-gray-600 text-sm px-4 py-2 rounded-full shadow-sm border border-gray-100 font-medium">
+                          {formatAppointmentDate(activeAppointment)}
+                        </span>
+                      </div>
 
+                      {/* Messages */}
+                      {currentMessages.map((msg) => (
                         <div
-                          className={`flex items-center mt-1 ${
-                            msg.senderId === currentRoom?.userId
+                          key={msg.messageId}
+                          className={`mb-4 lg:mb-6 flex ${
+                            msg.senderId === user?.id
                               ? "justify-end"
                               : "justify-start"
                           }`}
                         >
-                          <span
-                            className={`text-xs ${
-                              msg.senderId === currentRoom?.userId
-                                ? "text-teal-100"
-                                : "text-gray-500"
+                          <div
+                            className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-4 lg:px-5 py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
+                              msg.senderId === user?.id
+                                ? "bg-gradient-to-br from-teal-500 to-cyan-500 text-white"
+                                : "bg-white text-gray-900 border border-gray-100"
                             }`}
                           >
-                            {formatMessageTime(msg.createdAt)}
-                          </span>
-                          {msg.senderId === currentRoom?.userId && (
-                            <Check
-                              className={`w-3 h-3 ml-1 ${
-                                msg.isRead ? "text-teal-100" : "text-teal-200"
+                            {/* File Message */}
+                            {msg.fileUrl ? (
+                              <div className="space-y-3">
+                                <div className="flex items-center space-x-3">
+                                  <div
+                                    className={`p-2 rounded-lg ${
+                                      msg.senderId === user?.id
+                                        ? "bg-white bg-opacity-20"
+                                        : "bg-gray-100"
+                                    }`}
+                                  >
+                                    <FileText className="w-5 h-5" />
+                                  </div>
+                                  <a
+                                    href={msg.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm underline break-all hover:opacity-80 font-medium transition-opacity duration-200"
+                                  >
+                                    {msg.fileName || "Download file"}
+                                  </a>
+                                </div>
+                                {msg.textContent && (
+                                  <p className="text-sm break-words leading-relaxed">
+                                    {msg.textContent}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              /* Text Message */
+                              <p className="text-sm break-words leading-relaxed">
+                                {msg.textContent}
+                              </p>
+                            )}
+
+                            {/* Message Footer */}
+                            <div
+                              className={`flex items-center mt-2 ${
+                                msg.senderId === user?.id
+                                  ? "justify-end"
+                                  : "justify-start"
                               }`}
-                            />
-                          )}
-                        </div>
+                            >
+                              <span
+                                className={`text-xs font-medium ${
+                                  msg.senderId === user?.id
+                                    ? "text-white text-opacity-70"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {formatMessageTime(msg.createdAt)}
+                              </span>
+                              {msg.senderId === user?.id && (
+                                <Check
+                                  className={`w-3.5 h-3.5 ml-2 ${
+                                    msg.readBy && msg.readBy.length > 1
+                                      ? "text-white"
+                                      : "text-white text-opacity-70"
+                                  }`}
+                                />
+                              )}
+                            </div>
 
-                        {msg.editedAt && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            (edited)
+                            {/* Edited Indicator */}
+                            {msg.editedAt && (
+                              <div
+                                className={`text-xs mt-1 font-medium ${
+                                  msg.senderId === user?.id
+                                    ? "text-white text-opacity-70"
+                                    : "text-gray-400"
+                                }`}
+                              >
+                                (edited)
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        </div>
+                      ))}
 
-                  {/* Typing Indicator */}
-                  {typingUsers.length > 0 && (
-                    <div className="mb-4 flex justify-start">
-                      <div className="bg-white text-gray-500 px-4 py-2 rounded-2xl shadow-sm">
-                        <p className="text-sm">
-                          {typingUsers.join(", ")}{" "}
-                          {typingUsers.length === 1 ? "is" : "are"} typing...
+                      {/* Typing Indicator */}
+                      {typingUsers.length > 0 && (
+                        <div className="mb-4 lg:mb-6 flex justify-start">
+                          <div className="bg-white text-gray-500 px-4 lg:px-5 py-3 rounded-2xl shadow-sm border border-gray-100">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                <div
+                                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                                  style={{ animationDelay: "0.1s" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                                  style={{ animationDelay: "0.2s" }}
+                                ></div>
+                              </div>
+                              <p className="text-sm font-medium">
+                                {typingUsers.join(", ")}{" "}
+                                {typingUsers.length === 1 ? "is" : "are"}{" "}
+                                typing...
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Status Message */}
+                      {getStatusMessage(activeAppointment.status) && (
+                        <div className="text-center py-6">
+                          <span className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 text-sm px-6 py-3 rounded-full font-medium shadow-sm">
+                            {getStatusMessage(activeAppointment.status)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div ref={messagesEndRef} />
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <MessageCircle className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+                        <p className="text-gray-600 mb-3 text-lg font-semibold">
+                          Select an appointment to view messages
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                          Choose from your appointment history to start chatting
                         </p>
                       </div>
                     </div>
                   )}
+                </div>
 
-                  {/* Status Message */}
-                  {getStatusMessage(activeAppointment.status) && (
-                    <div className="text-center py-4">
-                      <span className="bg-gray-200 text-gray-600 text-sm px-4 py-2 rounded-full">
-                        {getStatusMessage(activeAppointment.status)}
-                      </span>
+                {/* Message Input */}
+                {activeAppointment &&
+                  canSendMessage(activeAppointment.status) &&
+                  chatAccess?.allowed === true && (
+                    <div className="bg-white border-t border-gray-100 p-4 shadow-lg">
+                      <div className="flex items-center space-x-4">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          accept="image/*,application/pdf,.doc,.docx"
+                        />
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={selectedFile || isLoading}
+                          className="text-teal-500 hover:text-teal-600 disabled:opacity-50 transition-all duration-200 transform hover:scale-110"
+                        >
+                          <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all duration-200">
+                            {selectedFile ? (
+                              <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Upload className="w-5 h-5" />
+                            )}
+                          </div>
+                        </button>
+                        <div className="flex-1 flex items-center space-x-3">
+                          <input
+                            type="text"
+                            value={message}
+                            onChange={(e) => {
+                              setMessage(e.target.value);
+                              handleTypingStart();
+                            }}
+                            onKeyPress={(e) =>
+                              e.key === "Enter" && handleSendMessage()
+                            }
+                            placeholder="Type your message..."
+                            disabled={!isConnected}
+                            className="flex-1 px-5 py-3 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50 bg-gray-50 focus:bg-white transition-all duration-200 font-medium shadow-sm"
+                          />
+                        </div>
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={
+                            !message.trim() ||
+                            !isConnected ||
+                            !chatAccess?.canSendMessages
+                          }
+                          className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white p-3 rounded-full hover:from-teal-600 hover:to-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-110 disabled:transform-none"
+                        >
+                          <Send className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   )}
 
-                  <div ref={messagesEndRef} />
-                </>
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      Select an appointment to view messages
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Message Input */}
-            {activeAppointment && canSendMessage(activeAppointment.status) && chatAccess?.allowed === true && (
-              <div className="bg-white border-t border-gray-200 p-4">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept="image/*,application/pdf,.doc,.docx"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={selectedFile || isLoading}
-                    className="text-teal-500 hover:text-teal-600 disabled:opacity-50"
-                  >
-                    <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center">
-                      {selectedFile ? (
-                        <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4" />
-                      )}
+                {/* No message permission */}
+                {activeAppointment &&
+                  !canSendMessage(activeAppointment.status) && (
+                    <div className="bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-200 p-6 text-center">
+                      <p className="text-sm text-gray-700 font-medium">
+                        {getStatusMessage(activeAppointment.status) ||
+                          "Messaging is not available for this appointment"}
+                      </p>
                     </div>
-                  </button>
-                  <div className="flex-1 flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={message}
-                      onChange={(e) => {
-                        setMessage(e.target.value);
-                        handleTypingStart();
-                      }}
-                      onKeyPress={(e) =>
-                        e.key === "Enter" && handleSendMessage()
-                      }
-                      placeholder="Your message"
-                      disabled={!isConnected}
-                      className="flex-1 px-4 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
-                    />
-                  </div>
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={
-                      !message.trim() ||
-                      !isConnected ||
-                      !chatAccess?.canSendMessages
-                    }
-                    className="bg-teal-500 text-white p-2 rounded-full hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
+                  )}
               </div>
-            )}
-
-            {/* No message permission */}
-            {activeAppointment && !canSendMessage(activeAppointment.status) && (
-              <div className="bg-gray-100 border-t border-gray-200 p-4 text-center">
-                <p className="text-sm text-gray-600">
-                  {getStatusMessage(activeAppointment.status) ||
-                    "Messaging is not available for this appointment"}
+              </div>
+             
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+              <div className="text-center px-6">
+                <MessageCircle className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  {isConnected
+                    ? "Select a conversation"
+                    : "Connecting to chat..."}
+                </h3>
+                <p className="text-gray-600 font-medium">
+                  {isConnected
+                    ? "Choose a conversation from the list to start messaging."
+                    : "Please wait while we connect you to the chat server."}
                 </p>
+                {!isConnected && (
+                  <div className="mt-4">
+                    <div className="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  </div>
+                )}
               </div>
-            )}
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center px-4">
-              <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {isConnected
-                  ? "Select a conversation"
-                  : "Connecting to chat..."}
-              </h3>
-              <p className="text-gray-500">
-                {isConnected
-                  ? "Choose a conversation from the list to start messaging."
-                  : "Please wait while we connect you to the chat server."}
-              </p>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
