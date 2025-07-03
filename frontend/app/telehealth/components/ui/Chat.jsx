@@ -450,10 +450,13 @@ const MedicalChatInterface = ({ appointmentId }) => {
     try {
       setSelectedFile(file);
 
+      // console.log("currentRoom" , currentRoom)
+
       // Upload file
       const uploadResult = await api.uploadFile(
         file,
-        activeAppointment.appointmentId
+        activeAppointment.appointmentId,
+        currentRoom.roomId
       );
 
       // Share file through socket
@@ -462,6 +465,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
+        originalName: file.name
       });
 
       setSelectedFile(null);
@@ -984,7 +988,8 @@ const MedicalChatInterface = ({ appointmentId }) => {
                                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                               </div>
                               <a
-                                href={msg.fileUrl}
+                                href={ `http://localhost:4002${msg.fileUrl}`}
+                                //http://localhost:3000/telehealth/patient/chats
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs sm:text-sm underline break-all hover:opacity-80 font-medium transition-opacity duration-200"

@@ -210,7 +210,8 @@ const ChatController = {
       const chatRoom = await ChatRoomModel.findOrCreateChatRoom(
         appointment.patientId,
         appointment.doctorId
-      );
+      );        
+
 
       // Save file metadata
       const savedFile = await FileModel.saveFileMetadata({
@@ -220,13 +221,14 @@ const ChatController = {
         roomId: chatRoom.roomId,
       });
 
+
       // Create message for file
       const messageData = {
         senderId: userId,
         roomId: chatRoom.roomId,
         appointmentId,
         fileUrl: fileData.fileUrl,
-        fileName: fileData.originalName,
+        fileName: fileData.fileName,
         fileType: fileData.fileType,
         fileSize: fileData.fileSize,
       };

@@ -51,7 +51,7 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
+    const uniqueName = `${Date.now()}-${file.originalName}`;
     cb(null, uniqueName);
   },
 });
@@ -143,7 +143,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
       fileUrl,
       fileType: req.file.mimetype,
       fileName: req.file.filename,
-      originalName: req.file.originalname,
+      originalName: req.file.originalName,
       size: req.file.size
     });
   } catch (error) {
@@ -160,7 +160,7 @@ app.post('/uploads', upload.array('files', 10), (req, res) => {
     }
 
     const fileInfos = req.files.map(file => ({
-      originalName: file.originalname,
+      originalName: file.originalName,
       fileName: file.filename,
       fileUrl: `${req.protocol}://${req.get('host')}/uploads/${file.filename}`,
       fileType: file.mimetype,

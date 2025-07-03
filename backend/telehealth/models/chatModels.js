@@ -198,6 +198,8 @@ const MessageModel = {
         isDeleted: false,
       };
 
+      console.log("message: ", message);
+
       const messageRef = await db.collection("messages").add(message);
       const newMessage = { messageId: messageRef.id, ...message };
 
@@ -317,13 +319,10 @@ const MessageModel = {
         throw new Error("Unauthorized to delete this message");
       }
 
-      await db
-        .collection("messages")
-        .doc(messageId)
-        .update({
-          isDeleted: true,
-          deletedAt: timestamp(),
-        });
+      await db.collection("messages").doc(messageId).update({
+        isDeleted: true,
+        deletedAt: timestamp(),
+      });
 
       return true;
     } catch (error) {
@@ -351,13 +350,10 @@ const MessageModel = {
         throw new Error("Only text messages can be edited");
       }
 
-      await db
-        .collection("messages")
-        .doc(messageId)
-        .update({
-          textContent: newContent,
-          editedAt: timestamp(),
-        });
+      await db.collection("messages").doc(messageId).update({
+        textContent: newContent,
+        editedAt: timestamp(),
+      });
 
       return true;
     } catch (error) {
@@ -399,6 +395,7 @@ const FileModel = {
         uploadedAt: timestamp(),
         isDeleted: false,
       };
+
 
       const fileRef = await db.collection("files").add(file);
       return { fileId: fileRef.id, ...file };

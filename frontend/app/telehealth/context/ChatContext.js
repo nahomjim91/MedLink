@@ -473,7 +473,7 @@ export const ChatProvider = ({ children }) => {
       if (!socket || !appointmentId || !fileData) return;
 
       console.log("📎 Sharing file:", { appointmentId, fileData });
-      socket.emit("fileShare", { appointmentId, fileData });
+      socket.emit("shareFile", { appointmentId, fileData });
     },
     [socket]
   );
@@ -650,12 +650,13 @@ export const ChatProvider = ({ children }) => {
       },
 
       // Upload file
-      uploadFile: async (file, appointmentId) => {
+      uploadFile: async (file, appointmentId, roomId) => {
         try {
           setIsLoading(true);
           const formData = new FormData();
           formData.append("file", file);
           formData.append("appointmentId", appointmentId);
+          formData.append("roomId", roomId);
 
           const response = await fetch(
             `${telehealthBackendUrl}/api/chat/upload`,

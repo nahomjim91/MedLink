@@ -1,16 +1,16 @@
 // routes/chatRoutes.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const ChatController = require('../controllers/chatController');
-const { FileModel } = require('../models/chatModels');
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const ChatController = require("../controllers/chatController");
+const { FileModel } = require("../models/chatModels");
 
 // Configure multer for file uploads in chat
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/chat');
+    const uploadDir = path.join(__dirname, "../uploads/chat");
     // Ensure chat uploads directory exists
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
@@ -33,31 +33,31 @@ const upload = multer({
     // Define allowed file types for chat
     const allowedMimes = [
       // Images
-      'image/jpeg',
-      'image/jpg',
-      'image/png', 
-      'image/gif',
-      'image/webp',
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
       // Documents
-      'application/pdf',
-      'text/plain',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       // Audio/Video (small files)
-      'audio/mpeg',
-      'audio/wav',
-      'video/mp4',
-      'video/quicktime',
+      "audio/mpeg",
+      "audio/wav",
+      "video/mp4",
+      "video/quicktime",
     ];
-    
+
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error(`File type ${file.mimetype} is not allowed`), false);
     }
-  }
+  },
 });
 
 // =================== CHAT HISTORY & MESSAGES ===================
@@ -67,21 +67,24 @@ const upload = multer({
  * @description Get chat history - all rooms for the user with their appointments
  * @access Private
  */
-router.get('/history', ChatController.getChatHistory);
+router.get("/history", ChatController.getChatHistory);
 
 /**
  * @route GET /api/chat/messages/:appointmentId
  * @description Get all messages for a specific appointment
  * @access Private
  */
-router.get('/messages/:appointmentId', ChatController.getMessagesForPastAppointment);
+router.get(
+  "/messages/:appointmentId",
+  ChatController.getMessagesForPastAppointment
+);
 
 /**
  * @route GET /api/chat/room/:roomId/messages
  * @description Get all messages for a chat room (across appointments)
  * @access Private
  */
-router.get('/room/:roomId/messages', ChatController.getRoomMessages);
+router.get("/room/:roomId/messages", ChatController.getRoomMessages);
 
 // =================== FILE HANDLING ===================
 
@@ -90,77 +93,89 @@ router.get('/room/:roomId/messages', ChatController.getRoomMessages);
  * @description Upload a file for chat
  * @access Private
  */
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post("/upload", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded.',
+        message: "No file uploaded.",
       });
     }
 
-    const { appointmentId } = req.body;
-    
+    const { appointmentId, roomId } = req.body;
+
     if (!appointmentId) {
       // Clean up uploaded file if appointmentId is missing
       fs.unlinkSync(req.file.path);
       return res.status(400).json({
         success: false,
-        message: 'Appointment ID is required.',
+        message: "Appointment ID is required.",
       });
     }
 
     // Verify user has access to this appointment
-    const AppointmentModel = require('../models/appointment');
+    const AppointmentModel = require("../models/appointment");
     const appointment = await AppointmentModel.getById(appointmentId);
-    
-    if (!appointment || 
-        (appointment.patientId !== req.user.uid && 
-         appointment.doctorId !== req.user.uid)) {
+
+    if (
+      !appointment ||
+      (appointment.patientId !== req.user.uid &&
+        appointment.doctorId !== req.user.uid)
+    ) {
       // Clean up uploaded file
       fs.unlinkSync(req.file.path);
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized access to this appointment.',
+        message: "Unauthorized access to this appointment.",
       });
     }
 
     // Create file URL (assuming you have a way to serve static files)
     const fileUrl = `/uploads/chat/${req.file.filename}`;
-    
-    // Prepare file data
-    const fileData = {
-      fileName: req.file.filename,
-      originalName: req.file.originalname,
-      fileUrl,
-      fileType: req.file.mimetype,
-      fileSize: req.file.size,
-      uploadedBy: req.user.uid,
-      appointmentId,
-    };
+    console.log("fileUrl: " , fileUrl)
+
+    // // Prepare file data
+    // const fileData = {
+    //   senderId: req.user.id,
+    //   roomId: roomId,
+    //   fileName: req.file.filename,
+    //   originalName: req.file.originalName,
+    //   fileUrl,
+    //   fileType: req.file.mimetype,
+    //   fileSize: req.file.size,
+    //   uploadedBy: req.user.uid,
+    //   appointmentId,
+    //   textContent: "shared",
+    // };
+
+    // // CREATE THE CHAT MESSAGE HERE
+    // const { MessageModel } = require("../models/chatModels.js");
 
     res.status(200).json({
       success: true,
-      message: 'File uploaded successfully.',
+      message: "File uploaded successfully.",
       data: {
         fileUrl,
         fileName: req.file.originalname,
+        originalName: req.file.originalname,
         fileType: req.file.mimetype,
         fileSize: req.file.size,
+        senderId: req.user.id,
+        roomId: roomId,
+        messageType: "file"
       },
     });
-
   } catch (error) {
-    console.error('Error uploading file:', error);
-    
+    console.error("Error uploading file:", error);
+
     // Clean up uploaded file on error
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
+
     res.status(500).json({
       success: false,
-      message: 'Failed to upload file: ' + error.message,
+      message: "Failed to upload file: " + error.message,
     });
   }
 });
@@ -170,20 +185,22 @@ router.post('/upload', upload.single('file'), async (req, res) => {
  * @description Get all files for a specific appointment
  * @access Private
  */
-router.get('/files/:appointmentId', async (req, res) => {
+router.get("/files/:appointmentId", async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const userId = req.user.uid;
 
     // Verify user has access to this appointment
-    const AppointmentModel = require('../models/appointment');
+    const AppointmentModel = require("../models/appointment");
     const appointment = await AppointmentModel.getById(appointmentId);
-    
-    if (!appointment || 
-        (appointment.patientId !== userId && appointment.doctorId !== userId)) {
+
+    if (
+      !appointment ||
+      (appointment.patientId !== userId && appointment.doctorId !== userId)
+    ) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized access to this appointment.',
+        message: "Unauthorized access to this appointment.",
       });
     }
 
@@ -193,12 +210,11 @@ router.get('/files/:appointmentId', async (req, res) => {
       success: true,
       data: files,
     });
-
   } catch (error) {
-    console.error('Error getting files:', error);
+    console.error("Error getting files:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get files: ' + error.message,
+      message: "Failed to get files: " + error.message,
     });
   }
 });
@@ -208,48 +224,50 @@ router.get('/files/:appointmentId', async (req, res) => {
  * @description Delete a file (soft delete in database, actual file cleanup can be done separately)
  * @access Private
  */
-router.delete('/file/:fileId', async (req, res) => {
+router.delete("/file/:fileId", async (req, res) => {
   try {
     const { fileId } = req.params;
     const userId = req.user.uid;
 
     // Get file details
-    const { db } = require('../config/firebase');
-    const fileDoc = await db.collection('files').doc(fileId).get();
-    
+    const { db } = require("../config/firebase");
+    const fileDoc = await db.collection("files").doc(fileId).get();
+
     if (!fileDoc.exists) {
       return res.status(404).json({
         success: false,
-        message: 'File not found.',
+        message: "File not found.",
       });
     }
 
     const fileData = fileDoc.data();
-    
+
     // Check if user is authorized to delete (only uploader can delete)
     if (fileData.uploadedBy !== userId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized to delete this file.',
+        message: "Unauthorized to delete this file.",
       });
     }
 
     // Soft delete the file
-    await db.collection('files').doc(fileId).update({
-      isDeleted: true,
-      deletedAt: require('../../utils/helpers.js').timestamp(),
-    });
+    await db
+      .collection("files")
+      .doc(fileId)
+      .update({
+        isDeleted: true,
+        deletedAt: require("../../utils/helpers.js").timestamp(),
+      });
 
     res.status(200).json({
       success: true,
-      message: 'File deleted successfully.',
+      message: "File deleted successfully.",
     });
-
   } catch (error) {
-    console.error('Error deleting file:', error);
+    console.error("Error deleting file:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete file: ' + error.message,
+      message: "Failed to delete file: " + error.message,
     });
   }
 });
@@ -261,22 +279,25 @@ router.delete('/file/:fileId', async (req, res) => {
  * @description Get chat statistics for the user
  * @access Private
  */
-router.get('/stats', async (req, res) => {
+router.get("/stats", async (req, res) => {
   try {
     const userId = req.user.uid;
-    const { ChatRoomModel, MessageModel } = require('../models/chatModels');
+    const { ChatRoomModel, MessageModel } = require("../models/chatModels");
 
     // Get user's rooms
     const rooms = await ChatRoomModel.getRoomsForUser(userId);
-    
+
     // Calculate statistics
     let totalMessages = 0;
     let totalUnread = 0;
 
     for (const room of rooms) {
-      const unreadCount = await MessageModel.getUnreadCount(room.roomId, userId);
+      const unreadCount = await MessageModel.getUnreadCount(
+        room.roomId,
+        userId
+      );
       totalUnread += unreadCount;
-      
+
       // This is approximate - for exact count, you'd need to query all messages
       // For performance, you might want to store message counts in the room document
     }
@@ -284,19 +305,18 @@ router.get('/stats', async (req, res) => {
     const stats = {
       totalRooms: rooms.length,
       totalUnreadMessages: totalUnread,
-      activeRooms: rooms.filter(room => room.lastMessageAt).length,
+      activeRooms: rooms.filter((room) => room.lastMessageAt).length,
     };
 
     res.status(200).json({
       success: true,
       data: stats,
     });
-
   } catch (error) {
-    console.error('Error getting chat stats:', error);
+    console.error("Error getting chat stats:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get chat statistics: ' + error.message,
+      message: "Failed to get chat statistics: " + error.message,
     });
   }
 });
@@ -306,7 +326,7 @@ router.get('/stats', async (req, res) => {
  * @description Mark messages as read (alternative to socket event)
  * @access Private
  */
-router.post('/mark-read', async (req, res) => {
+router.post("/mark-read", async (req, res) => {
   try {
     const { messageIds } = req.body;
     const userId = req.user.uid;
@@ -314,12 +334,12 @@ router.post('/mark-read', async (req, res) => {
     if (!Array.isArray(messageIds) || messageIds.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid message IDs provided.',
+        message: "Invalid message IDs provided.",
       });
     }
 
-    const { MessageModel } = require('../models/chatModels');
-    
+    const { MessageModel } = require("../models/chatModels");
+
     // Mark each message as read
     for (const messageId of messageIds) {
       await MessageModel.markAsRead(messageId, userId);
@@ -327,14 +347,13 @@ router.post('/mark-read', async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Messages marked as read.',
+      message: "Messages marked as read.",
     });
-
   } catch (error) {
-    console.error('Error marking messages as read:', error);
+    console.error("Error marking messages as read:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to mark messages as read: ' + error.message,
+      message: "Failed to mark messages as read: " + error.message,
     });
   }
 });
@@ -344,27 +363,28 @@ router.post('/mark-read', async (req, res) => {
 // Handle multer errors
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
+    if (error.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
         success: false,
-        message: 'File too large. Maximum size is 10MB.',
+        message: "File too large. Maximum size is 10MB.",
       });
     }
-    
+
     return res.status(400).json({
       success: false,
-      message: 'File upload error: ' + error.message,
+      message: "File upload error: " + error.message,
     });
   }
-  
-  if (error.message.includes('File type')) {
+
+  if (error.message.includes("File type")) {
     return res.status(400).json({
       success: false,
       message: error.message,
     });
   }
-  
+
   next(error);
 });
 
 module.exports = router;
+

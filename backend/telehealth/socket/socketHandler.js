@@ -32,12 +32,12 @@ function initializeSocket(io) {
     );
 
     io.emit("updateOnlineUsers", onlineUsersList);
-    
-    socket.broadcast.emit('userOnlineStatusChanged', {
-    userId: userId,
-    isOnline: true,
-    userName: userName
-  });
+
+    socket.broadcast.emit("userOnlineStatusChanged", {
+      userId: userId,
+      isOnline: true,
+      userName: userName,
+    });
 
     // =================== CHAT EVENT HANDLERS ===================
 
@@ -106,7 +106,6 @@ function initializeSocket(io) {
         if (!appointmentId || !fileData) {
           return socket.emit("error", { message: "Invalid file data." });
         }
-
         await ChatController.handleFileShare(socket, io, {
           appointmentId,
           fileData,
