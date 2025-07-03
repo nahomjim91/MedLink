@@ -32,3 +32,17 @@ export const GET_DOCTOR_AVAILABLE_SLOTS = gql`
   }
 `;
 
+export const GET_DOCTOR_SLOTS = gql`
+  query GetDoctorSlots($doctorId: ID!, $date: String) {
+    doctorSlots(doctorId: $doctorId, date: $date) {
+      slotId
+      doctorId
+      startTime
+      endTime
+      isBooked
+      appointmentId
+      patientId
+      createdAt
+    }
+  }
+`;

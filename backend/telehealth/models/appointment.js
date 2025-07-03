@@ -278,7 +278,7 @@ const AppointmentModel = {
 
       for (const doc of requestedSnap.docs) {
         const data = doc.data();
-        const { scheduledStartTime } = data;
+        const { scheduledStartTime , appointmentId } = data;
 
         const start = new Date(
           scheduledStartTime.toDate
@@ -290,11 +290,7 @@ const AppointmentModel = {
         if (now > new Date(start.getTime() + 5 * 60000)) {
           const status = "CANCELLED_ADMIN";
 
-          await doc.ref.update({
-            status,
-            cancelledAt: timestamp(),
-            updatedAt: timestamp(),
-          });
+          this.cancelAppointment(appointmentId, "admin" , "No Responed got")
 
           console.log(
             `❌ Auto-cancelled REQUESTED (5 min past start): ${doc.id}`

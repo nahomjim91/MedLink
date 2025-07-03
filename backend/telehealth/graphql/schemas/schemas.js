@@ -176,6 +176,7 @@ const typeDefs = gql`
 
     # Availability queries
     doctorAvailableSlots(doctorId: ID!, date: String): [DoctorAvailabilitySlot]
+    doctorSlots(doctorId: ID!, date: String): [DoctorAvailabilitySlot]
     myAvailabilitySlots: [DoctorAvailabilitySlot]
   }
 

@@ -231,6 +231,15 @@ const resolvers = {
         doctorId,
         date
       );
+
+    },
+
+     doctorSlots: async (_, { doctorId, date }) => {
+      return await DoctorAvailabilitySlotModel.getDoctorSlots(
+        doctorId,
+        date
+      );
+      
     },
 
     // Get current doctor's availability slots

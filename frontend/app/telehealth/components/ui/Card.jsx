@@ -107,7 +107,7 @@ export function UpcomingAppointmentCard({
       onViewProfile(upcomingAppointment.appointmentId);
     }
   };
-  console.log("Upcoming Appointment:", upcomingAppointment);
+  // console.log("Upcoming Appointment:", upcomingAppointment);
 
   return (
     <>

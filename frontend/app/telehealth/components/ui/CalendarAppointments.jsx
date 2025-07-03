@@ -8,11 +8,11 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "./Button";
-import CancelModal from "./modal/AppointmentModal ";
+import {CancelModal} from "./modal/AppointmentModal ";
 import Link from "next/link";
 // Cancel Modal Component
 
-const AppointmentCard = ({
+export const AppointmentCard = ({
   appointment,
   onClose,
   onCancel,
@@ -25,6 +25,7 @@ const AppointmentCard = ({
 
   const handleCancelConfirm = async (appointmentId, reason) => {
     try {
+      console.log("Trying to cancel ")
       await onCancel(appointmentId, reason);
       setShowCancelModal(false);
       onClose();
@@ -36,7 +37,7 @@ const AppointmentCard = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50 md:hidden">
+      <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-40 md:hidden">
         <div className="bg-white rounded-2xl p-6 m-4 max-w-sm w-full">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-secondary">
@@ -132,7 +133,9 @@ const AppointmentCard = ({
         </div>
       </div>
 
-      {showCancelModal && (
+      {
+      
+      showCancelModal && (
         <CancelModal
           appointment={appointment}
           onClose={() => setShowCancelModal(false)}
@@ -144,7 +147,7 @@ const AppointmentCard = ({
   );
 };
 
-export default function CalendarAppointments({
+export  function CalendarAppointments({
   appointments: propAppointments = [],
   onCancelAppointment,
   loading = false,

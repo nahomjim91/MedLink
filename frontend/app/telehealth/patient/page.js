@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Star } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { UpcomingAppointmentCard } from "../components/ui/Card";
-import CalendarAppointments from "../components/ui/CalendarAppointments";
+import {CalendarAppointments} from "../components/ui/CalendarAppointments";
 import TelehealthAddFunds from "../components/ui/AddFound";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -174,7 +174,7 @@ export default function TelehealthPatientPage() {
       return [];
     }
 
-    console.log("Processing doctors data:", doctors);
+    // console.log("Processing doctors data:", doctors);
 
     return doctors.map((doctor, index) => {
       try {
@@ -536,7 +536,8 @@ export default function TelehealthPatientPage() {
         {/* Calendar with methods passed */}
         <CalendarAppointments
           appointments={calendarAppointments}
-          onCancelAppointment={handleCancelAppointment}
+          onCancelAppointment={()=>{console.log("dsjldhbjlsdbh")}}
+          // onCancelAppointment={handleCancelAppointment}
           loading={appointmentsLoading}
            onViewProfile={() => {
               setSelectedAppointment(upcomingAppointment.id);

@@ -17,6 +17,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Wallet,
+  ExternalLink,
 } from "lucide-react";
 
 import { TextAreaInput } from "../Input";
@@ -28,8 +30,81 @@ import {
 } from "../../../utils/appointmentUtils";
 import { useAppointment } from "../../../hooks/useAppointment ";
 import Link from "next/link";
+import { useAuth } from "../../../hooks/useAuth";
+import { useQuery } from "@apollo/client";
+import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
+import { GET_DOCTOR_AVAILABLE_SLOTS, GET_DOCTOR_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
 
-export default function AppointmentModal({
+import TelehealthAddFunds from "../AddFound";
+// Cancel Modal Component
+export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
+  const [reason, setReason] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    console.log("Cancel reason submitted:", reason);
+    console.log("Appointment ID:", appointment);
+    if (reason.trim()) {
+      onConfirm(appointment.id, reason.trim());
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+        <div className="flex items-center gap-3 mb-4">
+          <AlertTriangle className="w-6 h-6 text-red-500" />
+          <h3 className="text-lg font-semibold text-gray-900">
+            Cancel Appointment
+          </h3>
+        </div>
+
+        <p className="text-gray-600 mb-4">
+          Are you sure you want to cancel your appointment with{" "}
+          {appointment.doctorName}?
+        </p>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Reason for cancellation (required)
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              rows="3"
+              placeholder="Please provide a reason..."
+              required
+              disabled={loading}
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="text-sm md:text-base"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Keep Appointment
+            </Button>
+            <Button
+              type="submit"
+              className="bg-red-500 hover:bg-red-600 text-sm md:text-base"
+              disabled={loading || !reason.trim()}
+            >
+              {loading ? "Cancelling..." : "Cancel Appointment"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export  function AppointmentModal({
   doctor,
   slot,
   date,
@@ -438,73 +513,7 @@ export default function AppointmentModal({
   );
 }
 
-// Cancel Modal Component
-export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
-  const [reason, setReason] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Cancel reason submitted:", reason);
-    console.log("Appointment ID:", appointment);
-    if (reason.trim()) {
-      onConfirm(appointment.id, reason.trim());
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-        <div className="flex items-center gap-3 mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-500" />
-          <h3 className="text-lg font-semibold text-gray-900">
-            Cancel Appointment
-          </h3>
-        </div>
-
-        <p className="text-gray-600 mb-4">
-          Are you sure you want to cancel your appointment with{" "}
-          {appointment.doctorName}?
-        </p>
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Reason for cancellation (required)
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              rows="3"
-              placeholder="Please provide a reason..."
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Keep Appointment
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-red-500 hover:bg-red-600"
-              disabled={loading || !reason.trim()}
-            >
-              {loading ? "Cancelling..." : "Cancel Appointment"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
+;
 
 export const AppointmentDetailModal = ({
   isOpen,
@@ -543,17 +552,17 @@ export const AppointmentDetailModal = ({
   // console.log("appointment", appointment);
   if (!isOpen || !appointmentId) return null;
 
-// Show loading state
-if (loading || !appointment) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-6">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="text-center mt-2">Loading appointment details...</p>
+  // Show loading state
+  if (loading || !appointment) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl p-6">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-center mt-2">Loading appointment details...</p>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   // Payment status styling
   const getPaymentStatusClass = (status) => {
@@ -827,7 +836,10 @@ if (loading || !appointment) {
                     </button>
                   ) : null}
 
-                  <Link href={`/telehealth/${userRole.toLocaleLowerCase()}/chats?appointmentId=${appointmentId}`} className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all">
+                  <Link
+                    href={`/telehealth/${userRole.toLocaleLowerCase()}/chats?appointmentId=${appointmentId}`}
+                    className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all"
+                  >
                     Contact {otherPersonTitle}
                   </Link>
                 </div>
@@ -853,5 +865,362 @@ if (loading || !appointment) {
         }
       `}</style>
     </div>
+  );
+};
+
+export const ExtensionRequestModal = ({
+  isOpen,
+  onClose,
+  appointmentId,
+  onSendRequest,
+}) => {
+  const { user } = useAuth();
+  const { fetchAppointment } = useAppointment();
+  const [appointment, setAppointment] = useState(null);
+  const [doctorId, setDoctorId] = useState(null);
+  const [formattedSelectedDate, setFormattedSelectedDate] = useState("");
+  const [showAddFundsModal, setShowAddFundsModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [hasConflictingAppointments, setHasConflictingAppointments] =
+    useState(false);
+
+  useEffect(() => {
+    const today = new Date();
+    const todayDate = today.getDate();
+    // Format date for GraphQL query (YYYY-MM-DD format)
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(todayDate).padStart(2, "0");
+    setFormattedSelectedDate(`${year}-${month}-${day}`);
+  }, []);
+
+  // Fetch doctor data
+  const {
+    data: doctorData,
+    loading: doctorLoading,
+    error: doctorError,
+  } = useQuery(GET_DOCTOR_BY_ID, {
+    variables: { id: doctorId },
+    skip: !doctorId,
+  });
+  const {
+    data: slotsData,
+    loading: slotsLoading,
+    error: slotsError,
+    refetch: refetchSlots,
+  } = useQuery(GET_DOCTOR_SLOTS, {
+    variables: {
+      doctorId: doctorId,
+      date: formattedSelectedDate,
+    },
+    skip: !doctorId || !formattedSelectedDate,
+  });
+  const doctor = doctorData?.doctorById;
+  const doctorUpcomingSlots = slotsData?.doctorSlots || [];
+  useEffect(() => {
+    if (appointment && doctorUpcomingSlots.length > 0) {
+      const appointmentEndTime = new Date(
+        appointment.scheduledEndTime
+      );
+
+      const hasConflict = checkForConflicts(appointmentEndTime, 30);
+      setHasConflictingAppointments(hasConflict);
+    }
+  }, [appointment, doctorUpcomingSlots]);
+  // Load appointment data
+  useEffect(() => {
+    const loadAppointmentData = async () => {
+      if (!appointmentId) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const appointmentData = await fetchAppointment(appointmentId);
+        setAppointment(appointmentData);
+
+        // Extract doctor ID from appointment
+        const extractedDoctorId =
+          appointmentData?.doctorId || appointmentData?.doctor?.id;
+        setDoctorId(extractedDoctorId);
+
+        // Check for conflicting appointments (appointments scheduled after this one ends)
+        // This is a simplified check - you might need to implement proper conflict checking
+        // based on your appointment scheduling system
+        const appointmentEndTime = new Date(
+          appointmentData.scheduledEndTime._seconds * 1000
+        );
+        const checkTime = new Date(
+          appointmentEndTime.getTime() + 30 * 60 * 1000
+        ); // 30 minutes extension
+
+        // You'll need to implement this check based on your backend
+        // setHasConflictingAppointments(checkForConflicts(doctorId, appointmentEndTime, checkTime));
+      } catch (err) {
+        console.error("Failed to load appointment:", err);
+        setError("Failed to load appointment details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isOpen && appointmentId) {
+      loadAppointmentData();
+    }
+  }, [isOpen, appointmentId, fetchAppointment]);
+
+  // Function to check for conflicting appointments
+  const checkForConflicts = (appointmentEndTime, extensionDuration = 30) => {
+    if (!doctorUpcomingSlots || doctorUpcomingSlots.length === 0) return false;
+
+    // Calculate the proposed new end time (current end time + extension)
+    const proposedEndTime = new Date(
+      appointmentEndTime.getTime() + extensionDuration * 60 * 1000
+    );
+
+    // console.log("appointmentEndTime: ", appointmentEndTime)
+    // console.log("proposedEndTime: ", proposedEndTime)
+    // Check if any slots are booked during the extension period
+    const hasConflict = doctorUpcomingSlots.some((slot) => {
+      if (!slot.isBooked) return false; // Skip available slots
+
+      const slotStartTime = new Date(slot.startTime);
+      const slotEndTime = new Date(slot.endTime);
+      // console.log("slotStartTime: ", slotStartTime);
+      // console.log("slotEndTime: ", slotEndTime)
+
+      // Check if the booked slot overlaps with the extension period
+      // Overlap occurs if: slotStart < proposedEnd AND slotEnd > appointmentEnd
+      return (
+        slotStartTime < proposedEndTime && slotEndTime > appointmentEndTime
+      );
+    });
+
+    return hasConflict;
+  };
+
+  // Check wallet balance
+  const hasInsufficientFunds =
+    user?.patientProfile?.telehealthWalletBalance <
+    (doctor?.pricePerSession || 0);
+
+  const handleSendRequest = () => {
+    if (onSendRequest) {
+      onSendRequest();
+    }
+    onClose();
+  };
+
+  const handleAddFunds = () => {
+    setShowAddFundsModal(true);
+  };
+
+  const handleGoToDoctorProfile = () => {
+    // Navigate to doctor profile
+    // You'll need to implement this based on your routing system
+    window.location.href = `/doctors/${doctorId}`;
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-40 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 rounded-full flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Request Extension
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Extend your appointment by 30 minutes
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <p className="text-red-600 font-medium">{error}</p>
+              </div>
+            ) : (
+              <>
+                {/* Appointment Info */}
+                {appointment && (
+                  <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-200">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <Calendar className="w-5 h-5 text-teal-600" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900">
+                          Current Appointment
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          #{appointment.appointmentId?.substring(0, 8)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      <p>
+                        <span className="font-medium">Doctor:</span> Dr.{" "}
+                        {appointment?.doctorName}
+                      </p>
+                      <p>
+                        <span className="font-medium">Current End Time:</span>{" "}
+                        {appointment.scheduledEndTime
+                          ? new Date(
+                              appointment.scheduledEndTime
+                            ).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : "Unknown"}
+                        {/* {console.log("appointment: ", appointment)} */}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Doctor has conflicting appointments */}
+                {hasConflictingAppointments && (
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200">
+                    <div className="flex items-start space-x-3">
+                      <AlertTriangle className="w-5 h-5 text-orange-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-orange-900 mb-2">
+                          Doctor Has Upcoming Appointments
+                        </h4>
+                        <p className="text-sm text-orange-800 mb-3">
+                          The doctor has other appointments scheduled after
+                          yours. You can view available slots and reschedule if
+                          needed.
+                        </p>
+                        <button
+                          onClick={handleGoToDoctorProfile}
+                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+                        >
+                          <User className="w-4 h-4" />
+                          <span>View Doctor Profile</span>
+                          <ExternalLink className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Insufficient funds */}
+                {hasInsufficientFunds && !hasConflictingAppointments && (
+                  <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-4 border border-red-200">
+                    <div className="flex items-start space-x-3">
+                      <Wallet className="w-5 h-5 text-red-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-red-900 mb-2">
+                          Insufficient Wallet Balance
+                        </h4>
+                        <div className="text-sm text-red-800 mb-3">
+                          <p className="mb-1">
+                            <span className="font-medium">Session Cost:</span> $
+                            {doctor?.pricePerSession || 0}
+                          </p>
+                          <p className="mb-3">
+                            <span className="font-medium">
+                              Current Balance:
+                            </span>{" "}
+                            $
+                            {user?.patientProfile?.telehealthWalletBalance || 0}
+                          </p>
+                          <p>
+                            You need to add funds to your wallet before
+                            requesting an extension.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleAddFunds}
+                          className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          <span>Add Funds</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Can send request */}
+                {!hasConflictingAppointments &&
+                  !hasInsufficientFunds &&
+                  doctor && (
+                    <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-4 border border-green-200">
+                      <div className="flex items-start space-x-3">
+                        <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-green-900 mb-2">
+                            Ready to Request Extension
+                          </h4>
+                          <div className="text-sm text-green-800 mb-3">
+                            <p className="mb-1">
+                              <span className="font-medium">
+                                Extension Duration:
+                              </span>{" "}
+                              30 minutes
+                            </p>
+                            <p className="mb-1">
+                              <span className="font-medium">Cost:</span> $
+                              {doctor.pricePerSession}
+                            </p>
+                            <p className="mb-3">
+                              <span className="font-medium">Your Balance:</span>{" "}
+                              $
+                              {user?.patientProfile?.telehealthWalletBalance ||
+                                0}
+                            </p>
+                            <p>
+                              Your request will be sent to the doctor for
+                              approval.
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleSendRequest}
+                            className="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:from-green-600 hover:to-teal-600 transition-all duration-200 shadow-md hover:shadow-lg text-sm font-medium"
+                          >
+                            <Clock className="w-4 h-4" />
+                            <span>Send Request</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Add Funds Modal */}
+      {showAddFundsModal && (
+        <TelehealthAddFunds onClose={() => setShowAddFundsModal(false)} />
+      )}
+    </>
   );
 };

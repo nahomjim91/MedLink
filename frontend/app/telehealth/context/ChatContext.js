@@ -11,6 +11,7 @@ import React, {
 import { io } from "socket.io-client";
 import { auth } from "../api/firebase/config";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { useAuth } from "../hooks/useAuth";
 
 const ChatContext = createContext();
 
@@ -35,11 +36,22 @@ export const ChatProvider = ({ children }) => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [isExtentionRequested, setIsExtentionRequested] = useState(false)
+  const [extensionStatus, setExtensionStatus] = useState({
+    isRequested: false,
+    isAccepted: false,
+    isRejected: false,
+    requestedBy: null,
+    message: null,
+    doctorReason: null,
+    patientName: null,
+    requestTime: null,
+  });
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef({});
   const telehealthBackendUrl = "http://localhost:4002";
   const [token, setToken] = useState(null);
+  const {user:userAuth} = useAuth()
 
   // Get the current user token
   useEffect(() => {
@@ -231,37 +243,37 @@ export const ChatProvider = ({ children }) => {
       );
     });
     // Listen for individual user online status updates
-socket.on('onlineStatusUpdate', (statusMap) => {
-  console.log('📊 Online status update:', statusMap);
+    socket.on("onlineStatusUpdate", (statusMap) => {
+      // console.log('📊 Online status update:', statusMap);
 
-  // Update online users set
-  setOnlineUsers(prev => {
-    const updated = new Set(prev);
-    Object.entries(statusMap).forEach(([userId, isOnline]) => {
-      if (isOnline) {
-        updated.add(userId);
-      } else {
-        updated.delete(userId);
-      }
+      // Update online users set
+      setOnlineUsers((prev) => {
+        const updated = new Set(prev);
+        Object.entries(statusMap).forEach(([userId, isOnline]) => {
+          if (isOnline) {
+            updated.add(userId);
+          } else {
+            updated.delete(userId);
+          }
+        });
+        return updated;
+      });
+
+      // Update chat rooms based on status map
+      setChatRooms((prev) =>
+        prev.map((chat) => {
+          if (!chat.doctorId || !chat.patientId) return chat;
+
+          const isDoctorOnline = statusMap[chat.doctorId] === true;
+          const isPatientOnline = statusMap[chat.patientId] === true;
+
+          return {
+            ...chat,
+            isOnline: isDoctorOnline || isPatientOnline,
+          };
+        })
+      );
     });
-    return updated;
-  });
-
-  // Update chat rooms based on status map
-  setChatRooms(prev =>
-    prev.map(chat => {
-      if (!chat.doctorId || !chat.patientId) return chat;
-      
-      const isDoctorOnline = statusMap[chat.doctorId] === true;
-      const isPatientOnline = statusMap[chat.patientId] === true;
-      
-      return {
-        ...chat,
-        isOnline: isDoctorOnline || isPatientOnline,
-      };
-    })
-  );
-});
     socket.on("userOnlineStatusChanged", (data) => {
       console.log("👤 User online status changed:", data);
 
@@ -351,14 +363,51 @@ socket.on('onlineStatusUpdate', (statusMap) => {
     });
 
     // Extension events
-    socket.on("extensionRequested", (data) => {
-      console.log("⏰ Extension requested:", data);
-      // Handle extension request UI
+    socket.on("extensionRejected", (data) => {
+      console.log("❌ Extension rejected:", data);
+      setExtensionStatus({
+        isRequested: false,
+        isAccepted: false,
+        isRejected: true,
+        requestedBy: null,
+        message: data.message || "Extension request was declined",
+        doctorReason: data.doctorReason || null,
+        patientName: null,
+        requestTime: null,
+      });
+      setIsExtentionRequested(false);
     });
 
+    // Update your existing extensionRequested handler
+    socket.on("extensionRequested", (data) => {
+      console.log("⏰ Extension requested:", data);
+      setExtensionStatus({
+        isRequested: true,
+        isAccepted: false,
+        isRejected: false,
+        requestedBy: data.requestedBy || "patient",
+        message: data.message || "Extension has been requested",
+        doctorReason: null,
+        patientName: data.patientName || null,
+        requestTime: data.requestTime || Date.now(),
+      });
+      setIsExtentionRequested(true);
+    });
+
+    // Update your existing extensionConfirmed handler
     socket.on("extensionConfirmed", (data) => {
       console.log("✅ Extension confirmed:", data);
-      // Handle extension confirmation UI
+      setExtensionStatus({
+        isRequested: false,
+        isAccepted: true,
+        isRejected: false,
+        requestedBy: null,
+        message: data.message || "Extension has been approved",
+        doctorReason: data.doctorNote || null,
+        patientName: null,
+        requestTime: null,
+      });
+      setIsExtentionRequested(false);
     });
 
     socket.on("systemMessage", (data) => {
@@ -485,6 +534,20 @@ socket.on('onlineStatusUpdate', (statusMap) => {
     [socket]
   );
 
+  const resetExtensionStatus = useCallback(() => {
+    setExtensionStatus({
+      isRequested: false,
+      isAccepted: false,
+      isRejected: false,
+      requestedBy: null,
+      message: null,
+      doctorReason: null,
+      patientName: null,
+      requestTime: null,
+    });
+    setIsExtentionRequested(false);
+  }, []);
+
   // Request appointment extension
   const requestExtension = useCallback(
     (appointmentId) => {
@@ -498,11 +561,27 @@ socket.on('onlineStatusUpdate', (statusMap) => {
 
   // Accept appointment extension
   const acceptExtension = useCallback(
-    (appointmentId) => {
+    (appointmentId, doctorNote = "") => {
       if (!socket || !appointmentId) return;
 
-      console.log("✅ Accepting extension:", appointmentId);
-      socket.emit("acceptExtension", { appointmentId });
+      console.log("✅ Accepting extension:", appointmentId, doctorNote);
+      socket.emit("acceptExtension", {
+        appointmentId,
+        doctorNote: doctorNote.trim(),
+      });
+    },
+    [socket]
+  );
+
+  const rejectExtension = useCallback(
+    (appointmentId, doctorReason = "") => {
+      if (!socket || !appointmentId) return;
+
+      console.log("❌ Rejecting extension:", appointmentId, doctorReason);
+      socket.emit("rejectExtension", {
+        appointmentId,
+        doctorReason: doctorReason.trim(),
+      });
     },
     [socket]
   );
@@ -694,6 +773,9 @@ socket.on('onlineStatusUpdate', (statusMap) => {
     deleteMessage,
     requestExtension,
     acceptExtension,
+    extensionStatus,
+    resetExtensionStatus,
+    rejectExtension,
 
     // API methods
     api,

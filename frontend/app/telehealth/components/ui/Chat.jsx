@@ -16,7 +16,13 @@ import {
 } from "lucide-react";
 import { useChat } from "../../context/ChatContext";
 import { useAuth } from "../../hooks/useAuth";
-import { AppointmentDetailModal } from "./modal/AppointmentModal ";
+import {
+  AppointmentDetailModal,
+  ExtensionRequestModal,
+} from "./modal/AppointmentModal ";
+import DoctorExtensionModal from "./modal/DoctorExtensionModal";
+import PatientExtensionResultModal from "./modal/PatientExtensionResultModal";
+import { control } from "leaflet";
 
 const AppointmentStatus = {
   REQUESTED: "REQUESTED",
@@ -59,10 +65,11 @@ const MedicalChatInterface = ({ appointmentId }) => {
     sendTypingIndicator,
     shareFile,
     markMessagesAsRead,
-    editMessage,
-    deleteMessage,
+    extensionStatus,
+    resetExtensionStatus,
     requestExtension,
     acceptExtension,
+    rejectExtension,
 
     // API methods
     api,
@@ -72,6 +79,10 @@ const MedicalChatInterface = ({ appointmentId }) => {
 
   const [chatAppointments, setChatAppointments] = useState([]);
   const [showAppointmentDropdown, setShowAppointmentDropdown] = useState(false);
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [showPatientResultModal, setShowPatientResultModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [isDetailModalOpen, setDetailModalOpen] = useState(false);
   const [activeChat, setActiveChat] = useState(null);
@@ -86,6 +97,9 @@ const MedicalChatInterface = ({ appointmentId }) => {
   const typingTimeoutRef = useRef(null);
   const [userWentBack, setUserWentBack] = useState(false);
 
+  const isDoctor = user.role === "doctor"; // or however you determine doctor role
+  const isPatient = !isDoctor;
+
   // Auto-join appointment room if appointmentId is provided
   useEffect(() => {
     if (
@@ -94,6 +108,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
       !activeAppointment &&
       !userWentBack
     ) {
+      joinAppointmentRoom(appointmentId);
       // Find the chat room that contains this appointmentId
       const matchingChat = chatRooms.find(
         (chat) =>
@@ -107,9 +122,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
         );
 
         if (specificAppointment) {
-          setActiveChat(matchingChat);
-          setActiveAppointment(specificAppointment); // Use the actual appointment object
-          setShowChatDetails(true);
+          handleChatSelect(matchingChat);
         } else {
           console.log("Appointment object not found within the matching chat");
         }
@@ -239,7 +252,73 @@ const MedicalChatInterface = ({ appointmentId }) => {
 
     return () => clearInterval(interval);
   }, [isConnected, chatRooms, checkOnlineStatus]);
+  ///////////////////////////////////////////
+  // requestion
+  // console.log("extensionStatus: ", extensionStatus)
+  // Handle extension request for doctors
+  useEffect(() => {
+    if (
+      isDoctor &&
+      extensionStatus.isRequested &&
+      !extensionStatus.isAccepted &&
+      !extensionStatus.isRejected
+    ) {
+      setShowDoctorModal(true);
+    }
+  }, [
+    isDoctor,
+    extensionStatus.isRequested,
+    extensionStatus.isAccepted,
+    extensionStatus.isRejected,
+  ]);
 
+  // Handle extension result for patients
+  useEffect(() => {
+    if (
+      isPatient &&
+      (extensionStatus.isAccepted || extensionStatus.isRejected)
+    ) {
+      setShowPatientResultModal(true);
+    }
+  }, [isPatient, extensionStatus.isAccepted, extensionStatus.isRejected]);
+
+  // Handle doctor accepting extension
+  const handleDoctorAccept = async (appointmentId, doctorNote = "") => {
+    setIsProcessing(true);
+    try {
+      await acceptExtension(appointmentId, doctorNote);
+      setShowDoctorModal(false);
+    } catch (error) {
+      console.error("Error accepting extension:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle doctor rejecting extension
+  const handleDoctorReject = async (appointmentId, doctorReason = "") => {
+    setIsProcessing(true);
+    try {
+      await rejectExtension(appointmentId, doctorReason);
+      setShowDoctorModal(false);
+    } catch (error) {
+      console.error("Error rejecting extension:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle closing doctor modal
+  const handleCloseDoctorModal = () => {
+    setShowDoctorModal(false);
+  };
+
+  // Handle closing patient result modal
+  const handleClosePatientResultModal = () => {
+    setShowPatientResultModal(false);
+    resetExtensionStatus();
+  };
+  //////////////////////////
   // Filter chats based on search
   const filteredChats = chatRooms.filter(
     (chat) =>
@@ -457,6 +536,12 @@ const MedicalChatInterface = ({ appointmentId }) => {
     });
   };
 
+  const handleExtensionRequest = () => {
+    if (activeAppointment) {
+      requestExtension(activeAppointment.appointmentId);
+    }
+  };
+
   // Get current appointment messages
   const currentMessages = activeAppointment
     ? messages[activeAppointment.appointmentId] || []
@@ -500,6 +585,15 @@ const MedicalChatInterface = ({ appointmentId }) => {
     })}`;
   };
 
+    const extensionRequestData = {
+    patientName: extensionStatus.patientName || user.firstName,
+    message: extensionStatus.message,
+    requestTime: extensionStatus.requestTime,
+    appointmentTime:
+      formatAppointmentDate(activeAppointment) || "Current session",
+    originalDuration: "30 minutes", // You can get this from your appointment data
+  };
+
   return (
     <div className="flex h-[89vh] bg-amber-300 overflow-hidden bg-gradient-to-br rounded-none sm:rounded-2xl">
       {/* Connection Status */}
@@ -531,6 +625,35 @@ const MedicalChatInterface = ({ appointmentId }) => {
         </div>
       )}
 
+      {/* Extension Status Indicators */}
+      {extensionStatus.isRequested && isPatient && (
+        <div className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="font-medium">Extension request sent</span>
+          </div>
+          <p className="text-sm mt-1">Waiting for doctor's response...</p>
+        </div>
+      )}
+
+      {extensionStatus.isRequested && isDoctor && (
+        <div className="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-3 rounded-lg mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="font-medium">Extension request received</span>
+              <p className="text-sm mt-1">
+                Patient is requesting additional time
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDoctorModal(true)}
+              className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
+            >
+              Review
+            </button>
+          </div>
+        </div>
+      )}
       {/* Contacts Sidebar */}
       <div
         className={`${
@@ -641,7 +764,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                                 hour12: true,
                               })
                             : ""}
-                          {console.log("chat.updatedAt", chat.updatedAt)}
+                          {/* {console.log("chat.updatedAt", chat.updatedAt)} */}
                         </span>
                       </div>
                     </div>
@@ -738,26 +861,25 @@ const MedicalChatInterface = ({ appointmentId }) => {
                     </button>
                   )}
 
-                  {activeAppointment?.status === "IN_PROGRESS" && (
-                    <button
-                      onClick={() =>
-                        requestExtension(activeAppointment.appointmentId)
-                      }
-                      className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                      <Clock className="w-4 h-4" />
-                      <span className="hidden sm:inline font-medium text-xs sm:text-sm lg:text-base">
-                        Extend
-                      </span>
-                    </button>
-                  )}
+                  {activeAppointment?.status === "IN_PROGRESS" &&
+                    user.role === "patient" && (
+                      <button
+                        onClick={() => setShowExtensionModal(true)}
+                        className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                      >
+                        <Clock className="w-4 h-4" />
+                        <span className="hidden sm:inline font-medium text-xs sm:text-sm lg:text-base">
+                          Extend
+                        </span>
+                      </button>
+                    )}
                 </div>
               </div>
             </div>
 
             {/* Mobile Appointment Timeline - Horizontal */}
             {activeAppointment && chatAppointments.length > 1 && (
-              <div className="lg:hidden bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-3 sm:p-4 flex-shrink-0">
+              <div className="lg:hidden bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-3 sm:p-4 flex-shrink-0 w-[100vw] overflow-clip bg-amber-300">
                 <h3 className="text-sm font-bold text-gray-700 mb-2 sm:mb-3 flex items-center">
                   <Clock className="w-4 h-4 mr-2 text-teal-500" />
                   Appointment History ({chatAppointments.length})
@@ -767,51 +889,54 @@ const MedicalChatInterface = ({ appointmentId }) => {
                     className="flex space-x-2 sm:space-x-3 pb-1 sm:pb-2"
                     style={{ width: "max-content" }}
                   >
-                    {chatAppointments.map((appointment, index) => (
-                      <div
-                        key={appointment.appointmentId}
-                        className="flex items-center"
-                      >
+                    {chatAppointments
+                      .slice()
+                      .reverse()
+                      .map((appointment, index) => (
                         <div
-                          className={`flex-shrink-0 cursor-pointer transition-all duration-300 ${
-                            activeAppointment.appointmentId ===
-                            appointment.appointmentId
-                              ? "ring-2 ring-teal-500 shadow-lg scale-105"
-                              : "hover:shadow-md hover:scale-102"
-                          }`}
-                          onClick={() => handleAppointmentSelect(appointment)}
+                          key={appointment.appointmentId}
+                          className="flex items-center"
                         >
-                          <div className="bg-gradient-to-br from-white to-gray-50 rounded-lg sm:rounded-xl p-2 sm:p-3 min-w-[140px] sm:min-w-[160px] border border-gray-200 shadow-sm">
-                            <div className="flex justify-between items-start mb-1 sm:mb-2">
-                              <span className="text-xs textsecondary/20 font-mono bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
-                                #
-                                {appointment.appointmentId?.substring(0, 6) ||
-                                  "Unknown"}
-                              </span>
-                              <span
-                                className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-semibold ${getStatusColor(
-                                  appointment.status
-                                )}`}
-                              >
-                                {appointment.status.replace("_", " ")}
-                              </span>
-                            </div>
-                            <div className="text-xs sm:text-sm font-bold textsecondary/90 mb-1">
-                              {formatAppointmentDate(appointment)}
-                            </div>
-                            <div className="text-xs text-gray-600 font-medium">
-                              {formatAppointmentTime(appointment)}
+                          <div
+                            className={`flex-shrink-0 cursor-pointer transition-all duration-300 rounded-xl ${
+                              activeAppointment.appointmentId ===
+                              appointment.appointmentId
+                                ? "ring-2 ring-teal-500 shadow-lg scale-105"
+                                : "hover:shadow-md hover:scale-102"
+                            }`}
+                            onClick={() => handleAppointmentSelect(appointment)}
+                          >
+                            <div className="bg-gradient-to-br from-white to-gray-50 rounded-lg sm:rounded-xl p-2 sm:p-3 min-w-[140px] sm:min-w-[160px] border border-gray-200 shadow-sm">
+                              <div className="flex justify-between items-start mb-1 sm:mb-2">
+                                <span className="text-xs textsecondary/20 font-mono bg-gray-100 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">
+                                  #
+                                  {appointment.appointmentId?.substring(0, 6) ||
+                                    "Unknown"}
+                                </span>
+                                <span
+                                  className={`text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full font-semibold ${getStatusColor(
+                                    appointment.status
+                                  )}`}
+                                >
+                                  {appointment.status.replace("_", " ")}
+                                </span>
+                              </div>
+                              <div className="text-xs sm:text-sm font-bold textsecondary/90 mb-1">
+                                {formatAppointmentDate(appointment)}
+                              </div>
+                              <div className="text-xs text-gray-600 font-medium">
+                                {formatAppointmentTime(appointment)}
+                              </div>
                             </div>
                           </div>
+                          {/* Timeline connector */}
+                          {index < chatAppointments.length - 1 && (
+                            <div className="flex-shrink-0 mx-1 sm:mx-2">
+                              <div className="w-4 sm:w-8 h-px bg-gradient-to-r from-gray-300 to-gray-400"></div>
+                            </div>
+                          )}
                         </div>
-                        {/* Timeline connector */}
-                        {index < chatAppointments.length - 1 && (
-                          <div className="flex-shrink-0 mx-1 sm:mx-2">
-                            <div className="w-4 sm:w-8 h-px bg-gradient-to-r from-gray-300 to-gray-400"></div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               </div>
@@ -1139,7 +1264,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                               </div>
                               <div className="text-xs text-gray-600 font-medium flex items-center">
                                 <Clock className="w-3 h-3 mr-1" />
-                                {formatAppointmentTime(appointment)}jnkj
+                                {formatAppointmentTime(appointment)}
                               </div>
                             </div>
                             <div
@@ -1184,6 +1309,33 @@ const MedicalChatInterface = ({ appointmentId }) => {
           userRole={user.role.toUpperCase()}
         />
       )}
+      {showExtensionModal && (
+        <ExtensionRequestModal
+          isOpen={showExtensionModal}
+          onClose={() => setShowExtensionModal(false)}
+          appointmentId={activeAppointment?.appointmentId}
+          onSendRequest={handleExtensionRequest}
+        />
+      )}
+
+      {/* Doctor Extension Modal */}
+      <DoctorExtensionModal
+        isOpen={showDoctorModal}
+        onClose={handleCloseDoctorModal}
+        extensionRequestData={extensionRequestData}
+        onAcceptExtension={handleDoctorAccept}
+        onRejectExtension={handleDoctorReject}
+        appointmentId={currentRoom?.appointmentId}
+        isProcessing={isProcessing}
+      />
+
+      {/* Patient Extension Result Modal */}
+      <PatientExtensionResultModal
+        isOpen={showPatientResultModal}
+        onClose={handleClosePatientResultModal}
+        extensionStatus={extensionStatus}
+        autoCloseDelay={8000}
+      />
     </div>
   );
 };

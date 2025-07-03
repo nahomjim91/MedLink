@@ -19,7 +19,7 @@ import { useParams } from "next/navigation";
 import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
 import { GET_DOCTOR_AVAILABLE_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
 import { AboutMeCard, InfoCard ,CertificatesList} from "../../../components/ui/Card";
-import AppointmentModal from "../../../components/ui/modal/AppointmentModal ";
+import {AppointmentModal} from "../../../components/ui/modal/AppointmentModal ";
 import { useAppointment } from "../../../hooks/useAppointment ";
 import { useAuth } from "../../../hooks/useAuth";
 import TelehealthAddFunds from "../../../components/ui/AddFound";
@@ -598,7 +598,7 @@ export default function DoctorProfileResponsive() {
         {/* Doctor Profile Header */}
         <div className="text-center py-6 px-6 flex flex-col items-center">
           <ProfileImage
-            imageUrl={doctor.user?.profileImageUrl}
+                  profileImageUrl={doctor.user?.profileImageUrl}
             altText={`${doctor.user?.firstName} ${doctor.user?.lastName}`}
             userName={`Dr. ${doctor.user?.firstName} ${doctor.user?.lastName}`}
           />
