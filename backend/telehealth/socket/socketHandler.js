@@ -53,8 +53,8 @@ function initializeSocket(io) {
         );
 
         // After joining, check and update online status for appointment participants
-        const AppointmentModel = require("../models/appointment");
-        const appointment = await AppointmentModel.findById(appointmentId);
+        const AppointmentModel = require("../models/appointment.js");
+        const appointment = await AppointmentModel.getById(appointmentId);
 
         if (appointment) {
           const participantIds = [appointment.doctorId, appointment.patientId];

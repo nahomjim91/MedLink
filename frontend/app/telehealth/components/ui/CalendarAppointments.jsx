@@ -12,7 +12,13 @@ import CancelModal from "./modal/AppointmentModal ";
 import Link from "next/link";
 // Cancel Modal Component
 
-const AppointmentCard = ({ appointment, onClose, onCancel, loading }) => {
+const AppointmentCard = ({
+  appointment,
+  onClose,
+  onCancel,
+  loading,
+  onViewProfile,
+}) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const canCancel = ["REQUESTED", "PENDING"].includes(appointment.status);
@@ -106,9 +112,7 @@ const AppointmentCard = ({ appointment, onClose, onCancel, loading }) => {
           <div className="space-y-2">
             <Button
               className="w-full"
-              onClick={() => {
-                /* Handle view profile */
-              }}
+              onClick={() => onViewProfile(appointment.appointmentId)}
               disabled={loading}
             >
               View Profile
@@ -144,6 +148,7 @@ export default function CalendarAppointments({
   appointments: propAppointments = [],
   onCancelAppointment,
   loading = false,
+  onViewProfile,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -167,15 +172,6 @@ export default function CalendarAppointments({
     "December",
   ];
 
-  const dayNames = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
   const shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   // Process appointments with formatted dates
@@ -342,9 +338,7 @@ export default function CalendarAppointments({
 
           <Button
             className="flex-1"
-            onClick={() => {
-              /* Handle view profile */
-            }}
+            onClick={() => onViewProfile(appointment.appointmentId)}
             disabled={loading}
             size="sm"
           >
@@ -697,6 +691,7 @@ export default function CalendarAppointments({
           onClose={() => setSelectedAppointment(null)}
           onCancel={onCancelAppointment}
           loading={loading}
+          onViewProfile={onViewProfile}
         />
       )}
     </div>
@@ -737,34 +732,36 @@ export function MinimalCalendar({ appointments, userRole }) {
   };
 
   const generateCalendarDays = () => {
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const firstDayOfWeek = firstDay.getDay();
-  const daysInMonth = lastDay.getDate();
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const firstDayOfWeek = firstDay.getDay();
+    const daysInMonth = lastDay.getDate();
 
-  const days = [];
+    const days = [];
 
-  // Add empty cells for days before the first day of the month
-  for (let i = 0; i < firstDayOfWeek; i++) {
-    days.push(null);
-  }
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      days.push(null);
+    }
 
-  // Add days of the month
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    // Create consistent date key format
-    const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    days.push({
-      day,
-      date,
-      dateKey,
-    });
-  }
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      // Create consistent date key format
+      const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+        day
+      ).padStart(2, "0")}`;
+      days.push({
+        day,
+        date,
+        dateKey,
+      });
+    }
 
-  return days;
-};
+    return days;
+  };
 
   const getAppointmentsForDate = (dateKey) => {
     return appointments.filter((apt) => apt.date === dateKey);
@@ -779,11 +776,13 @@ export function MinimalCalendar({ appointments, userRole }) {
     setSelectedDate(dayObj.dateKey);
   };
 
- const isToday = (dateKey) => {
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  return dateKey === todayKey;
-};
+  const isToday = (dateKey) => {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return dateKey === todayKey;
+  };
 
   const AppointmentModal = ({ appointment, onClose }) => (
     <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -920,7 +919,12 @@ export function MinimalCalendar({ appointments, userRole }) {
                     dayObj.dateKey
                   ).length;
                   const isTodayDate = isToday(dayObj.dateKey);
-                  console.log("isTodayDate", isTodayDate , "dayObj.dateKey", dayObj.dateKey);
+                  console.log(
+                    "isTodayDate",
+                    isTodayDate,
+                    "dayObj.dateKey",
+                    dayObj.dateKey
+                  );
 
                   return (
                     <button

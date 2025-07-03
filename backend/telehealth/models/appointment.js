@@ -267,100 +267,121 @@ const AppointmentModel = {
     }
   },
 
-async autoUpdateStatuses() {
-  const now = new Date();
+  async autoUpdateStatuses() {
+    const now = new Date();
 
-  try {
-    // 1. CONFIRMED / UPCOMING → IN_PROGRESS
-    const confirmedSnap = await appointmentsRef
-      .where("status", "in", ["CONFIRMED", "UPCOMING"])
-      .get();
+    try {
+      // 1. REQUESTED → CANCELLED_ADMIN if 5 minutes past scheduled start time
+      const requestedSnap = await appointmentsRef
+        .where("status", "==", "REQUESTED")
+        .get();
 
-    for (const doc of confirmedSnap.docs) {
-      const data = doc.data();
-      const { scheduledStartTime, scheduledEndTime, actualStartTime } = data;
+      for (const doc of requestedSnap.docs) {
+        const data = doc.data();
+        const { scheduledStartTime } = data;
 
-      const start = new Date(
-        scheduledStartTime.toDate ? scheduledStartTime.toDate() : scheduledStartTime
-      );
-      const end = new Date(
-        scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
-      );
+        const start = new Date(
+          scheduledStartTime.toDate
+            ? scheduledStartTime.toDate()
+            : scheduledStartTime
+        );
 
-      if (
-        now >= new Date(start.getTime() - 5 * 60000) &&
-        now <= end
-      ) {
-        await doc.ref.update({
-          status: "IN_PROGRESS",
-          updatedAt: timestamp(),
-        });
-        console.log(`🔄 Updated to IN_PROGRESS: ${doc.id}`);
+        // Cancel if 5 minutes past scheduled start time
+        if (now > new Date(start.getTime() + 5 * 60000)) {
+          const status = "CANCELLED_ADMIN";
+
+          await doc.ref.update({
+            status,
+            cancelledAt: timestamp(),
+            updatedAt: timestamp(),
+          });
+
+          console.log(
+            `❌ Auto-cancelled REQUESTED (5 min past start): ${doc.id}`
+          );
+          await this.processRefund(data, status);
+        }
       }
 
-      if (now > end && !actualStartTime) {
-        await doc.ref.update({
-          status: "NO_SHOW",
-          updatedAt: timestamp(),
-        });
-        console.log(`🚫 Marked CONFIRMED/UPCOMING as NO_SHOW: ${doc.id}`);
+      // 2. CONFIRMED / UPCOMING → IN_PROGRESS (5 minutes before scheduled start time)
+      const confirmedUpcomingSnap = await appointmentsRef
+        .where("status", "in", ["CONFIRMED", "UPCOMING"])
+        .get();
+
+      for (const doc of confirmedUpcomingSnap.docs) {
+        const data = doc.data();
+        const { scheduledStartTime, scheduledEndTime, actualStartTime } = data;
+
+        const start = new Date(
+          scheduledStartTime.toDate
+            ? scheduledStartTime.toDate()
+            : scheduledStartTime
+        );
+        const end = new Date(
+          scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
+        );
+
+        // Update to IN_PROGRESS 5 minutes before scheduled start time
+        if (now >= new Date(start.getTime() - 2 * 60000) && now <= end) {
+          await doc.ref.update({
+            status: "IN_PROGRESS",
+            updatedAt: timestamp(),
+          });
+          console.log(`🔄 Updated to IN_PROGRESS: ${doc.id}`);
+        }
+
+        // Mark as NO_SHOW if past end time and no actualStartTime
+        if (now > end && !actualStartTime) {
+          await doc.ref.update({
+            status: "NO_SHOW",
+            updatedAt: timestamp(),
+          });
+          console.log(`🚫 Marked CONFIRMED/UPCOMING as NO_SHOW: ${doc.id}`);
+        }
       }
+
+      // 3. IN_PROGRESS → NO_SHOW (if no actualStartTime and past scheduled end time)
+      // 4. IN_PROGRESS → COMPLETED (if has actualStartTime and past scheduled end time)
+      const inProgressSnap = await appointmentsRef
+        .where("status", "==", "IN_PROGRESS")
+        .get();
+
+      for (const doc of inProgressSnap.docs) {
+        const data = doc.data();
+        const { scheduledEndTime, actualStartTime } = data;
+
+        const end = new Date(
+          scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
+        );
+
+        // Only process if past scheduled end time
+        if (now > end) {
+          if (!actualStartTime) {
+            // No actualStartTime = NO_SHOW
+            await doc.ref.update({
+              status: "NO_SHOW",
+              updatedAt: timestamp(),
+            });
+            console.log(
+              `🚫 Marked IN_PROGRESS as NO_SHOW (no actualStartTime): ${doc.id}`
+            );
+          } else {
+            // Has actualStartTime = COMPLETED
+            await doc.ref.update({
+              status: "COMPLETED",
+              actualEndTime: timestamp(),
+              updatedAt: timestamp(),
+            });
+            console.log(`✅ Marked IN_PROGRESS as COMPLETED: ${doc.id}`);
+          }
+        }
+      }
+
+      console.log(`🔄 Auto-update statuses completed at ${now.toISOString()}`);
+    } catch (error) {
+      console.error("❌ Error in autoUpdateStatuses:", error);
     }
-
-    // 2. REQUESTED → CANCELLED_ADMIN if not approved before end
-    const requestedSnap = await appointmentsRef
-      .where("status", "==", "REQUESTED")
-      .get();
-
-    for (const doc of requestedSnap.docs) {
-      const data = doc.data();
-      const { scheduledEndTime } = data;
-
-      const end = new Date(
-        scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
-      );
-
-      if (now > end) {
-        const status = "CANCELLED_ADMIN";
-
-        await doc.ref.update({
-          status,
-          cancelledAt: timestamp(),
-          updatedAt: timestamp(),
-        });
-
-        console.log(`❌ Auto-cancelled REQUESTED: ${doc.id}`);
-        await this.processRefund(data, status);
-      }
-    }
-
-    // 3. IN_PROGRESS → NO_SHOW if ended with no actualStartTime
-    const inProgressSnap = await appointmentsRef
-      .where("status", "==", "IN_PROGRESS")
-      .get();
-
-    for (const doc of inProgressSnap.docs) {
-      const data = doc.data();
-      const { scheduledEndTime, actualStartTime } = data;
-
-      const end = new Date(
-        scheduledEndTime.toDate ? scheduledEndTime.toDate() : scheduledEndTime
-      );
-
-      if (now > end && !actualStartTime) {
-        await doc.ref.update({
-          status: "NO_SHOW",
-          updatedAt: timestamp(),
-        });
-        console.log(`🚫 Marked IN_PROGRESS as NO_SHOW: ${doc.id}`);
-      }
-    }
-
-  } catch (error) {
-    console.error("❌ Error in autoUpdateStatuses:", error);
-  }
-}
-,
+  },
   /**
    * Update payment status
    * @param {String} appointmentId - Appointment ID

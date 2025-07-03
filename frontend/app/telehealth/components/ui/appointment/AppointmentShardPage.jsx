@@ -5,7 +5,6 @@ import {
   Calendar,
   Clock,
   Filter,
-
   Users,
   CheckCircle,
   XCircle,
@@ -17,6 +16,11 @@ import { Pagination } from "../StepProgressIndicator";
 import { useAuth } from "../../../hooks/useAuth";
 import { useAppointment } from "../../../hooks/useAppointment ";
 import { AppointmentDetailModal } from "../modal/AppointmentModal ";
+import {
+  formatAppointmentDate,
+  formatAppointmentTime,
+  getStatusBadgeClass,
+} from "../../../utils/appointmentUtils";
 
 export default function Appointments() {
   const [activeTab, setActiveTab] = useState("upcoming");
@@ -314,28 +318,6 @@ export default function Appointments() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const formatAppointmentDate = (dateString) => {
-    const date = new Date(dateString);
-    return date
-      .toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        weekday: "long",
-      })
-      .replace(/,/g, "");
-  };
-
-  const formatAppointmentTime = (dateString) => {
-    const date = new Date(dateString);
-    return date
-      .toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .toLowerCase();
-  };
-
   const handleFilterApply = () => {
     console.log("Applying filters...");
     setFilterModalOpen(false);
@@ -346,6 +328,7 @@ export default function Appointments() {
   };
 
   const handleViewDetails = (appointment) => {
+    console.log("Viewing details for appointment:", appointment);
     setSelectedAppointment(appointment);
     setDetailModalOpen(true);
   };
@@ -367,24 +350,6 @@ export default function Appointments() {
       </div>
     </div>
   );
-
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case "COMPLETED":
-        return "bg-emerald-100 text-emerald-700 border border-emerald-200";
-      case "CONFIRMED":
-      case "UPCOMING":
-      case "SCHEDULED":
-        return "bg-blue-100 text-blue-700 border border-blue-200";
-      case "REQUESTED":
-        return "bg-yellow-100 text-yellow-700 border border-yellow-200";
-      case "CANCELLED_PATIENT":
-      case "CANCELLED_DOCTOR":
-        return "bg-red-100 text-red-700 border border-red-200";
-      default:
-        return "bg-gray-100 text-secondary/80 border border-gray-200";
-    }
-  };
 
   const handelChangeTab = (tab) => {
     setActiveTab(tab);
@@ -542,8 +507,13 @@ export default function Appointments() {
                             </div>
                           </div>
                         </td>
-                        <td className="p-1 text-secondary/60">
-                          {appt.reasonNote}
+                        <td
+                          className="p-1 text-secondary/60"
+                          title={appt.reasonNote}
+                        >
+                          {appt.reasonNote?.length > 40
+                            ? `${appt.reasonNote.slice(0, 40)}...`
+                            : appt.reasonNote}
                         </td>
                         <td className="p-1 text-center">
                           <span
@@ -741,16 +711,14 @@ export default function Appointments() {
           animation: modal-enter 0.2s ease-out forwards;
         }
       `}</style>
-
-      <AppointmentDetailModal
-        isOpen={isDetailModalOpen}
-        onClose={() => setDetailModalOpen(false)}
-        appointment={selectedAppointment}
-        userRole={user?.role.toUpperCase()}
-        formatAppointmentTime={formatAppointmentTime}
-        formatAppointmentDate={formatAppointmentDate}
-        getStatusBadgeClass={getStatusBadgeClass}
-      />
+      {isDetailModalOpen && (
+        <AppointmentDetailModal
+          isOpen={isDetailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
+          appointmentId={selectedAppointment?.appointmentId}
+          userRole={user?.role.toUpperCase()}
+        />
+      )}
     </div>
   );
 }

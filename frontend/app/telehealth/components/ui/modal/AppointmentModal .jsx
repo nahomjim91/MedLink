@@ -8,21 +8,26 @@ import {
   Check,
   AlertTriangle,
   CreditCard,
-  Phone, 
-  Mail, 
-  MapPin, 
-  FileText, 
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
   Stethoscope,
   Users,
   CheckCircle,
   XCircle,
-  AlertCircle
-  
+  AlertCircle,
 } from "lucide-react";
-
 
 import { TextAreaInput } from "../Input";
 import { Button } from "../Button";
+import {
+  formatAppointmentDate,
+  formatAppointmentTime,
+  getStatusBadgeClass,
+} from "../../../utils/appointmentUtils";
+import { useAppointment } from "../../../hooks/useAppointment ";
+import Link from "next/link";
 
 export default function AppointmentModal({
   doctor,
@@ -504,13 +509,30 @@ export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
 export const AppointmentDetailModal = ({
   isOpen,
   onClose,
-  appointment,
+  appointmentId,
   userRole = "PATIENT", // "PATIENT" or "DOCTOR"
-  formatAppointmentTime,
-  formatAppointmentDate,
-  getStatusBadgeClass
 }) => {
-  if (!isOpen || !appointment) return null;
+  const [appointment, setAppointments] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const { fetchAppointment } = useAppointment();
+
+  useEffect(() => {
+    const fetchAppointmentLocally = async () => {
+      if (appointmentId && isOpen) {
+        setLoading(true);
+        try {
+          const data = await fetchAppointment(appointmentId);
+          setAppointments(data);
+        } catch (error) {
+          console.error("Error fetching appointment:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAppointmentLocally();
+  }, [appointmentId, isOpen, fetchAppointment]);
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -518,7 +540,20 @@ export const AppointmentDetailModal = ({
     }
   };
 
-  console.log("appointment", appointment);
+  // console.log("appointment", appointment);
+  if (!isOpen || !appointmentId) return null;
+
+// Show loading state
+if (loading || !appointment) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl p-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="text-center mt-2">Loading appointment details...</p>
+      </div>
+    </div>
+  );
+}
 
   // Payment status styling
   const getPaymentStatusClass = (status) => {
@@ -546,7 +581,7 @@ export const AppointmentDetailModal = ({
       onClick={handleOverlayClick}
       className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4 transition-opacity duration-300"
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 animate-modal-enter">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-hide transform transition-all duration-300 animate-modal-enter">
         {/* Header */}
         <div className="p-4 md:p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl">
           <div>
@@ -603,8 +638,7 @@ export const AppointmentDetailModal = ({
             {/* Left Column */}
             <div className="space-y-6">
               {/* Date & Time Card */}
-                            <div className="bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl p-4 md:p-6 border border-primary/20">
-
+              <div className="bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl p-4 md:p-6 border border-primary/20">
                 <h4 className="font-semibold text-secondary/80 mb-4 flex items-center">
                   <Calendar className="w-5 h-5 mr-2 text-primary" />
                   Schedule
@@ -793,9 +827,9 @@ export const AppointmentDetailModal = ({
                     </button>
                   ) : null}
 
-                  <button className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all">
+                  <Link href={`/telehealth/${userRole.toLocaleLowerCase()}/chats?appointmentId=${appointmentId}`} className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all">
                     Contact {otherPersonTitle}
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

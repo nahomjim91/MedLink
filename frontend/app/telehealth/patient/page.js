@@ -13,13 +13,16 @@ import {
 import { useQuery } from "@apollo/client";
 import { useAppointment } from "../hooks/useAppointment ";
 import Link from "next/link";
+import { AppointmentDetailModal } from "../components/ui/modal/AppointmentModal ";
 
 export default function TelehealthPatientPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [appointments, setAppointments] = useState([]);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [historyAppointments, setHistoryAppointments] = useState([]);
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
+  const [isDetailModalOpen, setDetailModalOpen] = useState(false);
 
   const { user } = useAuth();
   const {
@@ -58,14 +61,15 @@ export default function TelehealthPatientPage() {
   }, [specializationsData]);
 
   // Fetch doctors by specialization
-  const { data: doctorsData, loading: doctorsLoading , error: doctorsError } = useQuery(
-    GET_DOCTORS_BY_SPECIALIZATION,
-    {
-      variables: { specialization: selectedSpecialty },
-      skip: !selectedSpecialty, // This is the key part
-      fetchPolicy: "cache-and-network",
-    }
-  );
+  const {
+    data: doctorsData,
+    loading: doctorsLoading,
+    error: doctorsError,
+  } = useQuery(GET_DOCTORS_BY_SPECIALIZATION, {
+    variables: { specialization: selectedSpecialty },
+    skip: !selectedSpecialty, // This is the key part
+    fetchPolicy: "cache-and-network",
+  });
 
   // Memoize doctors to handle different response structures
   const doctors = useMemo(() => {
@@ -484,11 +488,10 @@ export default function TelehealthPatientPage() {
           <h1 className="text-2xl font-bold text-gray-900">Hello, Ms X</h1>
         </div>
         <Link href={`/telehealth/patient/doctors`}>
-        <Button 
-         className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          New Appointment
-        </Button>
+          <Button className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            New Appointment
+          </Button>
         </Link>
       </div>
 
@@ -512,7 +515,12 @@ export default function TelehealthPatientPage() {
           <UpcomingAppointmentCard
             upcomingAppointment={upcomingAppointment}
             onCancelAppointment={handleCancelAppointment}
+            onViewProfile={() => {
+              setSelectedAppointment(upcomingAppointment.id);
+              setDetailModalOpen(true);
+            }}
             loading={appointmentsLoading}
+            userRole={user.role}
           />
         ) : (
           <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -530,6 +538,10 @@ export default function TelehealthPatientPage() {
           appointments={calendarAppointments}
           onCancelAppointment={handleCancelAppointment}
           loading={appointmentsLoading}
+           onViewProfile={() => {
+              setSelectedAppointment(upcomingAppointment.id);
+              setDetailModalOpen(true);
+            }}
         />
       </div>
 
@@ -539,7 +551,10 @@ export default function TelehealthPatientPage() {
         <div className="lg:col-span-2 bg-white p-3 rounded-xl shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-lg font-semibold text-secondary">History</h2>
-            <Link href="/telehealth/patient/appointments" className="text-primary/70 text-sm font-medium hover:text-primary">
+            <Link
+              href="/telehealth/patient/appointments"
+              className="text-primary/70 text-sm font-medium hover:text-primary"
+            >
               See All
             </Link>
           </div>
@@ -586,7 +601,7 @@ export default function TelehealthPatientPage() {
                       />
                     </div>
                     <span className="font-medium text-gray-900">
-                      {appointment.doctor} 
+                      {appointment.doctor}
                     </span>
                   </div>
                   <div className="">{appointment.specialty}</div>
@@ -629,7 +644,10 @@ export default function TelehealthPatientPage() {
               <h2 className="text-lg font-semibold text-secondary">
                 Specialty Doctors
               </h2>
-              <Link href="/telehealth/patient/doctors" className="text-teal-500 text-sm font-medium hover:text-teal-600">
+              <Link
+                href="/telehealth/patient/doctors"
+                className="text-teal-500 text-sm font-medium hover:text-teal-600"
+              >
                 See All
               </Link>
             </div>
@@ -853,6 +871,13 @@ export default function TelehealthPatientPage() {
       {showAddFunds && (
         <TelehealthAddFunds onClose={() => setShowAddFunds(false)} />
       )}
+
+      <AppointmentDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        appointmentId={selectedAppointment}
+        userRole={user.role.toUpperCase()}
+      />
     </div>
   );
 }

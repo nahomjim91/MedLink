@@ -249,11 +249,14 @@ cron.schedule("0 0 * * *", async () => {
   }
 });
 
+
+// Cron job to run every minute
 cron.schedule('*/1 * * * *', async () => {
   try {
+    console.log('🕐 Running appointment status auto-update...');
     await AppointmentModel.autoUpdateStatuses();
   } catch (error) {
-    console.error("Cron job failed:", error);
+    console.error("❌ Cron job failed:", error);
   }
 });
 
