@@ -338,3 +338,4 @@ if (require.main === module) {
 
 // Export for importing in other files
 module.exports = initializeTelehealthServer;
+

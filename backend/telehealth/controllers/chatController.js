@@ -492,6 +492,7 @@ const ChatController = {
 
   getChatHistory: async (req, res) => {
     try {
+      console.log("📚 Getting chat history...");
       const userId = req.user.uid;
       const rooms = await ChatRoomModel.getRoomsForUser(userId);
 

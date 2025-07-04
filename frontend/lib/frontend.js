@@ -69,7 +69,7 @@ export const ChatProvider = ({ children }) => {
   });
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef({});
-  const telehealthBackendUrl = "http://localhost:4002";
+  const process.env.NEXT_PUBLIC_TELEHEALTH_API_URL = "http://localhost:4002";
   const [token, setToken] = useState(null);
   const { user: userAuth } = useAuth();
 
@@ -128,11 +128,13 @@ export const ChatProvider = ({ children }) => {
       try {
         console.log("Initializing socket...", "Token:", token);
         const newSocket = io(
-          process.env.NEXT_PUBLIC_SOCKET_URL || telehealthBackendUrl,
+          process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_TELEHEALTH_API_URL,
           {
             auth: {
               token: token,
             },
+             transports: ["websocket"],
+  secure: true,
             autoConnect: true,
           }
         );
@@ -741,7 +743,7 @@ export const ChatProvider = ({ children }) => {
         try {
           setIsLoading(true);
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/history`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/history`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -770,7 +772,7 @@ export const ChatProvider = ({ children }) => {
         try {
           setIsLoading(true);
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/messages/${appointmentId}`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/messages/${appointmentId}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -806,7 +808,7 @@ export const ChatProvider = ({ children }) => {
           formData.append("roomId", roomId);
 
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/upload`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/upload`,
             {
               method: "POST",
               headers: {
@@ -836,7 +838,7 @@ export const ChatProvider = ({ children }) => {
       getChatStats: async () => {
         try {
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/stats`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/stats`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -855,7 +857,7 @@ export const ChatProvider = ({ children }) => {
         }
       },
     }),
-    [token, telehealthBackendUrl]
+    [token, process.env.NEXT_PUBLIC_TELEHEALTH_API_URL]
   );
 
   // Clear error
@@ -2360,7 +2362,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                               </div>
                               <a
-                                href={`http://localhost:4002${msg.fileUrl}`}
+                                href={`${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}${msg.fileUrl}`}
                                 //http://localhost:3000/telehealth/patient/chats
                                 target="_blank"
                                 rel="noopener noreferrer"

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth'; 
 
-const useFileUpload = (baseUrl = process.env.NEXT_PUBLIC_TELEHEALTH_API_URL || 'http://localhost:4002') => {
+const useFileUpload = (baseUrl = process.env.NEXT_PUBLIC_TELEHEALTH_API_URL ) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);

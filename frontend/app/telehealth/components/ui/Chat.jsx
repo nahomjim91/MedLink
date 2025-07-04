@@ -1096,8 +1096,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                               </div>
                               <a
-                                href={`http://localhost:4002${msg.fileUrl}`}
-                                //http://localhost:3000/telehealth/patient/chats
+                                href={`${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}${msg.fileUrl}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs sm:text-sm underline break-all hover:opacity-80 font-medium transition-opacity duration-200"

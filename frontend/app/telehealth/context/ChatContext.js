@@ -69,7 +69,6 @@ export const ChatProvider = ({ children }) => {
   });
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef({});
-  const telehealthBackendUrl = "http://localhost:4002";
   const [token, setToken] = useState(null);
   const { user: userAuth } = useAuth();
 
@@ -128,11 +127,13 @@ export const ChatProvider = ({ children }) => {
       try {
         console.log("Initializing socket...", "Token:", token);
         const newSocket = io(
-          process.env.NEXT_PUBLIC_SOCKET_URL || telehealthBackendUrl,
+          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL,
           {
             auth: {
               token: token,
             },
+            transports: ["websocket"],
+            secure: true,
             autoConnect: true,
           }
         );
@@ -742,22 +743,32 @@ export const ChatProvider = ({ children }) => {
       // Get chat history
       getChatHistory: async () => {
         try {
-          setIsLoading(true);
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/history`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/history`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
               },
             }
           );
 
-          if (!response.ok) throw new Error("Failed to fetch chat history");
+          // console.log("Response status:", response.status);
+          // console.log("Response headers:", response.headers);
 
-          const data = await response.json();
-          setChatRooms(data.data || []);
+          // Get the raw text first to see what's being returned
+          const responseText = await response.text();
+          // console.log("Raw response:", responseText);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          // Try to parse as JSON
+          const data = JSON.parse(responseText);
           console.log("📚 Chat history received:", data);
+          setChatRooms(data.data || []);
           return data.data;
         } catch (error) {
           console.error("Error fetching chat history:", error);
@@ -772,12 +783,14 @@ export const ChatProvider = ({ children }) => {
       getMessagesForAppointment: async (appointmentId) => {
         try {
           setIsLoading(true);
+
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/messages/${appointmentId}`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/messages/${appointmentId}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
               },
             }
           );
@@ -809,11 +822,12 @@ export const ChatProvider = ({ children }) => {
           formData.append("roomId", roomId);
 
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/upload`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/upload`,
             {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
+                "ngrok-skip-browser-warning": "true",
               },
               body: formData,
             }
@@ -839,11 +853,12 @@ export const ChatProvider = ({ children }) => {
       getChatStats: async () => {
         try {
           const response = await fetch(
-            `${telehealthBackendUrl}/api/chat/stats`,
+            `${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}/api/chat/stats`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
+                "ngrok-skip-browser-warning": "true",
               },
             }
           );
@@ -858,7 +873,7 @@ export const ChatProvider = ({ children }) => {
         }
       },
     }),
-    [token, telehealthBackendUrl]
+    [token, process.env.NEXT_PUBLIC_TELEHEALTH_API_URL]
   );
 
   // Clear error

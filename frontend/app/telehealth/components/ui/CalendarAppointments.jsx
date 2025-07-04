@@ -705,7 +705,7 @@ export function MinimalCalendar({ appointments, userRole }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-  console.log("current: ", currentDate);
+  // console.log("current: ", currentDate);
 
   const monthNames = [
     "January",
@@ -922,12 +922,7 @@ export function MinimalCalendar({ appointments, userRole }) {
                     dayObj.dateKey
                   ).length;
                   const isTodayDate = isToday(dayObj.dateKey);
-                  console.log(
-                    "isTodayDate",
-                    isTodayDate,
-                    "dayObj.dateKey",
-                    dayObj.dateKey
-                  );
+                  
 
                   return (
                     <button

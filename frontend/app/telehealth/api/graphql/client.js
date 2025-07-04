@@ -6,7 +6,7 @@ import { auth } from '../firebase/config';
 
 // Use HttpLink instead of createHttpLink to ensure compatibility
 const httpLink = new HttpLink({
-  uri: process.env.NEXT_PUBLIC_TELEHEALTH_GRAPHQL_API_URL || 'http://localhost:4002/graphql',
+  uri: process.env.NEXT_PUBLIC_TELEHEALTH_GRAPHQL_API_URL ,
 });
 
 // Simplified error link

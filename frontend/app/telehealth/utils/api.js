@@ -2,7 +2,7 @@
 // utils/api.js - API utility for backend calls
 import { getAuthToken } from './auth';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_TELEHEALTH_API_URL || 'http://localhost:4002';
+const API_BASE_URL = process.env.NEXT_PUBLIC_TELEHEALTH_API_URL ;
 
 export const apiRequest = async (endpoint, options = {}) => {
   try {

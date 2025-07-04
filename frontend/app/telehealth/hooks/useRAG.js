@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { auth } from '../api/firebase/config';
 
-const useRAG = (baseURL = 'http://localhost:4002/api/rag') => {
+const useRAG = () => {
+  const baseURL = process.env.NEXT_PUBLIC_TELEHEALTH_API_URL+"/api/rag";
   // State management
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(false);
