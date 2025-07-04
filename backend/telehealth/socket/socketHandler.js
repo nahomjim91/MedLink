@@ -494,6 +494,9 @@ function initializeSocket(io) {
     socket.on("videoCallOffer", (data) => {
       try {
         const { appointmentId, offer } = data;
+        console.log(
+          `📤 Forwarding offer from ${userId} for appointment ${appointmentId}`
+        );
 
         if (!appointmentId || !offer) {
           return socket.emit("error", { message: "Invalid offer data." });
@@ -507,6 +510,8 @@ function initializeSocket(io) {
           offer,
           from: userId,
         });
+
+        console.log(`📤 Offer forwarded to room ${roomName}`);
       } catch (error) {
         console.error("Error handling video call offer:", error);
       }
@@ -518,6 +523,9 @@ function initializeSocket(io) {
     socket.on("videoCallAnswer", (data) => {
       try {
         const { appointmentId, answer } = data;
+        console.log(
+          `📥 Forwarding answer from ${userId} for appointment ${appointmentId}`
+        );
 
         if (!appointmentId || !answer) {
           return socket.emit("error", { message: "Invalid answer data." });
@@ -531,6 +539,8 @@ function initializeSocket(io) {
           answer,
           from: userId,
         });
+
+        console.log(`📥 Answer forwarded to room ${roomName}`);
       } catch (error) {
         console.error("Error handling video call answer:", error);
       }

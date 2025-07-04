@@ -53,6 +53,7 @@ export const ChatProvider = ({ children }) => {
     isReceivingCall: false,
     currentCallId: null,
     callType: "video", // 'video' or 'audio'
+    needsInitiatorConnection: false,
     caller: null,
     localStream: null,
     remoteStream: null,
@@ -85,7 +86,10 @@ export const ChatProvider = ({ children }) => {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
+      { urls: "stun:stun.services.mozilla.com" },
+      { urls: "stun:stun.ekiga.net" },
     ],
+    iceCandidatePoolSize: 10,
   };
 
   // Get the current user token
@@ -125,18 +129,15 @@ export const ChatProvider = ({ children }) => {
 
     const initializeSocket = async () => {
       try {
-        console.log("Initializing socket...", "Token:", token);
-        const newSocket = io(
-          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL,
-          {
-            auth: {
-              token: token,
-            },
-            transports: ["websocket"],
-            secure: true,
-            autoConnect: true,
-          }
-        );
+        // console.log("Initializing socket...", "Token:", token);
+        const newSocket = io(process.env.NEXT_PUBLIC_TELEHEALTH_API_URL, {
+          auth: {
+            token: token,
+          },
+          transports: ["websocket"],
+          secure: true,
+          autoConnect: true,
+        });
 
         socketRef.current = newSocket;
         setSocket(newSocket);
@@ -476,14 +477,14 @@ export const ChatProvider = ({ children }) => {
     });
 
     socket.on("videoCallAccepted", (data) => {
-      console.log("✅ Video call accepted:", data);
+      console.log("✅ Video call accepted, preparing to connect:", data);
       setVideoCallState((prev) => ({
         ...prev,
         isInCall: true,
         isInitiating: false,
+        needsInitiatorConnection: true,
+        currentCallId: data.appointmentId,
       }));
-      // Start WebRTC connection as caller
-      startWebRTCConnection(data.appointmentId, true);
     });
 
     socket.on("videoCallRejected", (data) => {
@@ -583,6 +584,7 @@ export const ChatProvider = ({ children }) => {
     });
   };
 
+  
   // Join appointment room
   const joinAppointmentRoom = useCallback(
     (appointmentId) => {
@@ -904,86 +906,7 @@ export const ChatProvider = ({ children }) => {
     },
     [socket]
   );
-
-  // video call helper function
-  // Initialize WebRTC connection
-  const startWebRTCConnection = useCallback(
-    async (appointmentId, isInitiator = false) => {
-      try {
-        console.log("🔄 Starting WebRTC connection...");
-
-        // Create peer connection
-        peerConnectionRef.current = new RTCPeerConnection(rtcConfiguration);
-
-        // Set up event handlers
-        peerConnectionRef.current.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit("iceCandidate", {
-              appointmentId,
-              candidate: event.candidate,
-            });
-          }
-        };
-
-        peerConnectionRef.current.ontrack = (event) => {
-          console.log("📡 Received remote stream");
-          const remoteStream = event.streams[0];
-          remoteStreamRef.current = remoteStream;
-          setVideoCallState((prev) => ({
-            ...prev,
-            remoteStream: remoteStream,
-          }));
-
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-          }
-        };
-
-        // Get user media
-        const constraints = {
-          video: videoCallState.callType === "video",
-          audio: true,
-        };
-
-        const localStream = await navigator.mediaDevices.getUserMedia(
-          constraints
-        );
-        localStreamRef.current = localStream;
-
-        setVideoCallState((prev) => ({
-          ...prev,
-          localStream: localStream,
-        }));
-
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = localStream;
-        }
-
-        // Add local stream tracks to peer connection
-        localStream.getTracks().forEach((track) => {
-          peerConnectionRef.current.addTrack(track, localStream);
-        });
-
-        // If initiator, create offer
-        if (isInitiator) {
-          const offer = await peerConnectionRef.current.createOffer();
-          await peerConnectionRef.current.setLocalDescription(offer);
-
-          socket.emit("videoCallOffer", {
-            appointmentId,
-            offer: offer,
-          });
-        }
-      } catch (error) {
-        console.error("Error starting WebRTC connection:", error);
-        setError("Failed to start video call");
-        cleanupVideoCall();
-      }
-    },
-    [socket, videoCallState.callType]
-  );
-
-  // Clean up video call resources
+    // Clean up video call resources
   const cleanupVideoCall = useCallback(() => {
     console.log("🧹 Cleaning up video call...");
 
@@ -1027,6 +950,124 @@ export const ChatProvider = ({ children }) => {
       },
     }));
   }, []);
+
+  // video call helper function
+  // Initialize WebRTC connection
+  const startWebRTCConnection = useCallback(
+    async (appointmentId, isInitiator = false) => {
+      try {
+        console.log("🔄 Starting WebRTC connection...", {
+          appointmentId,
+          isInitiator,
+        });
+
+        // Create peer connection
+        peerConnectionRef.current = new RTCPeerConnection(rtcConfiguration);
+
+        // Set up event handlers BEFORE getting user media
+        peerConnectionRef.current.onicecandidate = (event) => {
+          console.log(
+            "🧊 ICE candidate:",
+            event.candidate ? "available" : "null"
+          );
+          if (event.candidate) {
+            socket.emit("iceCandidate", {
+              appointmentId,
+              candidate: event.candidate,
+            });
+          }
+        };
+
+        peerConnectionRef.current.ontrack = (event) => {
+          console.log("📡 Received remote stream", event.streams[0]);
+          const remoteStream = event.streams[0];
+          remoteStreamRef.current = remoteStream;
+
+          setVideoCallState((prev) => ({
+            ...prev,
+            remoteStream: remoteStream,
+          }));
+
+          // FIXED: Check if ref exists before setting srcObject
+          setTimeout(() => {
+            if (remoteVideoRef.current && remoteStream) {
+              console.log("🎥 Setting remote video srcObject");
+              remoteVideoRef.current.srcObject = remoteStream;
+            }
+          }, 100);
+        };
+
+        // Add connection state monitoring
+        peerConnectionRef.current.onconnectionstatechange = () => {
+          console.log(
+            "🔗 Connection state:",
+            peerConnectionRef.current.connectionState
+          );
+        };
+
+        peerConnectionRef.current.oniceconnectionstatechange = () => {
+          console.log(
+            "🧊 ICE connection state:",
+            peerConnectionRef.current.iceConnectionState
+          );
+        };
+
+        // Get user media
+        const constraints = {
+          video: videoCallState.callType === "video",
+          audio: true,
+        };
+
+        console.log("🎯 Getting user media with constraints:", constraints);
+        const localStream = await navigator.mediaDevices.getUserMedia(
+          constraints
+        );
+        localStreamRef.current = localStream;
+
+        console.log(
+          "🎥 Local stream acquired:",
+          localStream.getTracks().map((t) => t.kind)
+        );
+
+        setVideoCallState((prev) => ({
+          ...prev,
+          localStream: localStream,
+        }));
+
+        // FIXED: Check if ref exists before setting srcObject
+        setTimeout(() => {
+          if (localVideoRef.current && localStream) {
+            console.log("🎥 Setting local video srcObject");
+            localVideoRef.current.srcObject = localStream;
+          }
+        }, 100);
+
+        // Add local stream tracks to peer connection
+        localStream.getTracks().forEach((track) => {
+          console.log("➕ Adding track to peer connection:", track.kind);
+          peerConnectionRef.current.addTrack(track, localStream);
+        });
+
+        // If initiator, create offer
+        if (isInitiator) {
+          console.log("📤 Creating offer...");
+          const offer = await peerConnectionRef.current.createOffer();
+          await peerConnectionRef.current.setLocalDescription(offer);
+
+          console.log("📤 Sending offer");
+          socket.emit("videoCallOffer", {
+            appointmentId,
+            offer: offer,
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error starting WebRTC connection:", error);
+        setError("Failed to start video call: " + error.message);
+        cleanupVideoCall();
+      }
+    },
+    [socket, videoCallState.callType, cleanupVideoCall, setError]
+  );
 
   // Video call action functions
   const initiateVideoCall = useCallback(
@@ -1215,6 +1256,31 @@ export const ChatProvider = ({ children }) => {
       setError("Failed to toggle screen sharing");
     }
   }, [socket, videoCallState.mediaState, videoCallState.currentCallId]);
+
+  useEffect(() => {
+    // If we are the initiator and the call has been accepted
+    if (
+      videoCallState.needsInitiatorConnection &&
+      videoCallState.currentCallId
+    ) {
+      console.log(
+        "useEffect triggered: Starting WebRTC connection as initiator."
+      );
+
+      // Start the connection
+      startWebRTCConnection(videoCallState.currentCallId, true);
+
+      // Reset the flag so this doesn't run again
+      setVideoCallState((prev) => ({
+        ...prev,
+        needsInitiatorConnection: false,
+      }));
+    }
+  }, [
+    videoCallState.needsInitiatorConnection,
+    videoCallState.currentCallId,
+    startWebRTCConnection,
+  ]);
 
   const value = {
     // Connection state
