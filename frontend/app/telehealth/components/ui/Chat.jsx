@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect , useCallback} from "react";
 import {
   Search,
   MessageCircle,
@@ -22,7 +22,7 @@ import {
 } from "./modal/AppointmentModal ";
 import DoctorExtensionModal from "./modal/DoctorExtensionModal";
 import PatientExtensionResultModal from "./modal/PatientExtensionResultModal";
-import { control } from "leaflet";
+import VideoCallModal from "./modal/VideoCallModal";
 
 const AppointmentStatus = {
   REQUESTED: "REQUESTED",
@@ -71,6 +71,17 @@ const MedicalChatInterface = ({ appointmentId }) => {
     acceptExtension,
     rejectExtension,
 
+    // video
+    videoCallState,
+    localVideoRef,
+    remoteVideoRef,
+    initiateVideoCall,
+    answerVideoCall,
+    endVideoCall,
+    toggleAudio,
+    toggleVideo,
+    toggleScreenShare,
+
     // API methods
     api,
   } = useChat();
@@ -82,6 +93,8 @@ const MedicalChatInterface = ({ appointmentId }) => {
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [showPatientResultModal, setShowPatientResultModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [participantName, setParticipantName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [isDetailModalOpen, setDetailModalOpen] = useState(false);
@@ -253,8 +266,6 @@ const MedicalChatInterface = ({ appointmentId }) => {
     return () => clearInterval(interval);
   }, [isConnected, chatRooms, checkOnlineStatus]);
   ///////////////////////////////////////////
-  // requestion
-  // console.log("extensionStatus: ", extensionStatus)
   // Handle extension request for doctors
   useEffect(() => {
     if (
@@ -319,6 +330,100 @@ const MedicalChatInterface = ({ appointmentId }) => {
     resetExtensionStatus();
   };
   //////////////////////////
+  //video call
+  // Video call handler functions
+  const handleInitiateVideoCall = useCallback(() => {
+    if (activeAppointment) {
+      // Set participant name based on user role
+      const name =
+        user.role === "doctor" ? activeChat.patientName : activeChat.doctorName;
+      setParticipantName(name);
+      setShowVideoModal(true);
+      initiateVideoCall(activeAppointment.appointmentId, "video");
+    }
+  }, [activeAppointment, activeChat, user.role, initiateVideoCall]);
+
+  const handleAnswerVideoCall = useCallback(
+    async (appointmentId, accepted) => {
+      try {
+        await answerVideoCall(appointmentId, accepted);
+        if (accepted) {
+          // Set participant name
+          const name =
+            user.role === "doctor"
+              ? activeChat.patientName
+              : activeChat.doctorName;
+          setParticipantName(name);
+          setShowVideoModal(true);
+        }
+      } catch (error) {
+        console.error("Error answering video call:", error);
+      }
+    },
+    [answerVideoCall, activeChat, user.role]
+  );
+
+  const handleEndVideoCall = useCallback(
+    (appointmentId) => {
+      endVideoCall(appointmentId);
+      setShowVideoModal(false);
+    },
+    [endVideoCall]
+  );
+
+  const handleCloseVideoModal = useCallback(() => {
+    if (videoCallState.isInCall) {
+      handleEndVideoCall(videoCallState.currentCallId);
+    } else {
+      setShowVideoModal(false);
+    }
+  }, [
+    videoCallState.isInCall,
+    videoCallState.currentCallId,
+    handleEndVideoCall,
+  ]);
+
+  // Handle incoming video calls
+  useEffect(() => {
+    if (videoCallState.isReceivingCall && !showVideoModal) {
+      // Set participant name for incoming call
+      const name =
+        videoCallState.caller?.name ||
+        (user.role === "doctor"
+          ? activeChat?.patientName
+          : activeChat?.doctorName);
+      setParticipantName(name);
+      setShowVideoModal(true);
+    }
+  }, [
+    videoCallState.isReceivingCall,
+    showVideoModal,
+    videoCallState.caller,
+    user.role,
+    activeChat,
+  ]);
+
+  // Handle video call ending
+  useEffect(() => {
+    if (
+      !videoCallState.isInCall &&
+      !videoCallState.isReceivingCall &&
+      !videoCallState.isInitiating &&
+      showVideoModal
+    ) {
+      // Small delay to allow user to see the call ended
+      const timer = setTimeout(() => {
+        setShowVideoModal(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    videoCallState.isInCall,
+    videoCallState.isReceivingCall,
+    videoCallState.isInitiating,
+    showVideoModal,
+  ]);
+
   // Filter chats based on search
   const filteredChats = chatRooms.filter(
     (chat) =>
@@ -465,7 +570,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
-        originalName: file.name
+        originalName: file.name,
       });
 
       setSelectedFile(null);
@@ -589,7 +694,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
     })}`;
   };
 
-    const extensionRequestData = {
+  const extensionRequestData = {
     patientName: extensionStatus.patientName || user.firstName,
     message: extensionStatus.message,
     requestTime: extensionStatus.requestTime,
@@ -857,7 +962,10 @@ const MedicalChatInterface = ({ appointmentId }) => {
 
                 <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
                   {shouldShowVideoButton(activeAppointment?.status) && (
-                    <button className="bg-gradient-to-r from-teal-500 to-primary text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-5 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-teal-600 hover:to-cyan-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                    <button
+                      onClick={handleInitiateVideoCall}
+                      className="bg-gradient-to-r from-teal-500 to-primary text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-5 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-teal-600 hover:to-cyan-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                    >
                       <Video className="w-4 h-4" />
                       <span className="hidden sm:inline font-medium text-xs sm:text-sm lg:text-base">
                         Video
@@ -988,7 +1096,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                               </div>
                               <a
-                                href={ `http://localhost:4002${msg.fileUrl}`}
+                                href={`http://localhost:4002${msg.fileUrl}`}
                                 //http://localhost:3000/telehealth/patient/chats
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -1320,6 +1428,24 @@ const MedicalChatInterface = ({ appointmentId }) => {
           onClose={() => setShowExtensionModal(false)}
           appointmentId={activeAppointment?.appointmentId}
           onSendRequest={handleExtensionRequest}
+        />
+      )}
+
+      {showVideoModal && (
+        <VideoCallModal
+          isOpen={showVideoModal}
+          onClose={handleCloseVideoModal}
+          videoCallState={videoCallState}
+          localVideoRef={localVideoRef}
+          remoteVideoRef={remoteVideoRef}
+          onAnswerCall={handleAnswerVideoCall}
+          onRejectCall={handleAnswerVideoCall}
+          onEndCall={handleEndVideoCall}
+          onToggleAudio={toggleAudio}
+          onToggleVideo={toggleVideo}
+          onToggleScreenShare={toggleScreenShare}
+          participantName={participantName}
+          isInitiator={videoCallState.isInitiating}
         />
       )}
 

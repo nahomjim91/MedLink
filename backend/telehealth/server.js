@@ -251,7 +251,7 @@ cron.schedule("0 0 * * *", async () => {
 
 
 // Cron job to run every minute
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
   try {
     console.log('🕐 Running appointment status auto-update...');
     await AppointmentModel.autoUpdateStatuses();

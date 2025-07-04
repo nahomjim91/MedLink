@@ -36,7 +36,7 @@ export const ChatProvider = ({ children }) => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isExtentionRequested, setIsExtentionRequested] = useState(false)
+  const [isExtentionRequested, setIsExtentionRequested] = useState(false);
   const [extensionStatus, setExtensionStatus] = useState({
     isRequested: false,
     isAccepted: false,
@@ -47,11 +47,47 @@ export const ChatProvider = ({ children }) => {
     patientName: null,
     requestTime: null,
   });
+  const [videoCallState, setVideoCallState] = useState({
+    isInCall: false,
+    isInitiating: false,
+    isReceivingCall: false,
+    currentCallId: null,
+    callType: "video", // 'video' or 'audio'
+    caller: null,
+    localStream: null,
+    remoteStream: null,
+    mediaState: {
+      audio: true,
+      video: true,
+      screenShare: false,
+    },
+    peerMediaState: {
+      audio: true,
+      video: true,
+      screenShare: false,
+    },
+  });
   const socketRef = useRef(null);
   const typingTimeoutRef = useRef({});
   const telehealthBackendUrl = "http://localhost:4002";
   const [token, setToken] = useState(null);
-  const {user:userAuth} = useAuth()
+  const { user: userAuth } = useAuth();
+
+  //WebRTC refs
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const localStreamRef = useRef(null);
+  const remoteStreamRef = useRef(null);
+
+  // WebRTC configuration
+  const rtcConfiguration = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+    ],
+  };
 
   // Get the current user token
   useEffect(() => {
@@ -420,6 +456,120 @@ export const ChatProvider = ({ children }) => {
       console.log("👁️ Messages marked as read:", data);
     });
 
+    // Video call event listeners
+    socket.on("incomingVideoCall", (data) => {
+      console.log("📞 Incoming video call:", data);
+      setVideoCallState((prev) => ({
+        ...prev,
+        isReceivingCall: true,
+        caller: {
+          id: data.callerId,
+          name: data.callerName,
+        },
+        currentCallId: data.appointmentId,
+        callType: data.callType,
+      }));
+    });
+    socket.onAny((event, data) => {
+      console.log("📡 Received socket event:", event, data);
+    });
+
+    socket.on("videoCallAccepted", (data) => {
+      console.log("✅ Video call accepted:", data);
+      setVideoCallState((prev) => ({
+        ...prev,
+        isInCall: true,
+        isInitiating: false,
+      }));
+      // Start WebRTC connection as caller
+      startWebRTCConnection(data.appointmentId, true);
+    });
+
+    socket.on("videoCallRejected", (data) => {
+      console.log("❌ Video call rejected:", data);
+      setVideoCallState((prev) => ({
+        ...prev,
+        isInitiating: false,
+        isReceivingCall: false,
+        currentCallId: null,
+        caller: null,
+      }));
+      // Clean up any initiated streams
+      cleanupVideoCall();
+    });
+
+    socket.on("videoCallEnded", (data) => {
+      console.log("📞 Video call ended:", data);
+      setVideoCallState((prev) => ({
+        ...prev,
+        isInCall: false,
+        isInitiating: false,
+        isReceivingCall: false,
+        currentCallId: null,
+        caller: null,
+      }));
+      cleanupVideoCall();
+    });
+
+    // WebRTC signaling events
+    socket.on("videoCallOffer", async (data) => {
+      console.log("📞 Received video call offer:", data);
+      if (peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(data.offer);
+          const answer = await peerConnectionRef.current.createAnswer();
+          await peerConnectionRef.current.setLocalDescription(answer);
+
+          socket.emit("videoCallAnswer", {
+            appointmentId: data.appointmentId,
+            answer: answer,
+          });
+        } catch (error) {
+          console.error("Error handling video call offer:", error);
+        }
+      }
+    });
+
+    socket.on("videoCallAnswer", async (data) => {
+      console.log("📞 Received video call answer:", data);
+      if (peerConnectionRef.current) {
+        try {
+          await peerConnectionRef.current.setRemoteDescription(data.answer);
+        } catch (error) {
+          console.error("Error handling video call answer:", error);
+        }
+      }
+    });
+
+    socket.on("iceCandidate", async (data) => {
+      if (peerConnectionRef.current && data.candidate) {
+        try {
+          await peerConnectionRef.current.addIceCandidate(data.candidate);
+        } catch (error) {
+          console.error("Error adding ICE candidate:", error);
+        }
+      }
+    });
+
+    socket.on("peerMediaStateChanged", (data) => {
+      console.log("🎥 Peer media state changed:", data);
+      setVideoCallState((prev) => ({
+        ...prev,
+        peerMediaState: data.mediaState,
+      }));
+    });
+
+    socket.on("peerScreenShareToggle", (data) => {
+      console.log("🖥️ Peer screen share toggled:", data);
+      setVideoCallState((prev) => ({
+        ...prev,
+        peerMediaState: {
+          ...prev.peerMediaState,
+          screenShare: data.isSharing,
+        },
+      }));
+    });
+
     // Error handling
     socket.on("error", (data) => {
       console.error("❌ Socket error:", data);
@@ -740,6 +890,317 @@ export const ChatProvider = ({ children }) => {
     [socket]
   );
 
+  // video call helper function
+  // Initialize WebRTC connection
+  const startWebRTCConnection = useCallback(
+    async (appointmentId, isInitiator = false) => {
+      try {
+        console.log("🔄 Starting WebRTC connection...");
+
+        // Create peer connection
+        peerConnectionRef.current = new RTCPeerConnection(rtcConfiguration);
+
+        // Set up event handlers
+        peerConnectionRef.current.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("iceCandidate", {
+              appointmentId,
+              candidate: event.candidate,
+            });
+          }
+        };
+
+        peerConnectionRef.current.ontrack = (event) => {
+          console.log("📡 Received remote stream");
+          const remoteStream = event.streams[0];
+          remoteStreamRef.current = remoteStream;
+          setVideoCallState((prev) => ({
+            ...prev,
+            remoteStream: remoteStream,
+          }));
+
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStream;
+          }
+        };
+
+        // Get user media
+        const constraints = {
+          video: videoCallState.callType === "video",
+          audio: true,
+        };
+
+        const localStream = await navigator.mediaDevices.getUserMedia(
+          constraints
+        );
+        localStreamRef.current = localStream;
+
+        setVideoCallState((prev) => ({
+          ...prev,
+          localStream: localStream,
+        }));
+
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStream;
+        }
+
+        // Add local stream tracks to peer connection
+        localStream.getTracks().forEach((track) => {
+          peerConnectionRef.current.addTrack(track, localStream);
+        });
+
+        // If initiator, create offer
+        if (isInitiator) {
+          const offer = await peerConnectionRef.current.createOffer();
+          await peerConnectionRef.current.setLocalDescription(offer);
+
+          socket.emit("videoCallOffer", {
+            appointmentId,
+            offer: offer,
+          });
+        }
+      } catch (error) {
+        console.error("Error starting WebRTC connection:", error);
+        setError("Failed to start video call");
+        cleanupVideoCall();
+      }
+    },
+    [socket, videoCallState.callType]
+  );
+
+  // Clean up video call resources
+  const cleanupVideoCall = useCallback(() => {
+    console.log("🧹 Cleaning up video call...");
+
+    // Stop local stream
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+
+    // Close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // Clear video elements
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // Reset remote stream ref
+    remoteStreamRef.current = null;
+
+    // Reset video call state
+    setVideoCallState((prev) => ({
+      ...prev,
+      localStream: null,
+      remoteStream: null,
+      mediaState: {
+        audio: true,
+        video: true,
+        screenShare: false,
+      },
+      peerMediaState: {
+        audio: true,
+        video: true,
+        screenShare: false,
+      },
+    }));
+  }, []);
+
+  // Video call action functions
+  const initiateVideoCall = useCallback(
+    (appointmentId, callType = "video") => {
+      if (!socket || !appointmentId) return;
+
+      console.log("📞 Initiating video call:", appointmentId, callType);
+      setVideoCallState((prev) => ({
+        ...prev,
+        isInitiating: true,
+        currentCallId: appointmentId,
+        callType,
+      }));
+
+      socket.emit("initiateVideoCall", { appointmentId, callType });
+    },
+    [socket]
+  );
+
+  const answerVideoCall = useCallback(
+    async (appointmentId, accepted = true) => {
+      if (!socket || !appointmentId) return;
+
+      console.log("📞 Answering video call:", appointmentId, accepted);
+      socket.emit("answerVideoCall", { appointmentId, accepted });
+
+      if (accepted) {
+        setVideoCallState((prev) => ({
+          ...prev,
+          isInCall: true,
+          isReceivingCall: false,
+        }));
+        // Start WebRTC connection as receiver
+        await startWebRTCConnection(appointmentId, false);
+      } else {
+        setVideoCallState((prev) => ({
+          ...prev,
+          isReceivingCall: false,
+          currentCallId: null,
+          caller: null,
+        }));
+      }
+    },
+    [socket, startWebRTCConnection]
+  );
+
+  const endVideoCall = useCallback(
+    (appointmentId, reason = "ended") => {
+      if (!socket || !appointmentId) return;
+
+      console.log("📞 Ending video call:", appointmentId);
+      socket.emit("endVideoCall", { appointmentId, reason });
+
+      setVideoCallState((prev) => ({
+        ...prev,
+        isInCall: false,
+        isInitiating: false,
+        isReceivingCall: false,
+        currentCallId: null,
+        caller: null,
+      }));
+
+      cleanupVideoCall();
+    },
+    [socket, cleanupVideoCall]
+  );
+
+  // Media control functions
+  const toggleAudio = useCallback(() => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        const newState = {
+          ...videoCallState.mediaState,
+          audio: audioTrack.enabled,
+        };
+
+        setVideoCallState((prev) => ({
+          ...prev,
+          mediaState: newState,
+        }));
+
+        // Notify peer about media state change
+        socket.emit("mediaStateChanged", {
+          appointmentId: videoCallState.currentCallId,
+          mediaState: newState,
+        });
+      }
+    }
+  }, [socket, videoCallState.mediaState, videoCallState.currentCallId]);
+
+  const toggleVideo = useCallback(() => {
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        const newState = {
+          ...videoCallState.mediaState,
+          video: videoTrack.enabled,
+        };
+
+        setVideoCallState((prev) => ({
+          ...prev,
+          mediaState: newState,
+        }));
+
+        // Notify peer about media state change
+        socket.emit("mediaStateChanged", {
+          appointmentId: videoCallState.currentCallId,
+          mediaState: newState,
+        });
+      }
+    }
+  }, [socket, videoCallState.mediaState, videoCallState.currentCallId]);
+
+  const toggleScreenShare = useCallback(async () => {
+    try {
+      if (!videoCallState.mediaState.screenShare) {
+        // Start screen sharing
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: true,
+        });
+
+        // Replace video track with screen share
+        const sender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+
+        if (sender) {
+          await sender.replaceTrack(screenStream.getVideoTracks()[0]);
+        }
+
+        // Update local video display
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = screenStream;
+        }
+
+        // Handle screen share end
+        screenStream.getVideoTracks()[0].onended = () => {
+          toggleScreenShare(); // This will end screen sharing
+        };
+      } else {
+        // Stop screen sharing and return to camera
+        const cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+
+        // Replace screen share track with camera
+        const sender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "video");
+
+        if (sender) {
+          await sender.replaceTrack(cameraStream.getVideoTracks()[0]);
+        }
+
+        // Update local video display
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = cameraStream;
+        }
+
+        // Update local stream reference
+        localStreamRef.current = cameraStream;
+      }
+
+      const newState = {
+        ...videoCallState.mediaState,
+        screenShare: !videoCallState.mediaState.screenShare,
+      };
+
+      setVideoCallState((prev) => ({
+        ...prev,
+        mediaState: newState,
+      }));
+
+      // Notify peer about screen share toggle
+      socket.emit("screenShareToggle", {
+        appointmentId: videoCallState.currentCallId,
+        isSharing: !videoCallState.mediaState.screenShare,
+      });
+    } catch (error) {
+      console.error("Error toggling screen share:", error);
+      setError("Failed to toggle screen sharing");
+    }
+  }, [socket, videoCallState.mediaState, videoCallState.currentCallId]);
+
   const value = {
     // Connection state
     socket,
@@ -777,6 +1238,24 @@ export const ChatProvider = ({ children }) => {
     extensionStatus,
     resetExtensionStatus,
     rejectExtension,
+
+    // Video call state and functions
+    videoCallState,
+    localVideoRef,
+    remoteVideoRef,
+
+    // Video call actions
+    initiateVideoCall,
+    answerVideoCall,
+    endVideoCall,
+
+    // Media controls
+    toggleAudio,
+    toggleVideo,
+    toggleScreenShare,
+
+    // Cleanup
+    cleanupVideoCall,
 
     // API methods
     api,

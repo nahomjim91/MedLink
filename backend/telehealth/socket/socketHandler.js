@@ -365,6 +365,264 @@ function initializeSocket(io) {
       }
     });
 
+    // =================== VIDEO CALL EVENT HANDLERS ===================
+
+    /**
+     * Handle video call initiation
+     */
+    socket.on("initiateVideoCall", async (data) => {
+      try {
+        const { appointmentId, callType = "video" } = data; // callType: 'video' or 'audio'
+
+        if (!appointmentId) {
+          return socket.emit("error", {
+            message: "Appointment ID is required.",
+          });
+        }
+
+        // Verify appointment exists and user has access
+        const AppointmentModel = require("../models/appointment.js");
+        const appointment = await AppointmentModel.getById(appointmentId);
+
+        if (!appointment) {
+          return socket.emit("error", { message: "Appointment not found." });
+        }
+
+        // Check if user is part of this appointment
+        if (
+          appointment.doctorId !== userId &&
+          appointment.patientId !== userId
+        ) {
+          return socket.emit("error", { message: "Unauthorized access." });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Notify other participant about incoming call
+        socket.to(roomName).emit("incomingVideoCall", {
+          appointmentId,
+          callType,
+          callerId: userId,
+          callerName: userName,
+          timestamp: new Date().toISOString(),
+        });
+
+        console.log(
+          `📞 Video call initiated by ${userName} in appointment ${appointmentId}`
+        );
+      } catch (error) {
+        console.error("Error initiating video call:", error);
+        socket.emit("error", { message: "Failed to initiate video call." });
+      }
+    });
+
+    /**
+     * Handle video call answer
+     */
+    socket.on("answerVideoCall", async (data) => {
+      try {
+        const { appointmentId, accepted } = data;
+
+        if (!appointmentId) {
+          return socket.emit("error", {
+            message: "Appointment ID is required.",
+          });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        if (accepted) {
+          // Notify caller that call was accepted
+          socket.to(roomName).emit("videoCallAccepted", {
+            appointmentId,
+            acceptedBy: userId,
+            acceptedByName: userName,
+            timestamp: new Date().toISOString(),
+          });
+
+          console.log(
+            `📞 Video call accepted by ${userName} in appointment ${appointmentId}`
+          );
+        } else {
+          // Notify caller that call was rejected
+          socket.to(roomName).emit("videoCallRejected", {
+            appointmentId,
+            rejectedBy: userId,
+            rejectedByName: userName,
+            timestamp: new Date().toISOString(),
+          });
+
+          console.log(
+            `📞 Video call rejected by ${userName} in appointment ${appointmentId}`
+          );
+        }
+      } catch (error) {
+        console.error("Error answering video call:", error);
+        socket.emit("error", { message: "Failed to answer video call." });
+      }
+    });
+
+    /**
+     * Handle WebRTC signaling - ICE candidates
+     */
+    socket.on("iceCandidate", (data) => {
+      try {
+        const { appointmentId, candidate } = data;
+
+        if (!appointmentId || !candidate) {
+          return socket.emit("error", {
+            message: "Invalid ICE candidate data.",
+          });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Forward ICE candidate to other peer
+        socket.to(roomName).emit("iceCandidate", {
+          appointmentId,
+          candidate,
+          from: userId,
+        });
+      } catch (error) {
+        console.error("Error handling ICE candidate:", error);
+      }
+    });
+
+    /**
+     * Handle WebRTC signaling - SDP offer
+     */
+    socket.on("videoCallOffer", (data) => {
+      try {
+        const { appointmentId, offer } = data;
+
+        if (!appointmentId || !offer) {
+          return socket.emit("error", { message: "Invalid offer data." });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Forward offer to other peer
+        socket.to(roomName).emit("videoCallOffer", {
+          appointmentId,
+          offer,
+          from: userId,
+        });
+      } catch (error) {
+        console.error("Error handling video call offer:", error);
+      }
+    });
+
+    /**
+     * Handle WebRTC signaling - SDP answer
+     */
+    socket.on("videoCallAnswer", (data) => {
+      try {
+        const { appointmentId, answer } = data;
+
+        if (!appointmentId || !answer) {
+          return socket.emit("error", { message: "Invalid answer data." });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Forward answer to other peer
+        socket.to(roomName).emit("videoCallAnswer", {
+          appointmentId,
+          answer,
+          from: userId,
+        });
+      } catch (error) {
+        console.error("Error handling video call answer:", error);
+      }
+    });
+
+    /**
+     * Handle video call end
+     */
+    socket.on("endVideoCall", (data) => {
+      try {
+        const { appointmentId, reason = "ended" } = data;
+
+        if (!appointmentId) {
+          return socket.emit("error", {
+            message: "Appointment ID is required.",
+          });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Notify other participant that call ended
+        socket.to(roomName).emit("videoCallEnded", {
+          appointmentId,
+          endedBy: userId,
+          endedByName: userName,
+          reason,
+          timestamp: new Date().toISOString(),
+        });
+
+        console.log(
+          `📞 Video call ended by ${userName} in appointment ${appointmentId}`
+        );
+      } catch (error) {
+        console.error("Error ending video call:", error);
+      }
+    });
+
+    /**
+     * Handle media state changes (mute/unmute, camera on/off)
+     */
+    socket.on("mediaStateChanged", (data) => {
+      try {
+        const { appointmentId, mediaState } = data;
+        // mediaState: { audio: boolean, video: boolean }
+
+        if (!appointmentId || !mediaState) {
+          return socket.emit("error", { message: "Invalid media state data." });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Notify other participant about media state change
+        socket.to(roomName).emit("peerMediaStateChanged", {
+          appointmentId,
+          userId,
+          userName,
+          mediaState,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("Error handling media state change:", error);
+      }
+    });
+
+    /**
+     * Handle screen sharing
+     */
+    socket.on("screenShareToggle", (data) => {
+      try {
+        const { appointmentId, isSharing } = data;
+
+        if (!appointmentId) {
+          return socket.emit("error", {
+            message: "Appointment ID is required.",
+          });
+        }
+
+        const roomName = `appointment_${appointmentId}`;
+
+        // Notify other participant about screen sharing
+        socket.to(roomName).emit("peerScreenShareToggle", {
+          appointmentId,
+          userId,
+          userName,
+          isSharing,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("Error handling screen share toggle:", error);
+      }
+    });
+
     // =================== CONNECTION MANAGEMENT ===================
 
     /**
@@ -385,13 +643,29 @@ function initializeSocket(io) {
           if (typingSet.size === 0) {
             typingUsers.delete(appointmentId);
           }
-          // Notify that user stopped typing
           socket.to(`appointment_${appointmentId}`).emit("userStoppedTyping", {
             userId,
             appointmentId,
           });
         }
       }
+
+      // NEW: Handle video call disconnection
+      // Notify all rooms this user was in about video call end
+      const userRooms = Array.from(socket.rooms).filter((room) =>
+        room.startsWith("appointment_")
+      );
+
+      userRooms.forEach((room) => {
+        const appointmentId = room.replace("appointment_", "");
+        socket.to(room).emit("videoCallEnded", {
+          appointmentId,
+          endedBy: userId,
+          endedByName: userName,
+          reason: "disconnected",
+          timestamp: new Date().toISOString(),
+        });
+      });
 
       // Broadcast updated online users list
       io.emit(
