@@ -2,15 +2,7 @@ import React, { useState } from 'react';
 import { X, Pill, Syringe } from "lucide-react";
 import MiniProductDetail from '../../modal/MiniProductDetail';
 import useProductContext from '../../../hooks/useProduct';
-
-// Mock Image component for demo (replace with your actual Image import)
-const Image = ({ src, alt, fill, className }) => (
-  <img
-    src={src}
-    alt={alt}
-    className={`${fill ? "w-full h-full" : ""} ${className}`}
-  />
-);
+import Image from 'next/image';
 
 export const ProductContextCard = ({
   productData,
@@ -52,7 +44,7 @@ export const ProductContextCard = ({
         {productData.imageUrl ? (
           <div className={`relative ${isPreview ? "h-14 w-14" : imageSize } flex-shrink-0`}>
             <Image
-              src={productData.imageUrl}
+              src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+productData.imageUrl}
               alt={`${productData.productType} image`}
               fill
               className="object-contain rounded"

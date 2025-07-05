@@ -174,36 +174,42 @@ const TransactionModel = {
    * @param {Object} options - Query options
    * @returns {Array} Array of transactions
    */
-  async getByStatus(
-    status,
-    { limit, offset, sortBy = "createdAt", sortOrder = "desc" } = {}
-  ) {
-    try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(
-        limit,
-        offset
-      );
+ async getByStatus(
+  status,
+  { limit, offset, sortBy = "createdAt", sortOrder = "desc" } = {}
+) {
+  try {
+    const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
 
-      let query = transactionsRef
-        .where("status", "==", status)
-        .orderBy(sortBy, sortOrder);
+    // Start query base
+    let query = transactionsRef;
 
-      if (offsetVal > 0) {
-        const offsetSnapshot = await query.limit(offsetVal).get();
-        if (!offsetSnapshot.empty) {
-          const lastVisible =
-            offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
-          query = query.startAfter(lastVisible);
-        }
-      }
-
-      const snapshot = await query.limit(limitVal).get();
-      return snapshot.empty ? [] : formatDocs(snapshot.docs);
-    } catch (error) {
-      console.error("Error getting transactions by status:", error);
-      return [];
+    // Add status condition only if provided
+    if (status) {
+      query = query.where("status", "==", status);
     }
-  },
+
+    // Always add orderBy
+    query = query.orderBy(sortBy, sortOrder);
+
+    // Handle offset pagination
+    if (offsetVal > 0) {
+      const offsetSnapshot = await query.limit(offsetVal).get();
+      if (!offsetSnapshot.empty) {
+        const lastVisible = offsetSnapshot.docs[offsetSnapshot.docs.length - 1];
+        query = query.startAfter(lastVisible);
+      }
+    }
+
+    // Fetch final data
+    const snapshot = await query.limit(limitVal).get();
+    return snapshot.empty ? [] : formatDocs(snapshot.docs);
+  } catch (error) {
+    console.error("Error getting transactions by status:", error);
+    return [];
+  }
+}
+,
 
   /**
    * Get transaction by Chapa reference

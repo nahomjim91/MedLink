@@ -488,7 +488,7 @@ export default function TransactionPage() {
           tabData={tabData}
           isClickable={true}
           onClickRow={onClickRow}
-          isFilterButton={true}
+          isFilterButton={false}
           onFilter={handleOpenFilterModal}
           isAddButton={false}
           isOrderButton={false}

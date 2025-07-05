@@ -454,7 +454,7 @@ export default function ProfilePage() {
                       ? userData.efdaLicenseUrl.split("/").pop()
                       : "Not available"
                   }
-                  fileUrl={userData.efdaLicenseUrl}
+                  fileUrl={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+userData.efdaLicenseUrl}
                 />
                 <FileField
                   label="Business License"
@@ -463,7 +463,7 @@ export default function ProfilePage() {
                       ? userData.businessLicenseUrl.split("/").pop()
                       : "Not available"
                   }
-                  fileUrl={userData.businessLicenseUrl}
+                  fileUrl={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+userData.businessLicenseUrl}
                 />
               </>
             )}

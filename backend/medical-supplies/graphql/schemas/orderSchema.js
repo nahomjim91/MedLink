@@ -213,7 +213,7 @@ const orderTypeDefs = gql`
 
     # Get orders by status (admin)
     ordersByStatus(
-      status: OrderStatus!
+      status: OrderStatus
     
     ): [Order!]!
   }

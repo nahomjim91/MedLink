@@ -258,7 +258,7 @@ export default function OrderDetailsPage({ params }) {
                 <div className="relative">
                   {otherUser?.profileImageUrl ? (
                     <Image
-                      src={otherUser.profileImageUrl}
+                      src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+otherUser.profileImageUrl}
                       alt="Profile"
                       width={64}
                       height={64}

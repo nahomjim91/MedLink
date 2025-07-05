@@ -25,7 +25,6 @@ export default function PendingUserCard({
             <div className="h-12 w-12 rounded-full bg-primary/20 overflow-hidden flex-shrink-0">
               {user.profileImageUrl ? (
                 <Image
-                  src={user.profileImageUrl}
                   alt={displayName}
                   width={48}
                   height={48}
@@ -53,13 +52,7 @@ export default function PendingUserCard({
             </div>
           </div>
 
-          {/* <button
-              onClick={onApprove}
-              disabled={isApproving}
-              className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded transition duration-200 disabled:bg-green-300"
-              >
-              {isApproving ? 'Approving...' : 'Approve'}
-              </button> */}
+       
           {!user.rejectionReason && (
             <div className="flex flex-col space-y-2">
               <Button
@@ -69,12 +62,7 @@ export default function PendingUserCard({
               >
                 {isApproving ? "Approving..." : "Approve"}
               </Button>
-              {/* <button
-            //   onClick={onReject}
-            //   className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded transition duration-200"
-            // >
-            //   Reject
-            // </button> */}
+             
               <Button
                 variant="fill"
                 color="error"
@@ -119,9 +107,10 @@ export default function PendingUserCard({
                 Documents
               </h4>
               <div className="flex flex-col space-y-1 mt-1">
+                {console.log("user", user)}
                 {user.efdaLicenseUrl && (
                   <a
-                    href={user.efdaLicenseUrl}
+                    href={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+user.efdaLicenseUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline text-sm"
@@ -131,7 +120,7 @@ export default function PendingUserCard({
                 )}
                 {user.businessLicenseUrl && (
                   <a
-                    href={user.businessLicenseUrl}
+                    href={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+user.businessLicenseUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline text-sm"

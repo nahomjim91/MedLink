@@ -245,7 +245,7 @@ const resolvers = {
     // Reject user (admin only)
     rejectMSUser: async (_, { userId, reason }, context) => {
       await isAdmin(context);
-      return await MSUserModel.reject(userId, reason);
+      return await MSUserModel.reject(userId, reason , context.user?.uid);
     },
 
     // Add to cart

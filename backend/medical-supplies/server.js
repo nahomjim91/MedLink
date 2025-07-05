@@ -547,7 +547,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const fileUrl = `/uploads/${req.file.filename}`;
     // console.log(fileUrl);
     res.json({
       message: 'File uploaded successfully',
@@ -573,7 +573,7 @@ app.post('/uploads', upload.array('files', 10), (req, res) => {
     const fileInfos = req.files.map(file => ({
       originalName: file.originalname,
       fileName: file.filename,
-      fileUrl: `${req.protocol}://${req.get('host')}/uploads/${file.filename}`,
+      fileUrl: `/uploads/${file.filename}`,
       fileType: file.mimetype,
       size: file.size
     }));
@@ -636,7 +636,7 @@ app.get('/file/:filename', (req, res) => {
         size: stats.size,
         createdAt: stats.birthtime,
         modifiedAt: stats.mtime,
-        fileUrl: `${req.protocol}://${req.get('host')}/uploads/${safeFilename}`
+        fileUrl: `/uploads/${safeFilename}`
       });
     });
   } catch (error) {

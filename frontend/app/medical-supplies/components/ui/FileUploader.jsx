@@ -138,7 +138,7 @@ export function FileUploader({
           <div className="relative w-16 h-16 md:w-20 md:h-20 mx-auto mb-2">
             <img
               src={
-                typeof files === "string" ? files : URL.createObjectURL(files)
+                typeof files === "string" ? process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+files : URL.createObjectURL(files)
               }
               alt="Preview"
               className="w-full h-full object-cover rounded-full"
@@ -194,7 +194,7 @@ export function FileUploader({
             >
               <img
                 src={
-                  typeof file === "string" ? file : URL.createObjectURL(file)
+                  typeof file === "string" ? process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+file : URL.createObjectURL(file)
                 }
                 alt="Preview"
                 className="w-full h-full object-cover rounded-full"

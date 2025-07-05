@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
 import { X, Star, Pill, Syringe, Package, Calendar, MapPin, Building2 } from 'lucide-react';
-
-// Mock Image component - replace with your actual Image import
-const Image = ({ src, alt, fill, className }) => (
-  <img
-    src={src}
-    alt={alt}
-    className={`${fill ? "w-full h-full object-cover" : ""} ${className}`}
-  />
-);
+import Image from 'next/image';
 
 const MiniProductDetail = ({ isOpen, onClose, productData }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -54,13 +46,13 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
           {/* Left side - Images */}
           <div className="w-full lg:w-1/2 p-4 border-r border-gray-200">
             {/* Main image */}
-            <div className="aspect-square w-full bg-gray-100 rounded-lg mb-4 overflow-hidden">
+            <div className="aspect-square relative w-full bg-gray-100 rounded-lg mb-4 overflow-hidden">
               {productData.imageList && productData.imageList.length > 0 ? (
                 <Image
-                  src={productData.imageList[currentImageIndex]}
+                  src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+productData.imageList[currentImageIndex]}
                   alt={productData.name}
                   fill
-                  className="w-full h-full"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -76,13 +68,14 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
+                    className={`flex-shrink-0 w-16 h-16 relative rounded-lg overflow-hidden border-2 transition-colors ${
                       currentImageIndex === index ? 'border-blue-500' : 'border-gray-200'
                     }`}
                   >
                     <Image
-                      src={image}
+                      src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+image}
                       alt={`${productData.name} ${index + 1}`}
+                      fill
                       className="w-full h-full object-cover"
                     />
                   </button>

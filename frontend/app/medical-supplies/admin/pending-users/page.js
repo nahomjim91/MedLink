@@ -98,6 +98,7 @@ export default function AdminPendingUsersPage() {
   // Handle user rejection with reason
   const handleReject = (reason) => {
     if (selectedUser) {
+      console.log("Rejecting user:", selectedUser.userId, "with reason:", reason);
       rejectUser({
         variables: {
           userId: selectedUser.userId,

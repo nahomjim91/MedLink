@@ -251,7 +251,10 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
           <div className="w-10 h-10 rounded-full overflow-hidden">
             {otherUserInfo.image && !otherUserInfo.isLoading ? (
               <img
-                src={otherUserInfo.image}
+                src={
+                  process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                  otherUserInfo.image
+                }
                 alt={otherUserInfo.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -550,7 +553,7 @@ export function TableCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <div className="bg-white rounded-xl shadow-xl overflow-hidden">
       <div className="px-4 pt-2 flex justify-between items-center">
         <h2 className="text-xl font-medium">{title}</h2>
         <div className="flex gap-x-2">
@@ -639,7 +642,9 @@ export function TableCard({
               {displayData.map((item, index) => (
                 <React.Fragment key={item.id || item.orderNo || `row-${index}`}>
                   <tr
-                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    className={`${
+                      index % 2 === 0 ? "bg-white " : "bg-gray-50 "
+                    } cursor-pointer hover:bg-primary/10`}
                     onClick={isClickable ? () => onClickRow(item) : null}
                   >
                     {columns.map((column) => (
@@ -672,7 +677,7 @@ export function TableCard({
                     )}
                   </tr>
                   {expandedRows[item.id || item.orderNo] && item.rawOrder && (
-                    <tr className="bg-gray-50">
+                    <tr className="bg-gray-50 ">
                       <td colSpan={columns.length} className="p-0">
                         <OrderRowActions
                           order={item.rawOrder}
@@ -1245,7 +1250,8 @@ export const RelatedProducts = ({
                       src={
                         product.imageList[0] === "Untitled.jpeg"
                           ? "/image/Untitled.jpeg"
-                          : product.imageList[0]
+                          : process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                            product.imageList[0]
                       }
                       alt={product.name}
                       fill

@@ -96,7 +96,7 @@ export default function Carts() {
           {item.productImage ? (
             <div className="w-20 h-20 flex-shrink-0">
               <Image
-                src={ item.productImage}
+                src={ process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+item.productImage}
                 // src={"/image/Untitled.jpeg"}
                 alt={item.productName}
                 width={80}

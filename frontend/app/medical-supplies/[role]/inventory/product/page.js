@@ -100,6 +100,7 @@ export default function ProductPage() {
         name: editedProductData.name,
         category: editedProductData.category,
         description: editedProductData.description,
+        isActive: editedProductData.isActive,
       };
 
       const finalImageList = [
@@ -453,14 +454,16 @@ export default function ProductPage() {
               <Trash2 className="w-4 h-4" />
               Delete
             </Button>
-            <Button
-              variant="outline"
-              className="flex gap-1 items-center"
-              onClick={() => setIsEditing(true)}
-            >
-              <Pen className="w-4 h-4" />
-              Edit
-            </Button>
+            {activeTab === "overview" && (
+              <Button
+                variant="outline"
+                className="flex gap-1 items-center"
+                onClick={() => setIsEditing(true)}
+              >
+                <Pen className="w-4 h-4" />
+                Edit
+              </Button>
+            )}
             <Button
               className="flex gap-1 items-center bg-teal-500 text-white hover:bg-teal-600"
               onClick={() => setIsAddingBatch(true)}
@@ -495,7 +498,7 @@ export default function ProductPage() {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8 px-3">
-          {["Overview", "Batches", "History"].map((tab) => (
+          {["Overview", "Batches"].map((tab) => (
             <button
               key={tab}
               onClick={() => {
@@ -527,6 +530,27 @@ export default function ProductPage() {
                 {isEditing ? (
                   <>
                     {/* Common fields for both product types */}
+                    <div className="flex flex-col">
+                      <label className="text-sm font-medium text-gray-700 mb-1">
+                        Status
+                      </label>
+                      <select
+                        name="isActive"
+                        value={editedProductData.isActive}
+                        onChange={(e) =>
+                          handleInputChange({
+                            target: {
+                              name: "isActive",
+                              value: e.target.value === "true",
+                            },
+                          })
+                        }
+                        className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value={true}>Active</option>
+                        <option value={false}>Inactive</option>
+                      </select>
+                    </div>
                     <EditableTextField
                       label="Product name"
                       value={editedProductData.name}
@@ -763,6 +787,7 @@ export default function ProductPage() {
             isLoading={loading}
             isAddButton={false}
             isOrderButton={false}
+            isFilterButton={false}
             isEditable={true}
             editableColumns={"Selling Price"} ///{["Buying Price", "Selling Price", "Quantity"]}
             onUpdateItem={handleBatchUpdate}

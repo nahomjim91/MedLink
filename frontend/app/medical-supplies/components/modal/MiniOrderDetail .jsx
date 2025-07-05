@@ -244,7 +244,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
                     <div className="flex items-start gap-3 mb-3">
                       {item.productImage ? (
                         <img
-                          src={item.productImage}
+                          src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+item.productImage}
                           alt={item.productName}
                           className="w-12 h-12 object-contain rounded border"
                         />

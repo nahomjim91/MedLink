@@ -34,10 +34,9 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userType, setUserType] = useState("healthcare-facility"); // Default to patient
-  const { notificationCount, unreadCount:unseenChats} = useSocketContext();
+  const { notificationCount, unreadCount: unseenChats } = useSocketContext();
   const [showDropdown, setShowDropdown] = useState(false);
   const triggerRef = useRef(null);
-
 
   // Set user type based on user info
   useEffect(() => {
@@ -229,16 +228,10 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         path: "/medical-supplies/" + user.role + "/pending-users",
         icon: <ClipboardList />,
       },
-
-      {
-        name: "History",
-        path: "/medical-supplies/" + user.role + "/transaction",
-        icon: <HistoryIcon />,
-      },
-      {
-        name: "Users",
-        path: "/medical-supplies/" + user.role + "/users",
-        icon: <Users />,
+        {
+        name: "Chats",
+        path: "/medical-supplies/" + user.role + "/chats",
+        icon: <MessageCircle />,
       },
       {
         name: "Settings",
@@ -255,22 +248,23 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
   // Get current nav items based on user type
   const currentNavItems =
-    navigationItems[userType] || navigationItems.healthcare-facility;
+    navigationItems[userType] || navigationItems.healthcare - facility;
 
   // Check if a path is active
-const isActive = (path) => {
-  const normalizedPath = path.endsWith('/') ? path : path + '/';
-  const normalizedCurrent = pathname.endsWith('/') ? pathname : pathname + '/';
+  const isActive = (path) => {
+    const normalizedPath = path.endsWith("/") ? path : path + "/";
+    const normalizedCurrent = pathname.endsWith("/")
+      ? pathname
+      : pathname + "/";
 
-  // Home route — must match exactly
-  if (normalizedPath === `/medical-supplies/${user.role}/`) {
-    return normalizedCurrent === normalizedPath;
-  }
+    // Home route — must match exactly
+    if (normalizedPath === `/medical-supplies/${user.role}/`) {
+      return normalizedCurrent === normalizedPath;
+    }
 
-  // Other routes — must start with path and have something after
-  return normalizedCurrent.startsWith(normalizedPath);
-};
-
+    // Other routes — must start with path and have something after
+    return normalizedCurrent.startsWith(normalizedPath);
+  };
 
   // Role protection check
   const isAuthorized = () => {
@@ -420,17 +414,20 @@ const isActive = (path) => {
                   />
                 </Link>
 
-                {/* Chat Icon */}
-                <Link
-                  href={`/medical-supplies/${userType}/carts`}
-                  className="hidden md:block relative"
-                >
-                  <IconButton
-                    icon={<ShoppingCart />}
-                    isActive={false}
-                    badge={cart.items.length}
-                  />
-                </Link>
+                {(user.role === "supplier" ||
+                  user.role === "healthcare-facility") && (
+                  /* Chat Icon */
+                  <Link
+                    href={`/medical-supplies/${userType}/carts`}
+                    className="hidden md:block relative"
+                  >
+                    <IconButton
+                      icon={<ShoppingCart />}
+                      isActive={false}
+                      badge={cart.items.length}
+                    />
+                  </Link>
+                )}
 
                 {/* Notification Icon */}
                 <div className="relative">
@@ -442,7 +439,7 @@ const isActive = (path) => {
                     <IconButton
                       icon={<Bell />}
                       isActive={showDropdown}
-                      badge= {notificationCount}
+                      badge={notificationCount}
                     />
                   </div>
 

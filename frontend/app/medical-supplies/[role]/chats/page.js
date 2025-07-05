@@ -509,7 +509,7 @@ export default function ChatsPage() {
                       <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
                         {avatar ? (
                           <Image
-                            src={avatar}
+                            src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+avatar}
                             alt={conversationName}
                             width={40}
                             height={40}
@@ -572,7 +572,7 @@ export default function ChatsPage() {
                     <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
                       {getConversationAvatar(activeConversation) ? (
                         <Image
-                          src={getConversationAvatar(activeConversation)}
+                          src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+getConversationAvatar(activeConversation)}
                           alt={getConversationName(activeConversation)}
                           width={40}
                           height={40}

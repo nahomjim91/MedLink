@@ -47,7 +47,7 @@ export default function ProfileImage({
       ):
         previewUrl && previewUrl.trim() !== "" ? (
           <Image
-            src={previewUrl}
+            src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+previewUrl}
             alt={altText || "Profile"}
             className="w-full h-full object-cover"
             width={112}

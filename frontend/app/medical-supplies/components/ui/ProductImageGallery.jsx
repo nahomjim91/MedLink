@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useRef , useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Syringe, Pill, Upload, Trash, Plus, X } from "lucide-react";
 
 export const ProductImageGallery = ({
@@ -20,7 +20,9 @@ export const ProductImageGallery = ({
         {selectedImage ? (
           <div className={`relative w-full ${imageSize} mb-4`}>
             <Image
-              src={selectedImage}
+              src={
+                process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL + selectedImage
+              }
               // src={"/image/Untitled.jpeg"}
               alt={`${type} image`}
               fill
@@ -51,7 +53,9 @@ export const ProductImageGallery = ({
                 >
                   <div className="relative w-16 h-8">
                     <Image
-                      src={image}
+                      src={
+                        process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL + image
+                      }
                       // src={"/image/Untitled.jpeg"}
                       alt={`${type} thumbnail ${index + 1}`}
                       fill
@@ -78,7 +82,6 @@ export const ProductImageGallery = ({
   );
 };
 
-
 export const EditableImageGallery = ({
   images = [],
   type,
@@ -98,8 +101,10 @@ export const EditableImageGallery = ({
   const ProductIcon = isEquipment ? Syringe : Pill;
 
   // Combine actual images with preview images
-  const allImages = [...images, ...previewImages.map(p => p.url)];
-  const effectiveImages = allImages.filter((img) => !removedImages.includes(img));
+  const allImages = [...images, ...previewImages.map((p) => p.url)];
+  const effectiveImages = allImages.filter(
+    (img) => !removedImages.includes(img)
+  );
 
   // Update selected image when images change
   useEffect(() => {
@@ -108,7 +113,9 @@ export const EditableImageGallery = ({
     }
     // If selected image was removed, select another one
     if (selectedImage && removedImages.includes(selectedImage)) {
-      const remainingImages = effectiveImages.filter(img => !removedImages.includes(img));
+      const remainingImages = effectiveImages.filter(
+        (img) => !removedImages.includes(img)
+      );
       setSelectedImage(remainingImages[0] || null);
     }
   }, [effectiveImages, selectedImage, removedImages]);
@@ -117,7 +124,7 @@ export const EditableImageGallery = ({
   useEffect(() => {
     if (!uploading && previewImages.length > 0) {
       // Clean up old preview URLs
-      previewImages.forEach(preview => {
+      previewImages.forEach((preview) => {
         URL.revokeObjectURL(preview.url);
       });
       setPreviewImages([]);
@@ -130,13 +137,13 @@ export const EditableImageGallery = ({
     if (!files.length) return;
 
     // Create preview URLs immediately
-    const newPreviews = Array.from(files).map(file => ({
+    const newPreviews = Array.from(files).map((file) => ({
       url: URL.createObjectURL(file),
-      file: file
+      file: file,
     }));
-    
+
     setPreviewImages(newPreviews);
-    
+
     // Set the first preview as selected if no image is currently selected
     if (!selectedImage && newPreviews.length > 0) {
       setSelectedImage(newPreviews[0].url);
@@ -148,7 +155,7 @@ export const EditableImageGallery = ({
     } catch (error) {
       console.error("Error uploading images:", error);
       // Clean up preview URLs on error
-      newPreviews.forEach(preview => {
+      newPreviews.forEach((preview) => {
         URL.revokeObjectURL(preview.url);
       });
       setPreviewImages([]);
@@ -163,7 +170,7 @@ export const EditableImageGallery = ({
   // Handle removing an image
   const handleRemoveImage = (image) => {
     // Check if it's a preview image
-    const previewIndex = previewImages.findIndex(p => p.url === image);
+    const previewIndex = previewImages.findIndex((p) => p.url === image);
     if (previewIndex !== -1) {
       // Remove from preview images
       const updatedPreviews = [...previewImages];
@@ -193,7 +200,7 @@ export const EditableImageGallery = ({
 
   // Check if an image is a preview (being uploaded)
   const isPreviewImage = (imageUrl) => {
-    return previewImages.some(p => p.url === imageUrl);
+    return previewImages.some((p) => p.url === imageUrl);
   };
 
   return (
@@ -201,17 +208,23 @@ export const EditableImageGallery = ({
       {/* Main product image */}
       {selectedImage ? (
         <div className="relative w-full h-48 mb-4">
-          <div className={`relative w-full h-full ${isPreviewImage(selectedImage) ? 'opacity-75' : ''}`}>
+          <div
+            className={`relative w-full h-full ${
+              isPreviewImage(selectedImage) ? "opacity-75" : ""
+            }`}
+          >
             <Image
-              src={selectedImage}
+              src={
+                selectedImage.startsWith("http") ||
+                selectedImage.startsWith("blob:")
+                  ? selectedImage
+                  : process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                    selectedImage
+              }
               alt={`${type} image`}
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 400px"
-              onError={(e) => {
-                // Fallback to placeholder if image fails to load
-                e.target.src = "/image/Untitled.jpeg";
-              }}
             />
             {isPreviewImage(selectedImage) && (
               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
@@ -247,12 +260,18 @@ export const EditableImageGallery = ({
                   selectedImage === image
                     ? "border-teal-500"
                     : "border-gray-200"
-                } ${isPreviewImage(image) ? 'opacity-75' : ''}`}
+                } ${isPreviewImage(image) ? "opacity-75" : ""}`}
                 onClick={() => setSelectedImage(image)}
               >
                 <div className="relative w-16 h-8">
+                  
                   <Image
-                    src={image}
+                    src={
+                      image.startsWith("http") || image.startsWith("blob:")
+                        ? image
+                        : process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                          image
+                    }
                     alt={`${type} thumbnail ${index + 1}`}
                     fill
                     className="object-contain"
@@ -333,7 +352,11 @@ export const EditableImageGallery = ({
           } rounded-lg p-4 w-full text-center cursor-pointer`}
           onClick={() => !uploading && fileInputRef.current?.click()}
         >
-          <Upload className={`mx-auto h-8 w-8 mb-2 ${uploading ? 'text-gray-400' : 'text-teal-500'}`} />
+          <Upload
+            className={`mx-auto h-8 w-8 mb-2 ${
+              uploading ? "text-gray-400" : "text-teal-500"
+            }`}
+          />
           <p className="text-sm text-gray-500">
             {uploading ? "Uploading..." : "Click or drag images here to upload"}
           </p>
@@ -341,9 +364,7 @@ export const EditableImageGallery = ({
             Supported formats: JPG, PNG, GIF
           </p>
           {uploadError && (
-            <p className="text-xs text-red-500 mt-1">
-              Error: {uploadError}
-            </p>
+            <p className="text-xs text-red-500 mt-1">Error: {uploadError}</p>
           )}
         </div>
       )}

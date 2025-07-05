@@ -91,7 +91,7 @@ const transactionTypeDefs = gql`
     transactionSummaries(filter: TransactionFilterInput): [TransactionSummary!]!
 
     # Get transactions by status (admin)
-    transactionsByStatus(status: TransactionStatus!): [Transaction!]!
+    transactionsByStatus(status: TransactionStatus): [Transaction!]!
 
     # Get transactions by Chapa reference
     transactionByChapa(chapaRef: String!): Transaction

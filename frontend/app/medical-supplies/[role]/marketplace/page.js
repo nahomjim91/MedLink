@@ -192,7 +192,7 @@ const Marketplace = () => {
         {formatDistance(product.distance, product.distanceText) && (
           <div className="absolute top-2 right-2 z-10">
             <span className="bg-primary text-white text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
-              <MapPin size={10}  />
+              <MapPin size={10} />
               {formatDistance(product.distance, product.distanceText)}
             </span>
           </div>
@@ -204,7 +204,8 @@ const Marketplace = () => {
               src={
                 product.imageList[0] === "Untitled.jpeg"
                   ? "/image/Untitled.jpeg"
-                  : product.imageList[0]
+                  : process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                    product.imageList[0]
               }
               alt={product.name}
               className="h-full w-full object-contain"
@@ -236,7 +237,7 @@ const Marketplace = () => {
           {/* Distance info in the card body (alternative placement) */}
           {formatDistance(product.distance, product.distanceText) && (
             <div className="flex items-center gap-1 mt-2 text-sm text-gray-500">
-              <MapPin size={12} className="text-primary"  />
+              <MapPin size={12} className="text-primary" />
               <span>
                 {formatDistance(product.distance, product.distanceText)} away
               </span>
@@ -245,7 +246,7 @@ const Marketplace = () => {
 
           <Button
             className={`mt-3 w-full py-2 px-4 flex items-center justify-center gap-3 `}
-            onClick={() =>  handleProductClick(product)}
+            onClick={() => handleProductClick(product)}
             // disabled={isOutStock}
           >
             See Detail
@@ -259,133 +260,249 @@ const Marketplace = () => {
   ProductCard.displayName = "ProductCard";
 
   // Filter panel component
-  const FilterPanel = React.memo(() => (
-    <div
-      className={`bg-white rounded-lg p-4 shadow-md mb-6 transition-all duration-300 ${
-        showFilters ? "block absolute right-40 left-40 z-10" : "hidden"
-      }`}
-    >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium text-lg">Filters</h3>
-        <button
-          onClick={() => setShowFilters(false)}
-          className="text-secondary hover:text-error transition-colors"
-        >
-          <X size={18} />
-        </button>
-      </div>
+  // Filter panel component - Replace the existing FilterPanel component with this improved version
+  const FilterPanel = React.memo(() => {
+    if (!showFilters) return null;
 
-      <div className="flex flex-col gap-4">
-        {/* Product Type & Category Filters */}
-        <div className="w-full flex flex-col md:flex-row gap-4">
-          <SelectInput
-            label="Product Type"
-            name="productType"
-            value={filters.productType}
-            onChange={(e) => handleFilterChange("productType", e.target.value)}
-            options={[
-              { value: "", label: "All Products" },
-              { value: "DRUG", label: "Drugs" },
-              { value: "EQUIPMENT", label: "Equipment" },
-            ]}
-            placeholder="Select product type"
-            className="flex-grow"
-            defaultToFirstOption={false}
-          />
-
-          <SelectInput
-            label="Category"
-            name="category"
-            value={filters.category}
-            onChange={(e) => handleFilterChange("category", e.target.value)}
-            options={[
-              { value: "", label: "All Categories" },
-              ...categories.map((category) => ({
-                value: category,
-                label: category,
-              })),
-            ]}
-            placeholder="Select category"
-            className="flex-grow"
-            defaultToFirstOption={false}
-          />
-        </div>
-
-        {/* Sort By Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Sort By
-          </label>
-          <div className="flex gap-2">
-            <SelectInput
-              name="sortBy"
-              value={filters.sortBy}
-              onChange={(e) => handleFilterChange("sortBy", e.target.value)}
-              options={[
-                { value: "name", label: "Name" },
-                { value: "createdAt", label: "Newest" },
-                { value: "category", label: "Category" },
-              ]}
-              className="flex-grow"
-              defaultToFirstOption={false}
-            />
-            <SelectInput
-              name="sortOrder"
-              value={filters.sortOrder}
-              onChange={(e) => handleFilterChange("sortOrder", e.target.value)}
-              options={[
-                { value: "asc", label: "Ascending" },
-                { value: "desc", label: "Descending" },
-              ]}
-              className="w-36"
-              defaultToFirstOption={false}
-            />
-          </div>
-        </div>
-
-        {/* Date Range Filters (for expiry date) - Only shown for DRUG products */}
-        {filters.productType === "DRUG" && (
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Expiry Date Range
-            </label>
-            <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-gray-500" />
-              <input
-                type="date"
-                value={filters.expiryDateStart || ""}
-                onChange={(e) =>
-                  handleFilterChange("expiryDateStart", e.target.value)
-                }
-                className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="From"
-              />
-              <span className="text-gray-500">to</span>
-              <input
-                type="date"
-                value={filters.expiryDateEnd || ""}
-                onChange={(e) =>
-                  handleFilterChange("expiryDateEnd", e.target.value)
-                }
-                className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="To"
-              />
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                <Filter size={20} className="text-primary" />
+                Filter Products
+              </h3>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Clear Filters Button */}
-        <div className="pt-2">
-          <button
-            onClick={clearFilters}
-            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md transition-colors"
-          >
-            Clear All Filters
-          </button>
+          {/* Filter Content */}
+          <div className="p-6 space-y-6">
+            {/* Product Type & Category Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Product Type
+                </label>
+                <SelectInput
+                  name="productType"
+                  value={filters.productType}
+                  onChange={(e) =>
+                    handleFilterChange("productType", e.target.value)
+                  }
+                  options={[
+                    { value: "", label: "All Products" },
+                    { value: "DRUG", label: "Drugs" },
+                    { value: "EQUIPMENT", label: "Equipment" },
+                  ]}
+                  placeholder="Select product type"
+                  className="w-full"
+                  defaultToFirstOption={false}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Category
+                </label>
+                <SelectInput
+                  name="category"
+                  value={filters.category}
+                  onChange={(e) =>
+                    handleFilterChange("category", e.target.value)
+                  }
+                  options={[
+                    { value: "", label: "All Categories" },
+                    ...categories.map((category) => ({
+                      value: category,
+                      label: category,
+                    })),
+                  ]}
+                  placeholder="Select category"
+                  className="w-full"
+                  defaultToFirstOption={false}
+                />
+              </div>
+            </div>
+
+            {/* Sort Options */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Package size={16} className="text-primary" />
+                Sort Options
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-600">
+                    Sort By
+                  </label>
+                  <SelectInput
+                    name="sortBy"
+                    value={filters.sortBy}
+                    onChange={(e) =>
+                      handleFilterChange("sortBy", e.target.value)
+                    }
+                    options={[
+                      { value: "name", label: "Name" },
+                      { value: "createdAt", label: "Newest" },
+                      { value: "category", label: "Category" },
+                    ]}
+                    className="w-full"
+                    defaultToFirstOption={false}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-600">
+                    Order
+                  </label>
+                  <SelectInput
+                    name="sortOrder"
+                    value={filters.sortOrder}
+                    onChange={(e) =>
+                      handleFilterChange("sortOrder", e.target.value)
+                    }
+                    options={[
+                      { value: "asc", label: "Ascending" },
+                      { value: "desc", label: "Descending" },
+                    ]}
+                    className="w-full"
+                    defaultToFirstOption={false}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Date Range Filters - Only shown for DRUG products */}
+            {filters.productType === "DRUG" && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Calendar size={16} className="text-primary" />
+                  Expiry Date Range
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      From Date
+                    </label>
+                    <input
+                      type="date"
+                      value={filters.expiryDateStart || ""}
+                      onChange={(e) =>
+                        handleFilterChange("expiryDateStart", e.target.value)
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      To Date
+                    </label>
+                    <input
+                      type="date"
+                      value={filters.expiryDateEnd || ""}
+                      onChange={(e) =>
+                        handleFilterChange("expiryDateEnd", e.target.value)
+                      }
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Active Filters Display */}
+            {(filters.productType ||
+              filters.category ||
+              filters.expiryDateStart ||
+              filters.expiryDateEnd) && (
+              <div className="space-y-3 border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-700">
+                  Active Filters
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {filters.productType && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      Type: {filters.productType}
+                      <button
+                        onClick={() => handleFilterChange("productType", "")}
+                        className="ml-1 hover:text-primary/80"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {filters.category && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      Category: {filters.category}
+                      <button
+                        onClick={() => handleFilterChange("category", "")}
+                        className="ml-1 hover:text-primary/80"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {filters.expiryDateStart && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      From: {filters.expiryDateStart}
+                      <button
+                        onClick={() =>
+                          handleFilterChange("expiryDateStart", null)
+                        }
+                        className="ml-1 hover:text-primary/80"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                  {filters.expiryDateEnd && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+                      To: {filters.expiryDateEnd}
+                      <button
+                        onClick={() =>
+                          handleFilterChange("expiryDateEnd", null)
+                        }
+                        className="ml-1 hover:text-primary/80"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer with Actions */}
+          <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl">
+            <div className="flex flex-col sm:flex-row gap-3 sm:justify-between">
+              <button
+                onClick={clearFilters}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <X size={16} />
+                Clear All Filters
+              </button>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Apply Filters
+                <Filter size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  ));
+    );
+  });
   FilterPanel.displayName = "FilterPanel";
 
   return (
@@ -419,7 +536,6 @@ const Marketplace = () => {
               }`}
             />
           </Button>
-          <Button>Check Out</Button>
         </div>
       </div>
 

@@ -1800,6 +1800,32 @@ const OrderModel = {
       throw error;
     }
   },
+
+  async getByStatus(status) {
+    try {
+      let query = ordersRef;
+
+      if (status) {
+        query = query.where("status", "==", status);
+      }
+
+      // Add orderBy to sort results (optional, but recommended)
+      const ordersSnapshot = await query.orderBy("createdAt", "desc").get();
+
+      // Optional: If you want full order details via getById (e.g., includes nested items)
+      return await Promise.all(
+        formatDocs(ordersSnapshot.docs).map(async (order) => {
+          return await this.getById(order.orderId);
+        })
+      );
+
+      // If you just want raw documents (without deeper info), use:
+      // return ordersSnapshot.docs.map((doc) => doc.data());
+    } catch (error) {
+      console.error("Error getting orders by status:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = OrderModel;

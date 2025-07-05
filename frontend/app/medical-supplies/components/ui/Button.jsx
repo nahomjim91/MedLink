@@ -151,8 +151,7 @@ export function StepButtons({
   showNext = true,
   className = "",
   isLoading = false,
-    nextDisabled = false, // <-- Add this
-
+  nextDisabled = false, // <-- Add this
 }) {
   // console.log("showNext:", showNext);
   // console.log("showPrevious:", showPrevious);
@@ -167,22 +166,22 @@ export function StepButtons({
             onClick={isLoading ? () => {} : onPrevious}
             className={`  flex-1 sm:flex-initial text-sm md:text-base`}
           >
-            { isLoading ? "Loading..." : previousLabel}
+            {isLoading ? "Loading..." : previousLabel}
           </Button>
         )}
       </div>
 
       <div>
         {showNext && (
-         <Button
-  variant="fill"
-  color="primary"
-  onClick={isLoading || nextDisabled ? () => {} : onNext}
-  disabled={isLoading || nextDisabled}
-  className={`...`}
->
-  {isLoading ? "Loading..." : nextLabel}
-</Button>
+          <Button
+            variant="fill"
+            color="primary"
+            onClick={isLoading || nextDisabled ? () => {} : onNext}
+            disabled={isLoading || nextDisabled}
+            className={`...`}
+          >
+            {isLoading ? "Loading..." : nextLabel}
+          </Button>
         )}
       </div>
     </div>
@@ -223,7 +222,11 @@ export const ImageIconButton = ({
       }`}
     >
       <Image
-        src={imageUrl}
+        src={
+          imageUrl.startsWith("http") || imageUrl.startsWith("blob:")
+            ? imageUrl
+            : process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL + imageUrl
+        }
         alt={alt}
         fill
         sizes="2.25rem"
