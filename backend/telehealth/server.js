@@ -33,12 +33,40 @@ if (!process.env.NODE_ENV) {
 const app = express(); 
 
 // Configure middleware
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    /\.ngrok-free\.app$/
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use((req, res, next) => {
+  // Add ngrok bypass header
+  res.header('ngrok-skip-browser-warning', 'true');
+  
+  // Add CORS headers for images
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, ngrok-skip-browser-warning');
+  
+  next();
+});
+
+
 // Static file serving for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', (req, res, next) => {
+  // Set cache headers for images
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  res.setHeader('ngrok-skip-browser-warning', 'true');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
+
 
 // Configure Multer for file uploads
 const storage = multer.diskStorage({

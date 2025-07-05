@@ -161,7 +161,7 @@ export const NewConversationModal = ({
                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
                       {doctor.user.profileImageUrl ? (
                         <img
-                          src={doctor.user.profileImageUrl}
+                          src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + doctor.user.profileImageUrl}
                           alt={ "Dr." + doctor.user.firstName || "User"}
                           className="w-full h-full object-cover"
                         />

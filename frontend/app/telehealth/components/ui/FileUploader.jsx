@@ -154,7 +154,7 @@ export function FileUploader({
             ) : (
               <>
                 <img
-                  src={files}
+                  src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + files}
                   alt="Preview"
                   className="w-full h-full object-cover rounded-full"
                 />

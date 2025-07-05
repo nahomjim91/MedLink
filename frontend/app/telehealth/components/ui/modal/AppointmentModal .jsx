@@ -33,7 +33,10 @@ import Link from "next/link";
 import { useAuth } from "../../../hooks/useAuth";
 import { useQuery } from "@apollo/client";
 import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
-import { GET_DOCTOR_AVAILABLE_SLOTS, GET_DOCTOR_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
+import {
+  GET_DOCTOR_AVAILABLE_SLOTS,
+  GET_DOCTOR_SLOTS,
+} from "../../../api/graphql/doctor/availabilitySlotQueries";
 
 import TelehealthAddFunds from "../AddFound";
 // Cancel Modal Component
@@ -102,9 +105,9 @@ export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
       </div>
     </div>
   );
-}
+};
 
-export  function AppointmentModal({
+export function AppointmentModal({
   doctor,
   slot,
   date,
@@ -513,8 +516,6 @@ export  function AppointmentModal({
   );
 }
 
-;
-
 export const AppointmentDetailModal = ({
   isOpen,
   onClose,
@@ -726,10 +727,8 @@ export const AppointmentDetailModal = ({
                 <div className="flex jusc items-center space-x-4">
                   <img
                     src={
-                      otherPerson?.profileImageUrl ||
-                      `https://placehold.co/80x80/E2E8F0/4A5568?text=${otherPersonTitle.charAt(
-                        0
-                      )}`
+                      process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                      otherPerson?.profileImageUrl
                     }
                     alt={`${otherPerson?.firstName} ${otherPerson?.lastName}`}
                     className="w-16 h-16 md:w-20 md:h-20 rounded-full border-3 border-gray-200 object-cover"
@@ -831,17 +830,21 @@ export const AppointmentDetailModal = ({
                       </button>
                     </>
                   ) : appointment.status === "COMPLETED" ? (
-                    <button className="w-full px-4 py-3 border-2 border-blue-300 text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all">
+                    <Link
+                      href={`/telehealth/${userRole.toLocaleLowerCase()}/chats?appointmentId=${appointmentId}`}
+                      className="w-full px-4 py-3 border-2 border-blue-300 text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all"
+                    >
                       View Medical Records
-                    </button>
+                    </Link>
                   ) : null}
-
-                  <Link
-                    href={`/telehealth/${userRole.toLocaleLowerCase()}/chats?appointmentId=${appointmentId}`}
-                    className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all"
-                  >
-                    Contact {otherPersonTitle}
-                  </Link>
+                  {appointment.status !== "COMPLETED" && (
+                    <Link
+                      href={`/telehealth/${userRole.toLocaleLowerCase()}/chats?appointmentId=${appointmentId}`}
+                      className="w-full px-4 py-3 border-2 border-gray-300 text-secondary/70 hover:bg-gray-50 rounded-xl font-semibold transition-all"
+                    >
+                      Contact {otherPersonTitle}
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -920,9 +923,7 @@ export const ExtensionRequestModal = ({
   const doctorUpcomingSlots = slotsData?.doctorSlots || [];
   useEffect(() => {
     if (appointment && doctorUpcomingSlots.length > 0) {
-      const appointmentEndTime = new Date(
-        appointment.scheduledEndTime
-      );
+      const appointmentEndTime = new Date(appointment.scheduledEndTime);
 
       const hasConflict = checkForConflicts(appointmentEndTime, 30);
       setHasConflictingAppointments(hasConflict);

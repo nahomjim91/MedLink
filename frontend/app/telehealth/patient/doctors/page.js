@@ -75,69 +75,70 @@ const DoctorCard = ({ doctor, onFavoriteClick }) => {
 
   return (
     <Link href={`/telehealth/patient/doctors/${doctor.doctorId}`}>
-      
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
-      <div className="flex flex-col items-center text-center">
-        <div className="relative mb-4">
-          <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-            {profileImage ? (
-              <img
-                src={profileImage}
-                alt={displayName}
-                className="w-full h-full object-cover"
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-4">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+              {profileImage ? (
+                <img
+                  src={
+                    process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + profileImage
+                  }
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/50 to-primary flex items-center justify-center">
+                  <span className="text-white font-semibold text-lg">
+                    {initials}
+                  </span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleFavoriteClick}
+              className="absolute -top-2 -right-2 p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
+            >
+              <Heart
+                className={`w-5 h-5 ${
+                  isFavorited ? "fill-primary text-primary" : "text-gray-400"
+                }`}
               />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-primary/50 to-primary flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">
-                  {initials}
-                </span>
-              </div>
-            )}
+            </button>
           </div>
-          <button
-            onClick={handleFavoriteClick}
-            className="absolute -top-2 -right-2 p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-shadow"
-          >
-            <Heart
-              className={`w-5 h-5 ${
-                isFavorited ? "fill-primary text-primary" : "text-gray-400"
-              }`}
-            />
-          </button>
-        </div>
 
-        <div className="flex items-center gap-2 mb-1">
-          <h3 className="font-semibold text-gray-900 text-lg">
-            {displayName}
-          </h3>
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 fill-[#25C8B1] text-[#25C8B1]" />
-            <span className="text-[#25C8B1] font-medium text-sm">
-              {doctor.averageRating ? doctor.averageRating.toFixed(1) : "3.5"}
-            </span>
-            {doctor.ratingCount > 0 && (
-              <span className="text-gray-400 text-xs">
-                ({doctor.ratingCount})
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-gray-900 text-lg">
+              {displayName}
+            </h3>
+            <div className="flex items-center gap-1">
+              <Star className="w-4 h-4 fill-[#25C8B1] text-[#25C8B1]" />
+              <span className="text-[#25C8B1] font-medium text-sm">
+                {doctor.averageRating ? doctor.averageRating.toFixed(1) : "3.5"}
               </span>
-            )}
+              {doctor.ratingCount > 0 && (
+                <span className="text-gray-400 text-xs">
+                  ({doctor.ratingCount})
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        <p className="text-gray-500 text-sm mb-2">
-          {Array.isArray(doctor.specialization)
-            ? doctor.specialization.join(", ")
-            : doctor.specialization || "General Practitioner"}
-        </p>
-        <p className="text-gray-400 text-xs mb-3">
-          {doctor.experienceYears}+ years experience
-        </p>
-        {doctor.pricePerSession && (
-          <p className="text-[#25C8B1] font-bold text-xl">
-            ${doctor.pricePerSession}
+          <p className="text-gray-500 text-sm mb-2">
+            {Array.isArray(doctor.specialization)
+              ? doctor.specialization.join(", ")
+              : doctor.specialization || "General Practitioner"}
           </p>
-        )}
+          <p className="text-gray-400 text-xs mb-3">
+            {doctor.experienceYears}+ years experience
+          </p>
+          {doctor.pricePerSession && (
+            <p className="text-[#25C8B1] font-bold text-xl">
+              ${doctor.pricePerSession}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
     </Link>
   );
 };
@@ -174,7 +175,7 @@ const FilterModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
@@ -233,19 +234,30 @@ const FilterModal = ({
                 Gender
               </label>
               <div className="flex gap-2">
-                {["", "Male", "Female"].map((gender) => (
-                  <button
-                    key={gender}
-                    onClick={() => setLocalFilters({ ...localFilters, gender })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      localFilters.gender === gender
-                        ? "bg-[#25C8B1] text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {gender || "Any"}
-                  </button>
-                ))}
+                {["", "Male", "Female"].map((gender) => {
+                  // Convert display value to filter value
+                  const filterValue =
+                    gender === "Male" ? "M" : gender === "Female" ? "F" : "";
+
+                  return (
+                    <button
+                      key={gender || "Any"}
+                      onClick={() =>
+                        setLocalFilters({
+                          ...localFilters,
+                          gender: filterValue,
+                        })
+                      }
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        localFilters.gender === filterValue
+                          ? "bg-[#25C8B1] text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {gender || "Any"}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -381,7 +393,11 @@ const DoctorListing = () => {
   const ITEMS_PER_PAGE = 12;
 
   // Get specializations
-  const { data: specializationsData, loading: specializationsLoading, error: specializationsError } = useQuery(GET_DOCTOR_SPECIALIZATIONS);
+  const {
+    data: specializationsData,
+    loading: specializationsLoading,
+    error: specializationsError,
+  } = useQuery(GET_DOCTOR_SPECIALIZATIONS);
 
   // Main query logic
   const shouldUseSearch = searchTerm.trim() !== "";

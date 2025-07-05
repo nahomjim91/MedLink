@@ -66,7 +66,7 @@ export default function Transactions() {
       offset: 0,
     },
     fetchPolicy: 'cache-and-network',
-    skip: user.role !== "doctor",
+    skip: user.role === "doctor",
   });
 
   // GraphQL queries for statistics

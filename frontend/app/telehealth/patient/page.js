@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Star } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { UpcomingAppointmentCard } from "../components/ui/Card";
-import {CalendarAppointments} from "../components/ui/CalendarAppointments";
+import { CalendarAppointments } from "../components/ui/CalendarAppointments";
 import TelehealthAddFunds from "../components/ui/AddFound";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -133,12 +133,6 @@ export default function TelehealthPatientPage() {
       }
 
       try {
-        console.log(
-          "Canceling appointment with ID:",
-          appointmentId,
-          "Reason:",
-          reason
-        );
         await cancelAppointment(appointmentId, reason);
 
         // Refresh appointments after cancellation
@@ -198,10 +192,7 @@ export default function TelehealthPatientPage() {
           rating: Math.max(0, parseFloat(doctor.averageRating || 0)),
           ratingCount: Math.max(0, parseInt(doctor.ratingCount || 0)),
           price: Math.max(0, parseFloat(doctor.pricePerSession || 0)),
-          avatar:
-            doctor?.user?.profileImageUrl ||
-            doctor?.profileImageUrl ||
-            "/api/placeholder/60/60",
+          avatar: doctor?.user?.profileImageUrl || doctor?.profileImageUrl,
           experience: Math.max(0, parseInt(doctor.experienceYears || 0)),
           isApproved: Boolean(doctor.isApproved),
           gender: doctor?.user?.gender || doctor?.gender || "Not specified",
@@ -371,8 +362,7 @@ export default function TelehealthPatientPage() {
           status: appointment.status,
           avatar:
             appointment.doctor?.profilePicture ||
-            appointment.doctor?.profileImageUrl ||
-            "/api/placeholder/60/60",
+            appointment.doctor?.profileImageUrl,
         };
       } catch (error) {
         console.error(
@@ -453,8 +443,7 @@ export default function TelehealthPatientPage() {
           status: appointment.status,
           avatar:
             appointment.doctor?.profileImageUrl ||
-            appointment.doctor?.user?.profileImageUrl ||
-            "/api/placeholder/60/60",
+            appointment.doctor?.user?.profileImageUrl,
         };
       } catch (error) {
         console.error(
@@ -536,13 +525,16 @@ export default function TelehealthPatientPage() {
         {/* Calendar with methods passed */}
         <CalendarAppointments
           appointments={calendarAppointments}
-          onCancelAppointment={()=>{console.log("dsjldhbjlsdbh")}}
+          onCancelAppointment={() => {
+            console.log("dsjldhbjlsdbh");
+          }}
           // onCancelAppointment={handleCancelAppointment}
           loading={appointmentsLoading}
-           onViewProfile={() => {
-              setSelectedAppointment(upcomingAppointment.id);
-              setDetailModalOpen(true);
-            }}
+          onViewProfile={(id) => {
+            console.log("idsds", id);
+            setSelectedAppointment(id);
+            setDetailModalOpen(true);
+          }}
         />
       </div>
 
@@ -593,7 +585,10 @@ export default function TelehealthPatientPage() {
                   <div className="flex items-center gap-2">
                     <div className="hidden md:block w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
                       <img
-                        src={appointment.avatar}
+                        src={
+                          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                          appointment.avatar
+                        }
                         alt={appointment.doctor}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -725,19 +720,20 @@ export default function TelehealthPatientPage() {
                   <div className="lg:hidden">
                     <div className="flex gap-4 overflow-x-auto scrollbar-hide">
                       {displayDoctors.map((doctor) => (
-                        <div
+                        <Link
+                          href={`/telehealth/patient/doctors/${doctor.id}`}
                           key={doctor.id}
                           className="flex-none w-80 bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-16 h-16 rounded-full bg-primary/20 overflow-hidden flex-shrink-0">
                               <img
-                                src={doctor.avatar}
+                                src={
+                                  process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                                  doctor.avatar
+                                }
                                 alt={doctor.name}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.src = "/api/placeholder/60/60";
-                                }}
                               />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -766,7 +762,7 @@ export default function TelehealthPatientPage() {
                               </span>
                             </div>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>
@@ -775,19 +771,24 @@ export default function TelehealthPatientPage() {
                   <div className="hidden lg:block">
                     <div className="flex gap-3 overflow-x-auto pb- scrollbar-hide">
                       {displayDoctors.map((doctor) => (
-                        <div
+                        <Link
+                          href={`/telehealth/patient/doctors/${doctor.id}`}
                           key={doctor.id}
                           className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow cursor-pointer"
                         >
                           <div className="flex items-center gap-6">
                             <div className="w-12 h-12 rounded-full bg-orange-200 overflow-hidden flex-shrink-0">
+                              {console.log(
+                                process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                                  doctor.avatar
+                              )}
                               <img
-                                src={doctor.avatar}
+                                src={
+                                  process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                                  doctor.avatar
+                                }
                                 alt={doctor.name}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.src = "/api/placeholder/60/60";
-                                }}
                               />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -820,7 +821,7 @@ export default function TelehealthPatientPage() {
                               )}
                             </div>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>

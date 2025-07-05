@@ -832,7 +832,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                       {chat.avatar ? (
                         <img
-                          src={chat.avatar}
+                          src={ process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + chat.avatar}
                           alt={chat.doctorName || chat.patientName}
                           className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full object-cover"
                         />
@@ -912,7 +912,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                       {activeChat.avatar ? (
                         <img
-                          src={activeChat.avatar}
+                          src={ process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +activeChat.avatar}
                           alt={activeChat.doctorName || activeChat.patientName}
                           className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full object-cover"
                         />

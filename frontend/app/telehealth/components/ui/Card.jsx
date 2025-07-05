@@ -129,7 +129,7 @@ export function UpcomingAppointmentCard({
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="w-12 h-12 md:w-16 md:h-16 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
               <img
-                src={upcomingAppointment.avatar}
+                src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + upcomingAppointment.avatar}
                 alt={upcomingAppointment.doctorName}
                 className="w-full h-full object-cover"
               />
@@ -206,7 +206,7 @@ export function UpcomingAppointmentCard({
               onClick={handleViewProfile}
               disabled={loading}
             >
-              View Profile
+              Details
             </Button>
           </div>
         </div>

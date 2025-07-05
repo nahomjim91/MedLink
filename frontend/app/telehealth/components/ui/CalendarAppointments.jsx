@@ -8,146 +8,11 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "./Button";
-import {CancelModal} from "./modal/AppointmentModal ";
+import { CancelModal } from "./modal/AppointmentModal ";
 import Link from "next/link";
 // Cancel Modal Component
 
-export const AppointmentCard = ({
-  appointment,
-  onClose,
-  onCancel,
-  loading,
-  onViewProfile,
-}) => {
-  const [showCancelModal, setShowCancelModal] = useState(false);
-
-  const canCancel = ["REQUESTED", "PENDING"].includes(appointment.status);
-
-  const handleCancelConfirm = async (appointmentId, reason) => {
-    try {
-      console.log("Trying to cancel ")
-      await onCancel(appointmentId, reason);
-      setShowCancelModal(false);
-      onClose();
-    } catch (error) {
-      // Error is handled by the parent component
-      console.error("Cancel failed:", error);
-    }
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-40 md:hidden">
-        <div className="bg-white rounded-2xl p-6 m-4 max-w-sm w-full">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-secondary">
-              Appointment Details
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-1 hover:bg-gray-100 rounded-lg"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-              <img
-                src={appointment.avatar}
-                alt={appointment.doctorName}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-secondary text-lg">
-                {appointment.doctorName}
-              </h4>
-              <p className="text-sm text-gray-500">{appointment.specialty}</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    appointment.status === "CONFIRMED"
-                      ? "bg-green-100 text-green-700"
-                      : appointment.status === "PENDING"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : appointment.status === "REQUESTED"
-                      ? "bg-blue-100 text-blue-700"
-                      : appointment.status === "SCHEDULED"
-                      ? "bg-teal-100 text-teal-700"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {appointment.status}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-6 mb-6">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Date
-                </p>
-                <p className="text-sm font-medium text-secondary">
-                  {appointment.formattedDate}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Time
-                </p>
-                <p className="text-sm font-medium text-secondary">
-                  {appointment.time}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => onViewProfile(appointment.appointmentId)}
-              disabled={loading}
-            >
-              View Profile
-            </Button>
-
-            {canCancel && (
-              <Button
-                variant="outline"
-                className="w-full border-red-200 text-red-600 hover:bg-red-50"
-                onClick={() => setShowCancelModal(true)}
-                disabled={loading}
-              >
-                Cancel Appointment
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {
-      
-      showCancelModal && (
-        <CancelModal
-          appointment={appointment}
-          onClose={() => setShowCancelModal(false)}
-          onConfirm={handleCancelConfirm}
-          loading={loading}
-        />
-      )}
-    </>
-  );
-};
-
-export  function CalendarAppointments({
+export function CalendarAppointments({
   appointments: propAppointments = [],
   onCancelAppointment,
   loading = false,
@@ -155,7 +20,6 @@ export  function CalendarAppointments({
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
   const appointments = propAppointments;
@@ -245,10 +109,6 @@ export  function CalendarAppointments({
 
     setSelectedDate(dayObj.dateKey);
     const appointments = getAppointmentsForDay(dayObj.dateKey);
-
-    if (appointments.length > 0) {
-      setSelectedAppointment([...appointments]);
-    }
   };
 
   const getTodayDate = () => {
@@ -308,12 +168,6 @@ export  function CalendarAppointments({
   const DesktopAppointmentActions = ({ appointment }) => {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const canCancel = ["REQUESTED", "PENDING"].includes(appointment.status);
-    const canReschedule = [
-      "REQUESTED",
-      "PENDING",
-      "CONFIRMED",
-      "SCHEDULED",
-    ].includes(appointment.status);
 
     const handleCancelConfirm = async (appointmentId, reason) => {
       try {
@@ -341,11 +195,11 @@ export  function CalendarAppointments({
 
           <Button
             className="flex-1"
-            onClick={() => onViewProfile(appointment.appointmentId)}
+            onClick={() => onViewProfile(appointment.id)}
             disabled={loading}
             size="sm"
           >
-            View Profile
+            Details
           </Button>
         </div>
 
@@ -530,11 +384,14 @@ export  function CalendarAppointments({
                   <div
                     key={appointment.id}
                     className="flex items-center gap-3 p-3 bg-background rounded-lg cursor-pointer hover:bg-gray-100"
-                    onClick={() => setSelectedAppointment(appointment)}
+                    onClick={() => onViewProfile(appointment.id)}
                   >
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0">
                       <img
-                        src={appointment.avatar}
+                        src={
+                          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                          appointment.avatar
+                        }
                         alt={appointment.doctorName}
                         className="w-full h-full object-cover"
                       />
@@ -610,7 +467,10 @@ export  function CalendarAppointments({
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
                         <img
-                          src={appointment.avatar}
+                          src={
+                            process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                            appointment.avatar
+                          }
                           alt={appointment.doctorName}
                           className="w-full h-full object-cover"
                         />
@@ -666,7 +526,10 @@ export  function CalendarAppointments({
                       </div>
                     </div>
 
-                    <DesktopAppointmentActions appointment={appointment} />
+                    <DesktopAppointmentActions
+                      appointment={appointment}
+                      onViewProfile={() => onViewProfile()}
+                    />
                   </div>
                 ))}
               </div>
@@ -686,22 +549,11 @@ export  function CalendarAppointments({
           )}
         </div>
       </div>
-
-      {/* Mobile Appointment Modal */}
-      {selectedAppointment && (
-        <AppointmentCard
-          appointment={selectedAppointment}
-          onClose={() => setSelectedAppointment(null)}
-          onCancel={onCancelAppointment}
-          loading={loading}
-          onViewProfile={onViewProfile}
-        />
-      )}
     </div>
   );
 }
 
-export function MinimalCalendar({ appointments, userRole }) {
+export function MinimalCalendar({ appointments, userRole, onViewProfile }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -787,62 +639,6 @@ export function MinimalCalendar({ appointments, userRole }) {
     return dateKey === todayKey;
   };
 
-  const AppointmentModal = ({ appointment, onClose }) => (
-    <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Appointment Details</h3>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 mb-4">
-          <img
-            src={appointment.avatar}
-            alt={appointment.patientName}
-            className="w-12 h-12 rounded-full object-cover"
-          />
-          <div>
-            <h4 className="font-medium">{appointment.patientName}</h4>
-            <p className="text-sm text-gray-500">{appointment.note}</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <span className="text-sm">
-              {new Date(appointment.date).toLocaleDateString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Clock className="w-4 h-4 text-gray-500" />
-            <span className="text-sm">{appointment.time}</span>
-          </div>
-        </div>
-
-        <div className="flex gap-3 mt-6">
-          <button className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-            Reschedule
-          </button>
-          <button className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-            View Details
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="w-full md:flex-2/3  ">
       <div className="flex">
@@ -922,34 +718,33 @@ export function MinimalCalendar({ appointments, userRole }) {
                     dayObj.dateKey
                   ).length;
                   const isTodayDate = isToday(dayObj.dateKey);
-                  
 
                   return (
                     <button
                       key={index}
                       onClick={() => handleDateClick(dayObj)}
                       className={`
-    h-7 rounded-lg text-sm font-medium transition-all relative
-    ${
-      selectedDate === dayObj.dateKey
-        ? "bg-primary text-white" // Selected date styling
-        : hasAppts
-        ? "bg-primary/50 text-white hover:bg-teal-600"
-        : isTodayDate
-        ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-        : "text-gray-700 hover:bg-gray-100"
-    }
-  `}
+                          h-7 rounded-lg text-sm font-medium transition-all relative
+                          ${
+                            selectedDate === dayObj.dateKey
+                              ? "bg-primary text-white" // Selected date styling
+                              : hasAppts
+                              ? "bg-primary/50 text-white hover:bg-teal-600"
+                              : isTodayDate
+                              ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }
+                        `}
                     >
                       {dayObj.day}
                       {hasAppts && appointmentCount > 0 && (
                         <div className="absolute -top-1 -right-1">
                           {appointmentCount > 1 ? (
-                            <span className="bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                            <span className="bg-primary p-1 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                               {appointmentCount}
                             </span>
                           ) : (
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <div className="w-2 h-2 bg-primary rounded-full"></div>
                           )}
                         </div>
                       )}
@@ -996,7 +791,10 @@ export function MinimalCalendar({ appointments, userRole }) {
                   >
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0">
                       <img
-                        src={appointment.avatar}
+                        src={
+                          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                          appointment.avatar
+                        }
                         alt={appointment.patientName}
                         className="w-full h-full object-cover"
                       />
@@ -1005,8 +803,11 @@ export function MinimalCalendar({ appointments, userRole }) {
                       <p className="font-medium text-secondary text-sm truncate">
                         {appointment.patientName}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {appointment.note}
+
+                      <p className="text-xm text-gray-500">
+                        {appointment.note.length > 30
+                          ? `${appointment.note.slice(0, 30)}...`
+                          : appointment.note}
                       </p>
                       <div className="flex items-center gap-3 mt-1">
                         <div className="flex items-center gap-1">
@@ -1082,24 +883,29 @@ export function MinimalCalendar({ appointments, userRole }) {
               return appointmentsToShow.map((appointment) => (
                 <div
                   key={appointment.id}
-                  onClick={() => setSelectedAppointment(appointment)}
+                  onClick={() => onViewProfile(appointment.id)}
                   className="flex items-center gap-3 p-2 bg-secondary/1 rounded-xl cursor-pointer shadow hover:bg-gray-100 transition-colors"
                 >
                   <img
-                    src={appointment.avatar}
+                    src={
+                      process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                      appointment.avatar
+                    }
                     alt={appointment.patientName}
-                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-primary/10"
                   />
                   <div className="flex-1 flex justify-between min-w-0 px-2">
-                    <div>
+                    <div className="flex-1/2">
                       <h4 className="font-medium text-gray-800 truncate">
                         {appointment.patientName}
                       </h4>
                       <p className="text-sm text-gray-500">
-                        {appointment.note}
+                        {appointment.note.length > 40
+                          ? `${appointment.note.slice(0, 40)}...`
+                          : appointment.note}
                       </p>
                     </div>
-                    <div className="flex flex-col items-center gap-4 mt-1">
+                    <div className="flex flex-1 flex-col items-center gap-4 mt-1">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 text-gray-400" />
                         <span className="text-xs text-gray-500">
@@ -1127,14 +933,6 @@ export function MinimalCalendar({ appointments, userRole }) {
           </div>
         </div>
       </div>
-
-      {/* Appointment Modal */}
-      {selectedAppointment && (
-        <AppointmentModal
-          appointment={selectedAppointment}
-          onClose={() => setSelectedAppointment(null)}
-        />
-      )}
     </div>
   );
 }

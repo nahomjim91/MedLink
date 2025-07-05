@@ -9,6 +9,7 @@ import {
   CheckCircle,
   XCircle,
   CalendarDays,
+  RefreshCcw,
 } from "lucide-react";
 
 import { FilterAppointmentModal } from "../modal/FliterModal";
@@ -31,8 +32,10 @@ export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isDetailModalOpen, setDetailModalOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState({});
+  const [isFiltered, setIsFiltered] = useState(false);
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 6;
   const itemsPerPageForMobile = 2;
 
   // Get user and appointment hooks
@@ -41,34 +44,61 @@ export default function Appointments() {
     fetchMyAppointments,
     cancelAppointment,
     confirmAppointment,
+    searchAppointments,
     loading: appointmentsLoading,
   } = useAppointment();
 
-  // Load appointments on component mount
-  const loadAppointments = useCallback(async () => {
+const searchAppointmentsData = useCallback(
+  async (filter, limit = 10, offset = 0) => {
     try {
       setLoading(true);
-      console.log("Loading appointments...");
-      const appointmentsData = await fetchMyAppointments();
-
-      if (!appointmentsData) {
-        console.log("No appointments data received");
-        setAppointments([]);
-        return;
-      }
-
-      console.log("Loaded appointments:", appointmentsData);
-      setAppointments(appointmentsData);
+      // Call the function directly, not as a GraphQL query
+      const result = await searchAppointments(filter, limit, offset);
+      return result;
     } catch (error) {
-      console.error("Error fetching appointments:", error);
-      setAppointments([]);
-    } finally {
-      setLoading(false);
+      console.error("Error searching appointments:", error);
+      throw error;
     }
-  }, [fetchMyAppointments]);
+  },
+  [searchAppointments]
+);
+  // Load appointments on component mount
+  const loadAppointments = useCallback(
+    async (filters = {}) => {
+      try {
+        setLoading(true);
+        console.log("Loading appointments with filters:", filters);
+
+        let appointmentsData;
+
+        // Use search if filters are applied, otherwise use fetchMyAppointments
+        if (Object.keys(filters).length > 0) {
+          const searchResult = await searchAppointmentsData(filters);
+          appointmentsData = searchResult.appointments;
+        } else {
+          appointmentsData = await fetchMyAppointments();
+        }
+
+        if (!appointmentsData) {
+          console.log("No appointments data received");
+          setAppointments([]);
+          return;
+        }
+
+        console.log("Loaded appointments:", appointmentsData);
+        setAppointments(appointmentsData);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+        setAppointments([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fetchMyAppointments, searchAppointmentsData]
+  );
 
   useEffect(() => {
-    loadAppointments();
+    loadAppointments(appliedFilters);
   }, [loadAppointments]);
 
   // Handle appointment cancellation
@@ -80,12 +110,6 @@ export default function Appointments() {
       }
 
       try {
-        console.log(
-          "Canceling appointment with ID:",
-          appointmentId,
-          "Reason:",
-          reason
-        );
         await cancelAppointment(appointmentId, reason);
 
         // Refresh appointments after cancellation
@@ -318,13 +342,35 @@ export default function Appointments() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const handleFilterApply = () => {
-    console.log("Applying filters...");
-    setFilterModalOpen(false);
+const handleFilterApply = async (filters) => {
+  console.log("Applying filters:", filters);
+  
+  // Transform filters to match backend expectations
+  const transformedFilters = {
+    ...filters,
+    // Add user-specific filters
+    ...(user?.role?.toUpperCase() === "DOCTOR" ? { doctorId: user.id } : { patientId: user.id }),
+    // Set default ordering
+    orderBy: "scheduledStartTime",
+    orderDirection: "desc"
   };
+  
+  setAppliedFilters(transformedFilters);
+  setIsFiltered(Object.keys(filters).length > 0);
+  setCurrentPage(1);
+  
+  // Load appointments with filters
+  await loadAppointments(transformedFilters);
+};
 
-  const handleFilterReset = () => {
+  const handleFilterReset = async () => {
     console.log("Resetting filters...");
+    setAppliedFilters({});
+    setIsFiltered(false);
+    setCurrentPage(1);
+
+    // Load appointments without filters
+    await loadAppointments();
   };
 
   const handleViewDetails = (appointment) => {
@@ -425,13 +471,23 @@ export default function Appointments() {
               </div>
 
               {/* Filter Button */}
-              <button
-                onClick={() => setFilterModalOpen(true)}
-                className="flex items-center justify-center space-x-2 px-4 md:px-6 py-2 md:py-3 border-2 border-primary/50 rounded-xl text-primary hover:bg-primary hover:text-white transition-all duration-200 font-semibold"
-              >
-                <Filter className="w-4 h-4 md:w-5 md:h-5" />
-                <span className="text-sm md:text-base">Filters</span>
-              </button>
+
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => setFilterModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-4 md:px-6 py-2 md:py-3 border-2 border-primary/50 rounded-xl text-primary hover:bg-primary hover:text-white transition-all duration-200 font-semibold"
+                >
+                  <RefreshCcw className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="text-sm md:text-base">Reset</span>
+                </button>
+                <button
+                  onClick={() => setFilterModalOpen(true)}
+                  className="flex items-center justify-center space-x-2 px-4 md:px-6 py-2 md:py-3 border-2 border-primary/50 rounded-xl text-primary hover:bg-primary hover:text-white transition-all duration-200 font-semibold"
+                >
+                  <Filter className="w-4 h-4 md:w-5 md:h-5" />
+                  <span className="text-sm md:text-base">Filters</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -478,7 +534,10 @@ export default function Appointments() {
                         <td className="p-1">
                           <div className="flex items-center space-x-3">
                             <img
-                              src={appt.doctor.profileImageUrl}
+                              src={
+                                process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                                appt.doctor.profileImageUrl
+                              }
                               alt={appt.doctorName}
                               className="w-10 h-10 rounded-full border-2 border-gray-200"
                               onError={(e) => {
@@ -557,9 +616,9 @@ export default function Appointments() {
                               )}
                             <button
                               onClick={() => handleViewDetails(appt)}
-                              className="px-4 py-2 text-xs font-semibold text-primary border border-primary/50 rounded-lg hover:bg-teal-50 transition-colors"
+                              className="px-4 py-2 text-xs font-semibold text-primary border border-primary/50 rounded-lg hover:bg-primary hover:text-white transition-colors"
                             >
-                              View Profile
+                              Details
                             </button>
                           </div>
                         </td>
@@ -587,7 +646,10 @@ export default function Appointments() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <img
-                          src={appt.doctor.profileImageUrl}
+                          src={
+                            process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                            appt.doctor.profileImageUrl
+                          }
                           alt={appt.doctorName}
                           className="w-10 h-10 rounded-full border-2 border-gray-200"
                           onError={(e) => {
@@ -634,7 +696,9 @@ export default function Appointments() {
                       <div className="mt-2">
                         <p className="text-sm text-secondary/60">
                           <span className="font-medium">Reason:</span>{" "}
-                          {appt.reasonNote}
+                          {appt.reasonNote.length > 20
+                            ? `${appt.reasonNote.slice(0, 20)}...`
+                            : appt.reasonNote}
                         </p>
                       </div>
                     </div>
@@ -653,21 +717,23 @@ export default function Appointments() {
                             >
                               Cancel
                             </button>
-                            <button
-                              onClick={() =>
-                                handleConfirmAppointment(appt.appointmentId)
-                              }
-                              className="w-full px-4 py-2 text-xs font-semibold text-white bg-primary/70 rounded-lg hover:bg-primary transition-colors"
-                            >
-                              Confirm
-                            </button>
+                            {user.role.toUpperCase() === "DOCTOR" && (
+                              <button
+                                onClick={() =>
+                                  handleConfirmAppointment(appt.appointmentId)
+                                }
+                                className="w-full px-4 py-2 text-xs font-semibold text-white bg-primary/70 rounded-lg hover:bg-primary transition-colors"
+                              >
+                                Confirm
+                              </button>
+                            )}
                           </div>
                         )}
                       <button
                         onClick={() => handleViewDetails(appt)}
                         className="flex-1 px-4 py-2 text-sm font-semibold text-primary border border-primary/50 rounded-xl hover:bg-teal-50 transition-colors"
                       >
-                        View Profile
+                        Details
                       </button>
                     </div>
                   </div>
@@ -696,6 +762,7 @@ export default function Appointments() {
         onApply={handleFilterApply}
         onReset={handleFilterReset}
       />
+
       <style jsx>{`
         @keyframes modal-enter {
           from {

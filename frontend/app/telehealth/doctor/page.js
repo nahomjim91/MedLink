@@ -16,6 +16,7 @@ import { MinimalCalendar } from "../components/ui/CalendarAppointments";
 import { useAppointment } from "../hooks/useAppointment ";
 import Link from "next/link";
 import { useAuth } from "../hooks/useAuth";
+import { AppointmentDetailModal } from "../components/ui/modal/AppointmentModal ";
 
 export default function DoctorDashboardPage() {
   const [selectedPendingAppointments, setSelectedPendingAppointments] =
@@ -24,7 +25,10 @@ export default function DoctorDashboardPage() {
   const [appointments, setAppointments] = useState([]);
   const [calendarAppointments, setCalendarAppointments] = useState([]);
   const [isUpdating, setIsUpdating] = useState(false);
-  const {user} = useAuth();
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [isDetailModalOpen, setDetailModalOpen] = useState(false);
+
+  const { user } = useAuth();
 
   const {
     loading,
@@ -57,7 +61,7 @@ export default function DoctorDashboardPage() {
           time: `${formatTime(apt.scheduledStartTime)} - ${formatTime(
             apt.scheduledEndTime
           )}`,
-          avatar: apt.patient?.profileImageUrl || "/api/placeholder/50/50",
+          avatar: apt.patient?.profileImageUrl,
         })) || [];
 
       setCalendarAppointments(calendarData);
@@ -324,7 +328,10 @@ export default function DoctorDashboardPage() {
             <h3 className="text-lg font-semibold text-secondary">
               Next Appointment
             </h3>
-            <Link href={`/telehealth/${user.role}/appointments`} className="text-teal-500 text-sm font-medium hover:text-teal-600">
+            <Link
+              href={`/telehealth/${user.role}/appointments`}
+              className="text-teal-500 text-sm font-medium hover:text-teal-600"
+            >
               See All
             </Link>
           </div>
@@ -333,41 +340,65 @@ export default function DoctorDashboardPage() {
             <div className="space-y-4">
               {upcomingAppointments.slice(0, 1).map((appointment) => (
                 <div
-                  key={appointment.appointmentId}
-                  className="border-l-4 border-teal-500 pl-4"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <img
-                      src={
-                        appointment.patient?.profileImageUrl ||
-                        "/api/placeholder/40/40"
-                      }
-                      alt="Patient"
-                      className="w-12 h-12 rounded-full"
-                    />
-                    <div>
-                      <h4 className="font-medium text-gray-800">
-                        {appointment.patientName}
-                      </h4>
-                      <p className="text-sm text-gray-500">
-                        {appointment.reasonNote}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{formatDate(appointment.scheduledStartTime)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>
-                        {formatTime(appointment.scheduledStartTime)} -{" "}
-                        {formatTime(appointment.scheduledEndTime)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+  key={appointment.appointmentId}
+  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+>
+  {/* Header with patient info */}
+  <div className="flex items-start gap-4 mb-4">
+    <div className="relative">
+      <img
+        src={
+          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+          appointment.patient?.profileImageUrl
+        }
+        alt="Patient"
+        className="w-14 h-14 rounded-full object-cover ring-2 ring-teal-100"
+      />
+      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 rounded-full border-2 border-white"></div>
+    </div>
+    
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2 mb-1">
+        <h4 className="font-semibold text-gray-900 text-lg truncate">
+          {appointment.patientName}
+        </h4>
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+          Scheduled
+        </span>
+      </div>
+      
+      <p className="text-sm text-gray-600 leading-relaxed">
+        {appointment.reasonNote.length > 50
+          ? `${appointment.reasonNote.slice(0, 50)}...`
+          : appointment.reasonNote}
+      </p>
+    </div>
+  </div>
+
+  {/* Appointment details */}
+  <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-teal-500">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+      <div className="flex items-center gap-2 text-gray-700">
+        <div className="p-1 bg-teal-100 rounded">
+          <Calendar className="w-4 h-4 text-teal-600" />
+        </div>
+        <span className="font-medium text-sm">
+          {formatDate(appointment.scheduledStartTime)}
+        </span>
+      </div>
+      
+      <div className="flex items-center gap-2 text-gray-700">
+        <div className="p-1 bg-teal-100 rounded">
+          <Clock className="w-4 h-4 text-teal-600" />
+        </div>
+        <span className="font-medium text-sm">
+          {formatTime(appointment.scheduledStartTime)} - {formatTime(appointment.scheduledEndTime)}
+        </span>
+      </div>
+    </div>
+  </div>
+
+</div>
               ))}
             </div>
           ) : (
@@ -381,6 +412,11 @@ export default function DoctorDashboardPage() {
         <MinimalCalendar
           appointments={calendarAppointments}
           loading={loading}
+          onViewProfile={(id) => {
+            console.log("idsds", id);
+            setSelectedAppointment(id);
+            setDetailModalOpen(true);
+          }}
         />
       </div>
 
@@ -392,7 +428,10 @@ export default function DoctorDashboardPage() {
             <h3 className="text-lg font-semibold text-secondary">
               Pending Appointments
             </h3>
-            <Link href={`/telehealth/${user.role}/appointments`} className="text-teal-500 text-sm font-medium hover:text-teal-600">
+            <Link
+              href={`/telehealth/${user.role}/appointments`}
+              className="text-teal-500 text-sm font-medium hover:text-teal-600"
+            >
               See All
             </Link>
           </div>
@@ -491,8 +530,8 @@ export default function DoctorDashboardPage() {
                       <div className="flex items-center gap-2">
                         <img
                           src={
-                            appointment.patient?.profileImageUrl ||
-                            "/api/placeholder/40/40"
+                            process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                            appointment.patient?.profileImageUrl
                           }
                           alt="Patient"
                           className="w-8 h-8 rounded-full"
@@ -503,7 +542,9 @@ export default function DoctorDashboardPage() {
                       </div>
                     </td>
                     <td className="p-2 text-gray-500 hidden sm:table-cell">
-                      {appointment.reasonNote}
+                      {appointment.reasonNote.length > 30
+                        ? `${appointment.reasonNote.slice(0, 30)}...`
+                        : appointment.reasonNote}
                     </td>
                     <td className="p-2 text-gray-500">
                       {formatDate(appointment.scheduledStartTime)}
@@ -581,7 +622,10 @@ export default function DoctorDashboardPage() {
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-lg md:h-[35vh]  md:h-">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-secondary">History</h3>
-            <Link href={`/telehealth/${user.role}/appointments`} className="text-teal-500 text-sm font-medium hover:text-teal-600">
+            <Link
+              href={`/telehealth/${user.role}/appointments`}
+              className="text-teal-500 text-sm font-medium hover:text-teal-600"
+            >
               See All
             </Link>
           </div>
@@ -626,11 +670,11 @@ export default function DoctorDashboardPage() {
                         <div className="flex items-center gap-2">
                           <img
                             src={
-                              appointment.patient?.profileImageUrl ||
-                              "/api/placeholder/40/40"
+                              process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                              appointment.patient?.profileImageUrl
                             }
                             alt="Patient"
-                            className="w-8 h-8 rounded-full"
+                            className="w-8 h-8 rounded-full bg-primary/20"
                           />
                           <span className="font-medium text-gray-800">
                             {appointment.patientName}
@@ -638,7 +682,9 @@ export default function DoctorDashboardPage() {
                         </div>
                       </td>
                       <td className="p-2 text-gray-500 hidden sm:table-cell">
-                        {appointment.reasonNote}
+                        {appointment.reasonNote.length > 30
+                          ? `${appointment.reasonNote.slice(0, 30)}...`
+                          : appointment.reasonNote}
                       </td>
                       <td className="p-2 text-gray-500">
                         {formatDate(appointment.scheduledStartTime)}
@@ -665,6 +711,12 @@ export default function DoctorDashboardPage() {
           </div>
         </div>
       </div>
+      <AppointmentDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        appointmentId={selectedAppointment}
+        userRole={user.role.toUpperCase()}
+      />
     </div>
   );
 }

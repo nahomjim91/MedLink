@@ -2,6 +2,43 @@ import React, { useState, useEffect } from "react";
 import { X, Filter, Calendar, DollarSign, Clock, FileText } from "lucide-react";
 
 export const FilterAppointmentModal = ({ isOpen, onClose, onApply, onReset }) => {
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    specialization: "",
+    status: "",
+  });
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleApply = () => {
+    // Clean up empty filters and transform for GraphQL
+    const cleanFilters = {};
+    
+    if (filters.startDate) cleanFilters.startDate = filters.startDate;
+    if (filters.endDate) cleanFilters.endDate = filters.endDate;
+    if (filters.status && filters.status !== "All Status") {
+      cleanFilters.status = [filters.status.toUpperCase()];
+    }
+    
+    onApply(cleanFilters);
+  };
+
+  const handleReset = () => {
+    setFilters({
+      startDate: "",
+      endDate: "",
+      specialization: "",
+      status: "",
+    });
+    onReset();
+  };
+
   if (!isOpen) return null;
 
   const handleOverlayClick = (e) => {
@@ -36,11 +73,15 @@ export const FilterAppointmentModal = ({ isOpen, onClose, onApply, onReset }) =>
               <div className="grid grid-cols-2 gap-3">
                 <input
                   type="date"
+                  value={filters.startDate}
+                  onChange={(e) => handleFilterChange("startDate", e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
                   placeholder="From"
                 />
                 <input
                   type="date"
+                  value={filters.endDate}
+                  onChange={(e) => handleFilterChange("endDate", e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
                   placeholder="To"
                 />
@@ -50,37 +91,46 @@ export const FilterAppointmentModal = ({ isOpen, onClose, onApply, onReset }) =>
               <label className="text-sm font-semibold text-secondary/80 mb-3 block">
                 Specialists
               </label>
-              <select className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all">
-                <option>All Specialists</option>
-                <option>Dentist</option>
-                <option>Cardiologist</option>
-                <option>Dermatologist</option>
-                <option>Orthopedic</option>
-                <option>Ophthalmologist</option>
-                <option>General Practitioner</option>
+              <select 
+                value={filters.specialization}
+                onChange={(e) => handleFilterChange("specialization", e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+              >
+                <option value="">All Specialists</option>
+                <option value="Dentist">Dentist</option>
+                <option value="Cardiologist">Cardiologist</option>
+                <option value="Dermatologist">Dermatologist</option>
+                <option value="Orthopedic">Orthopedic</option>
+                <option value="Ophthalmologist">Ophthalmologist</option>
+                <option value="General Practitioner">General Practitioner</option>
               </select>
             </div>
             <div>
               <label className="text-sm font-semibold text-secondary/80 mb-3 block">
                 Status
               </label>
-              <select className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all">
-                <option>All Status</option>
-                <option>Upcoming</option>
-                <option>Completed</option>
-                <option>Cancelled</option>
+              <select 
+                value={filters.status}
+                onChange={(e) => handleFilterChange("status", e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+              >
+                <option value="">All Status</option>
+                <option value="REQUESTED">Requested</option>
+                <option value="CONFIRMED">Confirmed</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </div>
           </div>
           <div className="mt-8 flex justify-end space-x-3">
             <button
-              onClick={onReset}
+              onClick={handleReset}
               className="px-6 py-3 rounded-xl text-secondary/80 bg-gray-100 hover:bg-gray-200 transition-colors font-semibold"
             >
               Reset All
             </button>
             <button
-              onClick={onApply}
+              onClick={handleApply}
               className="px-6 py-3 rounded-xl text-white bg-gradient-to-r from-teal-500 to-primary hover:from-primary hover:to-teal-700 transition-all font-semibold shadow-lg"
             >
               Apply Filters
