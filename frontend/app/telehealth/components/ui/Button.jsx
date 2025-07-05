@@ -186,7 +186,7 @@ export const IconButton = ({ icon, badge, isActive, onClick  }) => {
   return (
     <button
       onClick={onClick}
-      className={`relative p-2 md:p-3  rounded-full transition-all ${
+      className={`relative p-2 md:p-3  rounded-full transition-all cursor-pointer ${
         isActive
           ? "bg-primary text-white"
           : "bg-white text-gray-700 "

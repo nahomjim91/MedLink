@@ -250,14 +250,15 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
         {/* Navigation links */}
         <div className="flex flex-col flex-1 overflow-y-auto">
-          <div className="bg-white mx-6 rounded-full shadow-sm flex flex-col items-center ">
-            <nav className="flex-1 py-3 px-1 flex flex-col items-center gap-y-2  ">
+          <div className="bg-white mx-6 rounded-full shadow-sm flex flex-col items-center">
+            <nav className="flex-1 py-3 px-1 flex flex-col items-center gap-y-1.5">
               {currentNavItems.map((item) => (
                 <Link
                   key={item.path}
                   href={item.path}
-                  className={`flex items-center text-lg rounded-lg transition-colors ${
-                    item.name === "Settings" ? "mt-12" : ""
+                  title={item.name} 
+                  className={`flex items-center text-lg rounded-lg transition-colors cursor-pointer ${
+                    item.name === "Settings" ? "mt-8" : ""
                   }`}
                 >
                   <IconButton

@@ -87,3 +87,4 @@ export const ErrorAlert = ({ error, onRetry }) => (
     </div>
   </div>
 );
+

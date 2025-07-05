@@ -22,15 +22,12 @@ import {
   ShoppingCart,
   DollarSign,
   TrendingUp,
-  AlertTriangle,
   CheckCircle,
   Clock,
   XCircle,
-  Eye,
-  Edit,
-  Trash2,
-  Filter,
-  Search,
+  BarChart3,
+  Activity,
+  Target,
   Download,
   RefreshCw,
 } from "lucide-react";
@@ -62,6 +59,7 @@ import {
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [userRole, setUserRole] = useState("importer");
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   // Dashboard Overview Query
   const {
@@ -268,7 +266,7 @@ const AdminDashboard = () => {
     value: count,
   }));
 
-  const COLORS = ["#10b981", "#3b82f6", "#fbbf24", "#ef4444", "#8b5cf6"];
+  const COLORS = ["#25c8b1", "#3b82f6", "#fbbf24", "#ef4444", "#8b5cf6"];
 
   // Refresh function
   const handleRefresh = () => {
@@ -279,6 +277,282 @@ const AdminDashboard = () => {
     if (activeTab === "transactions") refetchTransactions();
   };
 
+  // Helper function to convert data to CSV format
+  const convertToCSV = (data, headers) => {
+    const csvHeaders = headers.join(",");
+    const csvRows = data.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header];
+          // Handle values that might contain commas or quotes
+          if (
+            typeof value === "string" &&
+            (value.includes(",") || value.includes('"'))
+          ) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value || "";
+        })
+        .join(",")
+    );
+    return [csvHeaders, ...csvRows].join("\n");
+  };
+
+  // Helper function to download file
+  const downloadFile = (content, filename, contentType) => {
+    const blob = new Blob([content], { type: contentType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export functions for different data types
+  const exportOrdersData = () => {
+    if (!ordersData?.ordersByStatus) return;
+
+    const ordersForExport = ordersData.ordersByStatus.map((order) => ({
+      orderId: order.orderId,
+      orderNumber: order.orderNumber,
+      buyerName: order.buyerName,
+      buyerCompany: order.buyerCompanyName,
+      sellerName: order.sellerName,
+      sellerCompany: order.sellerCompanyName,
+      totalCost: order.totalCost,
+      totalItems: order.totalItems,
+      status: order.status,
+      orderDate: new Date(order.orderDate).toLocaleDateString(),
+      createdAt: new Date(order.createdAt).toLocaleDateString(),
+    }));
+
+    const headers = [
+      "Order ID",
+      "Order Number",
+      "Buyer Name",
+      "Buyer Company",
+      "Seller Name",
+      "Seller Company",
+      "Total Cost",
+      "Total Items",
+      "Status",
+      "Order Date",
+      "Created At",
+    ];
+    const csvContent = convertToCSV(ordersForExport, [
+      "orderId",
+      "orderNumber",
+      "buyerName",
+      "buyerCompany",
+      "sellerName",
+      "sellerCompany",
+      "totalCost",
+      "totalItems",
+      "status",
+      "orderDate",
+      "createdAt",
+    ]);
+    const filename = `orders_data_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    downloadFile(csvContent, filename, "text/csv;charset=utf-8;");
+  };
+
+  const exportUsersData = () => {
+    if (!usersData?.msUsersByRole) return;
+
+    const usersForExport = usersData.msUsersByRole.map((user) => ({
+      userId: user.userId,
+      contactName: user.contactName,
+      email: user.email,
+      companyName: user.companyName,
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      isApproved: user.isApproved ? "Yes" : "No",
+      createdAt: new Date(user.createdAt).toLocaleDateString(),
+    }));
+
+    const headers = [
+      "User ID",
+      "Contact Name",
+      "Email",
+      "Company Name",
+      "Phone Number",
+      "Role",
+      "Is Approved",
+      "Created At",
+    ];
+    const csvContent = convertToCSV(usersForExport, [
+      "userId",
+      "contactName",
+      "email",
+      "companyName",
+      "phoneNumber",
+      "role",
+      "isApproved",
+      "createdAt",
+    ]);
+    const filename = `users_${userRole}_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    downloadFile(csvContent, filename, "text/csv;charset=utf-8;");
+  };
+
+  const exportProductsData = () => {
+    if (!productsData?.products) return;
+
+    const productsForExport = productsData.products.map((product) => ({
+      productId: product.productId,
+      name: product.name,
+      productType: product.productType,
+      ownerName: product.ownerName,
+      ownerId: product.ownerId,
+      category: product.category,
+      isActive: product.isActive ? "Yes" : "No",
+      batchesCount: product.batches?.length || 0,
+      createdAt: new Date(product.createdAt).toLocaleDateString(),
+    }));
+
+    const headers = [
+      "Product ID",
+      "Name",
+      "Product Type",
+      "Owner Name",
+      "Owner ID",
+      "Category",
+      "Is Active",
+      "Batches Count",
+      "Created At",
+    ];
+    const csvContent = convertToCSV(productsForExport, [
+      "productId",
+      "name",
+      "productType",
+      "ownerName",
+      "ownerId",
+      "category",
+      "isActive",
+      "batchesCount",
+      "createdAt",
+    ]);
+    const filename = `products_data_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    downloadFile(csvContent, filename, "text/csv;charset=utf-8;");
+  };
+
+  const exportTransactionsData = () => {
+    if (!transactionsData?.transactionsByStatus) return;
+
+    const transactionsForExport = transactionsData.transactionsByStatus.map(
+      (transaction) => ({
+        transactionId: transaction.transactionId,
+        orderId: transaction.orderId,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        status: transaction.status,
+        chapaStatus: transaction.chapaStatus,
+        chapaRef: transaction.chapaRef,
+        createdAt: new Date(transaction.createdAt).toLocaleDateString(),
+      })
+    );
+
+    const headers = [
+      "Transaction ID",
+      "Order ID",
+      "Amount",
+      "Currency",
+      "Status",
+      "Chapa Status",
+      "Chapa Reference",
+      "Created At",
+    ];
+    const csvContent = convertToCSV(transactionsForExport, [
+      "transactionId",
+      "orderId",
+      "amount",
+      "currency",
+      "status",
+      "chapaStatus",
+      "chapaRef",
+      "createdAt",
+    ]);
+    const filename = `transactions_data_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    downloadFile(csvContent, filename, "text/csv;charset=utf-8;");
+  };
+
+  const exportDashboardSummary = () => {
+    const summaryData = [
+      {
+        metric: "Total Orders",
+        value: dashboardStats.totalOrders,
+        description: "All orders in the system",
+      },
+      {
+        metric: "Total Revenue",
+        value: `$${dashboardStats.totalRevenue.toLocaleString()}`,
+        description: "Total revenue from all orders",
+      },
+      {
+        metric: "Total Products",
+        value: dashboardStats.totalProducts,
+        description: "Products registered in the system",
+      },
+      {
+        metric: "Pending Approvals",
+        value: dashboardStats.pendingApprovals,
+        description: "Users awaiting approval",
+      },
+      {
+        metric: "Active Transactions",
+        value: dashboardStats.activeTransactions,
+        description: "Transactions currently being processed",
+      },
+    ];
+
+    const headers = ["Metric", "Value", "Description"];
+    const csvContent = convertToCSV(summaryData, [
+      "metric",
+      "value",
+      "description",
+    ]);
+    const filename = `dashboard_summary_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    downloadFile(csvContent, filename, "text/csv;charset=utf-8;");
+  };
+
+  const exportOrderStatusDistribution = () => {
+    const headers = ["Status", "Count"];
+    const csvContent = convertToCSV(chartData, ["name", "value"]);
+    const filename = `order_status_distribution_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    downloadFile(csvContent, filename, "text/csv;charset=utf-8;");
+  };
+
+  const exportCompleteReport = () => {
+    const reportData = {
+      generatedAt: new Date().toISOString(),
+      dashboardStats: dashboardStats,
+      orderStatusDistribution: chartData,
+      recentOrders: dashboardData?.orderSummaries?.slice(0, 10) || [],
+      pendingApprovals: dashboardData?.pendingApprovalUsers || [],
+      currentTab: activeTab,
+      userRole: userRole,
+    };
+
+    const jsonContent = JSON.stringify(reportData, null, 2);
+    const filename = `complete_dashboard_report_${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    downloadFile(jsonContent, filename, "application/json;charset=utf-8;");
+  };
   if (dashboardLoading && activeTab === "overview") {
     return (
       <div className="bg-gray-50 h-[90vh] rounded-2xl shadow-xl flex items-center justify-center">
@@ -318,18 +592,167 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex justify-end items-center space-x-3 py-2">
           <button
             onClick={handleRefresh}
-            className="flex items-center px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+            className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </button>
-          <button className="flex items-center px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </button>
+
+          {/* Export Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Report
+              <svg
+                className="w-4 h-4 ml-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+
+            {showExportDropdown && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="py-2">
+                  {/* Dashboard Summary */}
+                  <button
+                    onClick={() => {
+                      exportDashboardSummary();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <BarChart3 className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        Dashboard Summary
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Key metrics overview
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Order Status Distribution */}
+                  <button
+                    onClick={() => {
+                      exportOrderStatusDistribution();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <Target className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900">Order Status</p>
+                      <p className="text-sm text-gray-500">
+                        Status distribution data
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Orders Data */}
+                  <button
+                    onClick={() => {
+                      exportOrdersData();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <ShoppingCart className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900">Orders Data</p>
+                      <p className="text-sm text-gray-500">All order details</p>
+                    </div>
+                  </button>
+
+                  {/* Users Data */}
+                  <button
+                    onClick={() => {
+                      exportUsersData();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <Users className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900">Users Data</p>
+                      <p className="text-sm text-gray-500">{userRole} users</p>
+                    </div>
+                  </button>
+
+                  {/* Products Data */}
+                  <button
+                    onClick={() => {
+                      exportProductsData();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <Package className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900">Products Data</p>
+                      <p className="text-sm text-gray-500">
+                        All product details
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Transactions Data */}
+                  <button
+                    onClick={() => {
+                      exportTransactionsData();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <DollarSign className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        Transactions Data
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        All transaction details
+                      </p>
+                    </div>
+                  </button>
+
+                  <hr className="my-2" />
+
+                  {/* Complete Report */}
+                  <button
+                    onClick={() => {
+                      exportCompleteReport();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors flex items-center"
+                  >
+                    <Download className="w-4 h-4 mr-3 text-primary" />
+                    <div>
+                      <p className="font-medium text-primary">
+                        Complete Report
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        All data in JSON format
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -795,7 +1218,13 @@ const AdminDashboard = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${product.productType === "EQUIPMENT" ? "bg-purple-100 text-purple-800" : "bg-orange-100 text-orange-800"} `}>
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                product.productType === "EQUIPMENT"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-orange-100 text-orange-800"
+                              } `}
+                            >
                               {product.productType}
                             </span>
                           </td>
@@ -858,14 +1287,14 @@ const AdminDashboard = () => {
               </h2>
             </div>
 
-             {loading ? (
+            {loading ? (
               <div className="bg-gray-50 h-[90vh] rounded-2xl shadow-xl flex items-center justify-center">
                 <div className="text-center">
                   <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
                   <p className="text-gray-600">Loading Transactions...</p>
                 </div>
               </div>
-            )  : (
+            ) : (
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
@@ -961,6 +1390,12 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
+      {showExportDropdown && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowExportDropdown(false)}
+        />
+      )}
     </div>
   );
 };

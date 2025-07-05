@@ -29,6 +29,7 @@ import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaQuestion } from "react-icons/fa";
 import { NotificationDropdown } from "../ui/notificationUI/NotificationDropdown";
 import { useSocketContext } from "../../context/SocketContext";
+
 export default function SharedLayout({ children, allowedRoles = [] }) {
   const { user, logout, cart } = useMSAuth();
   const pathname = usePathname();
@@ -228,7 +229,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
         path: "/medical-supplies/" + user.role + "/pending-users",
         icon: <ClipboardList />,
       },
-        {
+      {
         name: "Chats",
         path: "/medical-supplies/" + user.role + "/chats",
         icon: <MessageCircle />,
@@ -318,12 +319,13 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
         {/* Navigation links */}
         <div className="flex flex-col flex-1 overflow-y-auto">
-          <div className="bg-white mx-6 rounded-full shadow-sm flex flex-col items-center ">
-            <nav className="flex-1 py-3 px-1 flex flex-col items-center gap-y-1.5  ">
+          <div className="bg-white mx-6 rounded-full shadow-sm flex flex-col items-center">
+            <nav className="flex-1 py-3 px-1 flex flex-col items-center gap-y-1.5">
               {currentNavItems.map((item) => (
                 <Link
                   key={item.path}
                   href={item.path}
+                  title={item.name} 
                   className={`flex items-center text-lg rounded-lg transition-colors cursor-pointer ${
                     item.name === "Settings" ? "mt-8" : ""
                   }`}
