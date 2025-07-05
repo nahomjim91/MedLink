@@ -45,7 +45,7 @@ const FeatureCard = ({ icon, title, description, delay = 0 }) => {
       >
         {icon}
       </motion.div>
-      <h3 className="text-xl font-bold mb-4 text-gray-900">{title}</h3>
+      <h3 className="text-xl font-bold mb-4 text-secondary">{title}</h3>
       <p className="text-gray-600 leading-relaxed">{description}</p>
     </motion.div>
   );
@@ -173,19 +173,19 @@ export default function TelehealthLanding() {
                 className="grid grid-cols-3 gap-8 pt-8"
               >
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-secondary">
                     <AnimatedCounter end={25000} />+
                   </div>
                   <div className="text-gray-600">Patients Served</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-secondary">
                     <AnimatedCounter end={850} />+
                   </div>
                   <div className="text-gray-600">Healthcare Providers</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-secondary">
                     <AnimatedCounter end={95} />%
                   </div>
                   <div className="text-gray-600">Satisfaction Rate</div>
@@ -251,7 +251,7 @@ export default function TelehealthLanding() {
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
-                        <span className="font-semibold text-gray-900">AI Health Assistant</span>
+                        <span className="font-semibold text-secondary">AI Health Assistant</span>
                       </div>
                       <div className="space-y-2 text-sm">
                         <div className="bg-white p-2 rounded-lg text-gray-700">
@@ -266,7 +266,7 @@ export default function TelehealthLanding() {
                   
                   {/* Upcoming Appointments */}
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-900">Today&apos;s Schedule</h4>
+                    <h4 className="font-semibold text-secondary">Today&apos;s Schedule</h4>
                     <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'rgba(37, 200, 177, 0.1)' }}>
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: '#25C8B1' }}>JD</div>

@@ -123,13 +123,13 @@ export default function MSEmailVerificationPage() {
           <div className="mx-auto h-24 w-24 bg-primary/25 rounded-full flex items-center justify-center mb-3">
             <Mail className="h-12 w-12 text-primary" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold text-secondary mb-2">
             Verify your email
           </h2>
           <p className="text-gray-600 mb-6">
             We&apos;ve sent a verification link to
           </p>
-          <p className="text-lg font-semibold text-gray-900 mb-4">
+          <p className="text-lg font-semibold text-secondary mb-4">
             {user.email}
           </p>
         </div>

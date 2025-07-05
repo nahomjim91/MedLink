@@ -359,7 +359,7 @@ export default function DoctorDashboardPage() {
     
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-1">
-        <h4 className="font-semibold text-gray-900 text-lg truncate">
+        <h4 className="font-semibold text-secondary text-lg truncate">
           {appointment.patientName}
         </h4>
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">

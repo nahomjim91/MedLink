@@ -330,7 +330,7 @@ export default function NotificationPage() {
                           )}
                         </div>
 
-                        <p className="text-gray-900 font-medium mb-2 leading-relaxed">
+                        <p className="text-secondary font-medium mb-2 leading-relaxed">
                           {notification.message}
                         </p>
 
@@ -347,7 +347,7 @@ export default function NotificationPage() {
                                       <span className="font-medium text-gray-600 capitalize">
                                         {key.replace(/([A-Z])/g, " $1").trim()}:
                                       </span>
-                                      <span className="text-gray-900 font-mono text-xs bg-white px-2 py-1 rounded border">
+                                      <span className="text-secondary font-mono text-xs bg-white px-2 py-1 rounded border">
                                         {String(value)}
                                       </span>
                                     </div>
@@ -409,7 +409,7 @@ export default function NotificationPage() {
           ) : (
             <div className="text-center py-12">
               <Bell className="w-16 h-16 text-primary mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-secondary mb-2">
                 No notifications
               </h3>
               <p className="text-gray-500">

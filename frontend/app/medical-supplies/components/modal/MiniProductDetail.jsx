@@ -31,7 +31,7 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <ProductIcon size={20} className="text-blue-500" />
-            <h2 className="text-xl font-bold text-gray-900">Product Details</h2>
+            <h2 className="text-xl font-bold text-secondary">Product Details</h2>
           </div>
           <button
             onClick={onClose}
@@ -89,7 +89,7 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
             <div className="p-4">
               {/* Product title and rating */}
               <div className="mb-4">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl font-bold text-secondary mb-2">
                   {productData.name} {isDrugProduct && productData.concentration}
                 </h1>
                 <div className="flex items-center gap-2 mb-2">
@@ -99,7 +99,7 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
                   </div>
                   <span className="text-sm text-gray-500">• 1238 Sold</span>
                 </div>
-                <div className="text-lg font-bold text-gray-900">
+                <div className="text-lg font-bold text-secondary">
                   ${productData.lowestPrice?.toFixed(2) || "0.00"}
                   {productData.batches.length > 1 && (
                     <span className="text-sm text-gray-500 font-normal ml-1">
@@ -139,7 +139,7 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
 
               {/* Description */}
               <div className="mb-4 pb-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+                <h3 className="font-semibold text-secondary mb-2">Description</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {productData.description || "No description available."}
                 </p>
@@ -147,7 +147,7 @@ const MiniProductDetail = ({ isOpen, onClose, productData }) => {
 
               {/* Available Batches */}
               <div className="mb-4">
-                <h3 className="font-semibold text-gray-900 mb-3">
+                <h3 className="font-semibold text-secondary mb-3">
                   Available Batches ({productData.batches.length})
                 </h3>
                 <div className="space-y-3 max-h-64 overflow-y-auto">

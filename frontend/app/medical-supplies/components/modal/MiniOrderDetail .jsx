@@ -67,7 +67,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Receipt size={20} className="text-blue-500" />
-            <h2 className="text-xl font-bold text-gray-900">Order Details</h2>
+            <h2 className="text-xl font-bold text-secondary">Order Details</h2>
           </div>
           <button
             onClick={onClose}
@@ -84,7 +84,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
             {/* Order Header Info */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-secondary">
                   Order #{orderData.orderNumber || orderData.orderId}
                 </h1>
                 <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(orderData.status)}`}>
@@ -92,7 +92,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
                 </div>
               </div>
               
-              <div className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="text-2xl font-bold text-secondary mb-2">
                 ${orderData.totalCost?.toFixed(2) || "0.00"}
               </div>
               
@@ -198,7 +198,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
             {/* Notes */}
             {orderData.notes && (
               <div className="mb-4 pb-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900 mb-2">Notes</h3>
+                <h3 className="font-semibold text-secondary mb-2">Notes</h3>
                 <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
                   {orderData.notes}
                 </p>
@@ -232,7 +232,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
           {/* Right side - Order Items */}
           <div className="w-full lg:w-1/2 overflow-y-auto">
             <div className="p-4">
-              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-secondary mb-3 flex items-center gap-2">
                 <Package size={18} />
                 Order Items ({orderData.items?.length || 0})
               </h3>
@@ -255,7 +255,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
                       )}
                       
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate">
+                        <h4 className="font-medium text-secondary truncate">
                           {item.productName}
                         </h4>
                         <p className="text-sm text-gray-500">
@@ -265,7 +265,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
                           <span className="text-sm text-gray-600">
                             Qty: {item.totalQuantity}
                           </span>
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-secondary">
                             ${item.totalPrice?.toFixed(2) || "0.00"}
                           </span>
                         </div>
@@ -311,7 +311,7 @@ const MiniOrderDetail = ({ isOpen, onClose, orderData, loading }) => {
                                 </div>
                               )}
                               <div className="col-span-2 text-right">
-                                <span className="font-semibold text-gray-900">
+                                <span className="font-semibold text-secondary">
                                   Subtotal: ${batch.subtotal?.toFixed(2) || "0.00"}
                                 </span>
                               </div>

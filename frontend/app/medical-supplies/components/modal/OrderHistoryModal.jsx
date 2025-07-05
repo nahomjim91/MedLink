@@ -296,14 +296,14 @@ export function OrderHistoryModal({
                           </span>
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-secondary">
                             #{order.orderId}
                           </p>
                           <p className="text-sm text-gray-600">{company}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-secondary">
                           ${(order.totalCost || 0).toFixed(2)}
                         </p>
                         <p className="text-sm text-gray-600">

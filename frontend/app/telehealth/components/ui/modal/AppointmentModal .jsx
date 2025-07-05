@@ -57,7 +57,7 @@ export const CancelModal = ({ appointment, onClose, onConfirm, loading }) => {
       <div className="bg-white rounded-2xl p-6 max-w-md w-full">
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="w-6 h-6 text-red-500" />
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-secondary">
             Cancel Appointment
           </h3>
         </div>
@@ -330,7 +330,7 @@ export function AppointmentModal({
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">
+          <h2 className="text-2xl font-bold text-secondary mb-1">
             Confirm Appointment
           </h2>
           <p className="text-gray-600 text-sm">
@@ -343,7 +343,7 @@ export function AppointmentModal({
           <div className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
             <Calendar className="w-5 h-5 text-blue-600" />
             <div>
-              <p className="font-medium text-gray-900">{formattedDate.date}</p>
+              <p className="font-medium text-secondary">{formattedDate.date}</p>
               <p className="text-sm text-gray-600">{formattedDate.day}</p>
             </div>
           </div>
@@ -351,7 +351,7 @@ export function AppointmentModal({
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <Clock className="w-5 h-5 text-purple-600" />
             <div>
-              <p className="font-medium text-gray-900">{timeSlot}</p>
+              <p className="font-medium text-secondary">{timeSlot}</p>
               <p className="text-sm text-gray-600">{duration}</p>
             </div>
           </div>
@@ -359,7 +359,7 @@ export function AppointmentModal({
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <User className="w-5 h-5 text-green-600" />
             <div>
-              <p className="font-medium text-gray-900">{doctorInfo.name}</p>
+              <p className="font-medium text-secondary">{doctorInfo.name}</p>
               <p className="text-sm text-gray-600">{doctorInfo.specialty}</p>
               {doctor?.experienceYears && (
                 <p className="text-xs text-gray-500">
@@ -396,7 +396,7 @@ export function AppointmentModal({
               <CreditCard className="w-5 h-5 text-blue-600" />
               <span className="text-sm text-gray-600">Current Balance</span>
             </div>
-            <span className="text-lg font-semibold text-gray-900">
+            <span className="text-lg font-semibold text-secondary">
               ${userBalance.toFixed(2)}
             </span>
           </div>
@@ -1037,7 +1037,7 @@ export const ExtensionRequestModal = ({
                   <Clock className="w-5 h-5 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">
+                  <h3 className="text-lg font-bold text-secondary">
                     Request Extension
                   </h3>
                   <p className="text-sm text-gray-600">
@@ -1073,7 +1073,7 @@ export const ExtensionRequestModal = ({
                     <div className="flex items-center space-x-3 mb-3">
                       <Calendar className="w-5 h-5 text-teal-600" />
                       <div>
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-secondary">
                           Current Appointment
                         </h4>
                         <p className="text-sm text-gray-600">

@@ -333,7 +333,7 @@ export function SelectInput({
           className={`
               w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
               appearance-none bg-white pr-10
-              ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
+              ${!effectiveValue ? "text-gray-500" : "text-secondary"}
               ${
                 error
                   ? "border-error focus:border-error focus:ring-error/30"
@@ -353,7 +353,7 @@ export function SelectInput({
             <option
               key={option.value}
               value={option.value}
-              className="text-gray-900"
+              className="text-secondary"
             >
               {option.label}
             </option>
@@ -411,7 +411,7 @@ export function OrderSelectInput({
     ? `
         px-2 py-1 text-xs rounded-md border focus:outline-none focus:ring-1
         appearance-none bg-white pr-6 min-w-[100px]
-        ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
+        ${!effectiveValue ? "text-gray-500" : "text-secondary"}
         ${
           error
             ? "border-red-300 focus:border-red-500 focus:ring-red-200"
@@ -422,7 +422,7 @@ export function OrderSelectInput({
     : `
         w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
         appearance-none bg-white pr-10
-        ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
+        ${!effectiveValue ? "text-gray-500" : "text-secondary"}
         ${
           error
             ? "border-error focus:border-error focus:ring-error/30"
@@ -452,7 +452,7 @@ export function OrderSelectInput({
             <option
               key={option.value}
               value={option.value}
-              className="text-gray-900"
+              className="text-secondary"
             >
               {option.label}
             </option>
@@ -498,7 +498,7 @@ export function OrderSelectInput({
             <option
               key={option.value}
               value={option.value}
-              className="text-gray-900"
+              className="text-secondary"
             >
               {option.label}
             </option>
@@ -649,7 +649,7 @@ export function NumberWithUnitInput({
               <option
                 key={option.value}
                 value={option.value}
-                className="text-gray-900"
+                className="text-secondary"
               >
                 {option.label}
               </option>

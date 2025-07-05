@@ -117,7 +117,7 @@ export function ConfirmationModal({
           <div className={`p-2 rounded-full ${config.iconBg}`}>
             <IconComponent className={`w-5 h-5 ${config.iconColor}`} />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-secondary">{title}</h3>
         </div>
 
         {/* Message */}

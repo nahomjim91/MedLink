@@ -310,7 +310,7 @@ export function SelectInput({
           className={`
               w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 text-xs md:text-sm
               appearance-none bg-white pr-10
-              ${!effectiveValue ? "text-gray-500" : "text-gray-900"}
+              ${!effectiveValue ? "text-gray-500" : "text-secondary"}
               ${
                 error
                   ? "border-error focus:border-error focus:ring-error/30"
@@ -329,7 +329,7 @@ export function SelectInput({
             <option
               key={option.value}
               value={option.value}
-              className="text-gray-900"
+              className="text-secondary"
             >
               {option.label}
             </option>

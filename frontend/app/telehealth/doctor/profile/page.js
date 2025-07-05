@@ -395,7 +395,7 @@ const ReviewCard = ({ review }) => (
     <div className="flex items-center gap-2 mb-3">
       <Rating value={review.rating} />
     </div>
-    <p className="text-gray-900 font-medium mb-2 leading-relaxed">
+    <p className="text-secondary font-medium mb-2 leading-relaxed">
       {review.comment}
     </p>
     <p className="text-sm text-gray-500 mb-4">{review.date}</p>
@@ -408,7 +408,7 @@ const ReviewCard = ({ review }) => (
             className="w-full h-full object-cover"
           />
         </div>
-        <span className="text-sm font-medium text-gray-900">{review.name}</span>
+        <span className="text-sm font-medium text-secondary">{review.name}</span>
       </div>
       <div className="flex items-center gap-3">
         <button className="flex items-center gap-1 text-primary/60 hover:text-primary transition-colors">

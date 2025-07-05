@@ -65,7 +65,7 @@ export default function LanguageSelector({ className = '', onChange }) {
               className={`cursor-pointer select-none relative py-2 px-3 ${
                 selectedLanguage.code === language.code
                   ? 'bg-primary-50 text-primary-600'
-                  : 'text-gray-900 hover:bg-gray-100'
+                  : 'text-secondary hover:bg-gray-100'
               }`}
               role="option"
               aria-selected={selectedLanguage.code === language.code}

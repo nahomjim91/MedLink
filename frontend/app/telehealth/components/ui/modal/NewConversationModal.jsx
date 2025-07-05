@@ -139,7 +139,7 @@ export const NewConversationModal = ({
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 mb-1">
+              <h3 className="text-sm font-medium text-secondary mb-1">
                 Start typing to search
               </h3>
               <p className="text-xs text-gray-500">
@@ -175,7 +175,7 @@ export const NewConversationModal = ({
                     {/* User Info */}
                     <div className="ml-4 flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                        <h3 className="text-sm font-medium text-secondary truncate">
                           {"Dr." + doctor.user.firstName || "User"}
                         </h3>
                         {!doctor.isApproved && (
@@ -221,7 +221,7 @@ export const NewConversationModal = ({
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Search className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 mb-1">
+              <h3 className="text-sm font-medium text-secondary mb-1">
                 No users found
               </h3>
               <p className="text-xs text-gray-500">

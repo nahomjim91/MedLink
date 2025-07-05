@@ -17,12 +17,12 @@ export default function ConfirmationStep({
 
       <div className="space-y-6 bg-gray-50 p-6 rounded-lg">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Account Type</h3>
+          <h3 className="text-lg font-medium text-secondary">Account Type</h3>
           <p className="mt-1 text-gray-600 capitalize">{userData.role}</p>
         </div>
 
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Company Details</h3>
+          <h3 className="text-lg font-medium text-secondary">Company Details</h3>
           <div className="mt-1 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500">Company Name</p>
@@ -44,7 +44,7 @@ export default function ConfirmationStep({
         </div>
 
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Address</h3>
+          <h3 className="text-lg font-medium text-secondary">Address</h3>
           <div className="mt-1">
             <p className="text-gray-600">{userData.address.street}</p>
             <p className="text-gray-600">

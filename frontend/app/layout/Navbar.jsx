@@ -130,7 +130,7 @@ export default function Navbar({ service = "medical-supply" }) {
                   transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   className="text-3xl md:text-4xl font-bold"
                 >
-                  <span className={`${scrolled ? 'text-gray-900' : 'text-gray-900'} transition-colors duration-300`}>
+                  <span className={`${scrolled ? 'text-secondary' : 'text-secondary'} transition-colors duration-300`}>
                     {config.title}
                   </span>
                   {config.subtitle && (
@@ -352,7 +352,7 @@ export default function Navbar({ service = "medical-supply" }) {
               <div className="flex flex-col h-full">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                  <span className="text-xl font-bold text-gray-900">
+                  <span className="text-xl font-bold text-secondary">
                     Menu
                   </span>
                   <motion.button

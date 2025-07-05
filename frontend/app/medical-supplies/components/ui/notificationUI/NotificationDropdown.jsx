@@ -81,7 +81,7 @@ export const NotificationDropdown = ({
       {/* Header */}
       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-900">Notifications</h3>
+          <h3 className="font-semibold text-secondary">Notifications</h3>
           {!isConnected && (
             <span className="w-2 h-2 bg-red-500 rounded-full" title="Disconnected"></span>
           )}
@@ -123,7 +123,7 @@ export const NotificationDropdown = ({
                     {notification.isUrgent && <span className="text-xs">🚨</span>}
                     {notification.isEmergency && <span className="text-xs">🆘</span>}
                   </div>
-                  <p className="text-sm text-gray-900 mb-1 line-clamp-2">
+                  <p className="text-sm text-secondary mb-1 line-clamp-2">
                     {notification.message}
                   </p>
                   <div className="flex items-center justify-between">

@@ -474,7 +474,7 @@ export default function TelehealthPatientPage() {
       {/* Header with New Appointment button */}
       <div className="flex justify-between md:justify-end items-center mb-6 md:mb-2">
         <div className="md:hidden">
-          <h1 className="text-2xl font-bold text-gray-900">Hello, Ms X</h1>
+          <h1 className="text-2xl font-bold text-secondary">Hello, Ms X</h1>
         </div>
         <Link href={`/telehealth/patient/doctors`}>
           <Button className="flex items-center gap-2">
@@ -596,7 +596,7 @@ export default function TelehealthPatientPage() {
                         }}
                       />
                     </div>
-                    <span className="font-medium text-gray-900">
+                    <span className="font-medium text-secondary">
                       {appointment.doctor}
                     </span>
                   </div>
@@ -737,7 +737,7 @@ export default function TelehealthPatientPage() {
                               />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 text-lg truncate">
+                              <h3 className="font-semibold text-secondary text-lg truncate">
                                 {doctor.name}
                               </h3>
                               <p className="text-secondary/80 text-sm">

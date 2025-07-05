@@ -108,7 +108,7 @@ const DoctorCard = ({ doctor, onFavoriteClick }) => {
           </div>
 
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-gray-900 text-lg">
+            <h3 className="font-semibold text-secondary text-lg">
               {displayName}
             </h3>
             <div className="flex items-center gap-1">
@@ -179,7 +179,7 @@ const FilterModal = ({
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Filters</h2>
+            <h2 className="text-xl font-semibold text-secondary">Filters</h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"

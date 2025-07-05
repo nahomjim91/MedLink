@@ -84,7 +84,7 @@ const RAGTestingInterface = () => {
       <div className="bg-white rounded-lg shadow-lg">
         {/* Header */}
         <div className="border-b border-gray-200 p-6">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-secondary flex items-center gap-3">
             <MessageSquare className="text-blue-600" />
             RAG System Testing Interface
           </h1>
@@ -206,7 +206,7 @@ const RAGTestingInterface = () => {
               {(answer || streamData) && (
                 <div className="space-y-4">
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <h3 className="font-semibold text-secondary mb-2 flex items-center gap-2">
                       <MessageSquare className="w-4 h-4" />
                       Answer
                       {isStreaming && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
@@ -269,7 +269,7 @@ const RAGTestingInterface = () => {
             <div className="space-y-6">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <h3 className="text-lg font-medium text-secondary mb-2">
                   Upload Documents
                 </h3>
                 <p className="text-gray-600 mb-4">
@@ -335,7 +335,7 @@ const RAGTestingInterface = () => {
               {stats ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">System Configuration</h3>
+                    <h3 className="font-semibold text-secondary mb-3">System Configuration</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Collection:</span>
@@ -357,7 +357,7 @@ const RAGTestingInterface = () => {
                   </div>
 
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">Model Information</h3>
+                    <h3 className="font-semibold text-secondary mb-3">Model Information</h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Embedding Model:</span>

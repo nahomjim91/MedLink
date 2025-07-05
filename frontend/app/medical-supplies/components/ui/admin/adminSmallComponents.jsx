@@ -40,7 +40,7 @@ export const StatsCard = ({ title, value, icon: Icon, color, change }) => (
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+        <p className="text-2xl font-bold text-secondary mt-1">{value}</p>
         {change && (
           <p className="text-sm text-primary mt-1">
             <TrendingUp className="w-4 h-4 inline mr-1" />

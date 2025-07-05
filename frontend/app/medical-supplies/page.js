@@ -44,7 +44,7 @@ const FeatureCard = ({ icon, title, description, delay = 0 }) => {
       >
         {icon}
       </motion.div>
-      <h3 className="text-xl font-bold mb-4 text-gray-900">{title}</h3>
+      <h3 className="text-xl font-bold mb-4 text-secondary">{title}</h3>
       <p className="text-gray-600 leading-relaxed">{description}</p>
     </motion.div>
   );
@@ -169,19 +169,19 @@ export default function MedicalSupplyLanding() {
                 className="grid grid-cols-3 gap-8 pt-8"
               >
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-secondary">
                     <AnimatedCounter end={1500} />+
                   </div>
                   <div className="text-gray-600">Active Users</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-secondary">
                     <AnimatedCounter end={320} />+
                   </div>
                   <div className="text-gray-600">Health Facilities</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">
+                  <div className="text-3xl font-bold text-secondary">
                     $<AnimatedCounter end={150} />K+
                   </div>
                   <div className="text-gray-600">Monthly Sales</div>
@@ -210,7 +210,7 @@ export default function MedicalSupplyLanding() {
                 </div>
                 <div className="p-6">
                   <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Dashboard Overview</h3>
+                    <h3 className="text-lg font-semibold text-secondary mb-2">Dashboard Overview</h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="bg-primary/50p-4 rounded-xl">
                         <div className="text-2xl font-bold text-primary/90">1,500</div>

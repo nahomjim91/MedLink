@@ -57,10 +57,10 @@ export const OrderContextCard = ({
 
         {/* Order Info */}
         <div className={`flex-1 min-w-0 ${isPreview ? "flex gap-2 items-center" : ""}`}>
-          <h3 className={`font-semibold text-gray-900 text-base ${!isPreview ? "mb-1" : ""} truncate`}>
+          <h3 className={`font-semibold text-secondary text-base ${!isPreview ? "mb-1" : ""} truncate`}>
             Order #{orderData.orderNumber || orderData.orderId}
           </h3>
-          <p className="font-bold text-lg text-gray-900">
+          <p className="font-bold text-lg text-secondary">
             ${orderData.totalCost?.toFixed(2) || "0.00"}
           </p>
           {orderData.totalItems && (

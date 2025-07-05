@@ -472,7 +472,7 @@ const DoctorAvailabilityCalendar = () => {
                       ? "text-gray-400"
                       : isToday
                       ? "text-blue-600 font-bold"
-                      : "text-gray-900"
+                      : "text-secondary"
                   }`}
                 >
                   <span>{day.date.getDate()}</span>
@@ -525,7 +525,7 @@ const DoctorAvailabilityCalendar = () => {
                 </div>
                 <div
                   className={`text-lg font-semibold ${
-                    isToday ? "text-blue-600" : "text-gray-900"
+                    isToday ? "text-blue-600" : "text-secondary"
                   }`}
                 >
                   {day.getDate()}
@@ -568,7 +568,7 @@ const DoctorAvailabilityCalendar = () => {
             </div>
             <div
               className={`text-xl sm:text-2xl font-bold ${
-                isToday ? "text-blue-600" : "text-gray-900"
+                isToday ? "text-blue-600" : "text-secondary"
               }`}
             >
               {currentDate.toLocaleDateString("en-US", {
@@ -649,7 +649,7 @@ const DoctorAvailabilityCalendar = () => {
   const SidebarContent = () => (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <h2 className="text-lg font-semibold text-secondary mb-4">
           Add New Slot
         </h2>
 
@@ -766,7 +766,7 @@ const DoctorAvailabilityCalendar = () => {
 
       {/* Today's Slots */}
       <div>
-        <h3 className="text-md font-medium text-gray-900 mb-3">
+        <h3 className="text-md font-medium text-secondary mb-3">
           Today&apos;s Slots
         </h3>
         <div className="space-y-2 max-h-96 overflow-y-auto">

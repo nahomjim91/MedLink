@@ -567,7 +567,7 @@ function OrderSummaryStep({
                           <span className="col-span-2 text-center text-secondary/60">
                             ${batchItem.unitPrice}
                           </span>
-                          <span className="col-span-3 text-right text-gray-900 font-medium">
+                          <span className="col-span-3 text-right text-secondary font-medium">
                             ${batchItem.subtotal.toFixed(2)}
                           </span>
                         </div>
@@ -581,7 +581,7 @@ function OrderSummaryStep({
                   <div className="grid grid-cols-12 gap-4 px-4 py-3">
                     <div className="col-span-9"></div>
                     <div className="col-span-3">
-                      <div className="flex justify-between text-base font-semibold text-gray-900">
+                      <div className="flex justify-between text-base font-semibold text-secondary">
                         <span>Subtotal</span>
                         <span>${currentOrder.totalCost.toFixed(2)}</span>
                       </div>
