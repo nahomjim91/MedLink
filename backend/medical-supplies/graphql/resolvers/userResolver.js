@@ -3,6 +3,7 @@ const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
 const MSUserModel = require("../../models/msUser");
 const CartModel = require("../../models/cartModel");
+const RatingModel = require("../../models/RatingModel");
 const {
   AuthenticationError,
   ForbiddenError,
@@ -130,6 +131,30 @@ const resolvers = {
       return geoPoint ? geoPoint.longitude : null;
     },
   },
+  MSUser: {
+    ratingStats: async (parent, args, context) => {
+      try {
+        return await RatingModel.getUserRatingStats(parent.userId);
+      } catch (error) {
+        console.error("Error fetching user rating stats:", error);
+        return {
+          totalRatings: 0,
+          averageRating: 0,
+          lastUpdated: null,
+        };
+      }
+    },
+
+    recentRatings: async (parent, args, context) => {
+      try {
+        // Get last 5 ratings for this user
+        return await RatingModel.getUserRatings(parent.userId);
+      } catch (error) {
+        console.error("Error fetching recent ratings:", error);
+        return [];
+      }
+    },
+  },
   Query: {
     // Get current authenticated user
     msMe: async (_, __, context) => {
@@ -177,8 +202,34 @@ const resolvers = {
       return await MSUserModel.getPendingApproval(limit, offset);
     },
 
+    msUsersByRoleWithRatings: async (
+      parent,
+      { role, limit, offset },
+      context
+    ) => {
+      try {
+        const users = await MSUserModel.getByRole(role, limit, offset);
+
+        // Pre-fetch rating stats for all users to avoid N+1 query problem
+        const userIds = users.map((user) => user.userId);
+        const ratingStatsPromises = userIds.map((userId) =>
+          RatingModel.getUserRatingStats(userId)
+        );
+
+        const ratingStats = await Promise.all(ratingStatsPromises);
+
+        // Attach rating stats to users
+        return users.map((user, index) => ({
+          ...user,
+          ratingStats: ratingStats[index],
+        }));
+      } catch (error) {
+        console.error("Error fetching users with ratings:", error);
+        throw error;
+      }
+    },
     searchMSUsers: async (_, { query }, context) => {
-      return await MSUserModel.search(query , context.user?.uid);
+      return await MSUserModel.search(query, context.user?.uid);
     },
 
     myCart: async (_, __, context) => {
@@ -245,14 +296,17 @@ const resolvers = {
     // Reject user (admin only)
     rejectMSUser: async (_, { userId, reason }, context) => {
       await isAdmin(context);
-      return await MSUserModel.reject(userId, reason , context.user?.uid);
+      return await MSUserModel.reject(userId, reason, context.user?.uid);
     },
 
     // Add to cart
     addToCart: async (_, { input }, context) => {
       try {
         // Only healthcare-facility and supplier roles can add to cart
-        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
+        const user = await hasRole(context, [
+          "healthcare-facility",
+          "supplier",
+        ]);
         return await CartModel.addToCart(user.uid, input);
       } catch (error) {
         console.error("Error in addToCart resolver:", error);
@@ -262,7 +316,10 @@ const resolvers = {
 
     addSpecificBatchToCart: async (_, { input }, context) => {
       try {
-        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
+        const user = await hasRole(context, [
+          "healthcare-facility",
+          "supplier",
+        ]);
         return await CartModel.addSpecificBatchToCart(user.uid, input);
       } catch (error) {
         console.error("Error in addSpecificBatchToCart resolver:", error);
@@ -272,7 +329,10 @@ const resolvers = {
 
     updateCartBatchItem: async (_, { input }, context) => {
       try {
-        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
+        const user = await hasRole(context, [
+          "healthcare-facility",
+          "supplier",
+        ]);
         return await CartModel.updateCartBatchItem(user.uid, input);
       } catch (error) {
         console.error("Error in updateCartBatchItem resolver:", error);
@@ -282,7 +342,10 @@ const resolvers = {
 
     removeProductFromCart: async (_, { productId }, context) => {
       try {
-        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
+        const user = await hasRole(context, [
+          "healthcare-facility",
+          "supplier",
+        ]);
         return await CartModel.removeProductFromCart(user.uid, productId);
       } catch (error) {
         console.error("Error in removeProductFromCart resolver:", error);
@@ -292,7 +355,10 @@ const resolvers = {
 
     removeBatchFromCart: async (_, { productId, batchId }, context) => {
       try {
-        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
+        const user = await hasRole(context, [
+          "healthcare-facility",
+          "supplier",
+        ]);
         return await CartModel.removeBatchFromCart(
           user.uid,
           productId,
@@ -306,7 +372,10 @@ const resolvers = {
 
     clearCart: async (_, __, context) => {
       try {
-        const user = await hasRole(context, ["healthcare-facility", "supplier"]);
+        const user = await hasRole(context, [
+          "healthcare-facility",
+          "supplier",
+        ]);
         return await CartModel.clearCart(user.uid);
       } catch (error) {
         console.error("Error in clearCart resolver:", error);
@@ -317,4 +386,3 @@ const resolvers = {
 };
 
 module.exports = resolvers;
-

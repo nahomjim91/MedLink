@@ -1,4 +1,4 @@
-// /graphql/msSchemas.js
+// Updated MSUser type in /graphql/msSchemas.js
 const { gql } = require("apollo-server-express");
 
 const typeDefs = gql`
@@ -19,6 +19,13 @@ const typeDefs = gql`
     geoLocationText: String
   }
 
+  # Import RatingStats from rating schema
+  type RatingStats {
+    totalRatings: Int!
+    averageRating: Float!
+    lastUpdated: Date
+  }
+
   type MSUser {
     userId: ID!
     email: String!
@@ -36,10 +43,13 @@ const typeDefs = gql`
     efdaLicenseUrl: String
     businessLicenseUrl: String
     profileComplete: Boolean
+    
+    # Rating fields - these will be resolved dynamically
+    ratingStats: RatingStats
+    recentRatings: [UserRating]
   }
 
-
-  #"Represents a single batch item in a cart"
+  # Rest of your existing schema...
   type CartBatchItem {
     batchId: ID!
     productId: ID!
@@ -51,7 +61,6 @@ const typeDefs = gql`
     batchSellerId: ID!
   }
 
-  #"Represents a product in the cart, potentially with multiple batches"
   type CartItem {
     productId: ID!
     productName: String!
@@ -63,7 +72,6 @@ const typeDefs = gql`
     totalPrice: Float!
   }
 
-  #"Represents the user's shopping cart"
   type Cart {
     userId: ID!
     items: [CartItem]
@@ -72,27 +80,23 @@ const typeDefs = gql`
     lastUpdated: Date
   }
 
-  
-  #"Input for adding a specific batch to cart"
+  # Input types remain the same...
   input AddSpecificBatchToCartInput {
     productId: ID!
     batchId: ID!
     quantity: Float!
   }
 
-  #"Input for adding product to cart with auto-batch selection"
   input AddToCartInput {
     productId: ID!
     quantity: Float!
   }
 
-  #"Input for updating a specific batch quantity in cart"
   input UpdateCartBatchItemInput {
     productId: ID!
     batchId: ID!
     quantity: Float!
   }
-
 
   input AddressInput {
     street: String
@@ -128,6 +132,7 @@ const typeDefs = gql`
     msMe: MSUser
     msUserById(userId: ID!): MSUser
     msUsersByRole(role: String!): [MSUser]
+    msUsersByRoleWithRatings(role: String!, limit: Int, offset: Int): [MSUser]
     pendingApprovalUsers(limit: Int, offset: Int): [MSUser]
 
     # Search queries
@@ -159,4 +164,3 @@ const typeDefs = gql`
 `;
 
 module.exports = typeDefs;
-

@@ -32,6 +32,16 @@ export const GET_MS_ME = gql`
       approvedAt
       efdaLicenseUrl
       businessLicenseUrl
+      ratingStats {
+        totalRatings
+        averageRating
+      }
+      recentRatings {
+        rating
+        comment
+        raterCompanyName
+        raterId
+      }
      
     }
   }
@@ -66,6 +76,16 @@ export const GET_MS_USER_BY_ID = gql`
       approvedAt
       efdaLicenseUrl
       businessLicenseUrl
+      ratingStats {
+        totalRatings
+        averageRating
+      }
+      recentRatings {
+        rating
+        comment
+        raterCompanyName
+        raterId
+      }
     }
   }
 `;

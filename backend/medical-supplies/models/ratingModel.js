@@ -210,6 +210,7 @@ const RatingModel = {
 
       query = query.limit(limitVal);
       const snapshot = await query.get();
+      console.log(formatDocs(snapshot.docs))
       return formatDocs(snapshot.docs);
     } catch (error) {
       console.error("Error getting user ratings:", error);
@@ -488,6 +489,7 @@ const RatingModel = {
    */
   async getUserRatingStats(userId) {
     try {
+      
       const userDoc = await MSUserModel.getById(userId);
       return userDoc?.ratingStats || {
         totalRatings: 0,

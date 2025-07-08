@@ -109,6 +109,16 @@ export const USERS_QUERY = gql`
       approvedBy
       approvedAt
       profileComplete
+      ratingStats {
+        totalRatings
+        averageRating
+      }
+      recentRatings {
+        rating
+        comment
+        raterCompanyName
+        raterId
+      }
     }
   }
 `;

@@ -39,6 +39,16 @@ export const UPDATE_MS_USER_PROFILE = gql`
       profileImageUrl
       efdaLicenseUrl
       businessLicenseUrl
+      ratingStats {
+        totalRatings
+        averageRating
+      }
+      recentRatings {
+        rating
+        comment
+        raterCompanyName
+        raterId
+      }
     }
   }
 `;
@@ -92,4 +102,3 @@ export const REJECT_MS_USER = gql`
     rejectMSUser(userId: $userId, reason: $reason)
   }
 `;
-

@@ -9,7 +9,8 @@ const {
   paginationParams,
   timestamp,
 } = require("../../utils/helpers");
-const {createNotificationService} = require("../service/notificationService");
+const { createNotificationService } = require("../service/notificationService");
+const RatingModel = require("./RatingModel"); // Import your rating model
 
 // Collection reference
 const msUsersRef = db.collection("msUsers");
@@ -103,39 +104,38 @@ const MSUserModel = {
   },
 
   async getUserIdsByRoles(roles) {
-  try {
-    // Validate input
-    if (!Array.isArray(roles) || roles.length === 0) {
-      throw new Error("Roles must be a non-empty array");
-    }
+    try {
+      // Validate input
+      if (!Array.isArray(roles) || roles.length === 0) {
+        throw new Error("Roles must be a non-empty array");
+      }
 
-    const userIds = [];
-    const roleQueries = roles.map(role => 
-      msUsersRef
-        .where("role", "==", role)
-        .select("uid") // Only select the uid field for better performance
-        .get()
-    );
+      const userIds = [];
+      const roleQueries = roles.map((role) =>
+        msUsersRef
+          .where("role", "==", role)
+          .select("uid") // Only select the uid field for better performance
+          .get()
+      );
 
-    const snapshots = await Promise.all(roleQueries);
-    
-    // Extract user IDs from all snapshots
-    snapshots.forEach(snapshot => {
-      snapshot.docs.forEach(doc => {
-        const uid = doc.data().uid || doc.id;
-        if (uid && !userIds.includes(uid)) {
-          userIds.push(uid);
-        }
+      const snapshots = await Promise.all(roleQueries);
+
+      // Extract user IDs from all snapshots
+      snapshots.forEach((snapshot) => {
+        snapshot.docs.forEach((doc) => {
+          const uid = doc.data().uid || doc.id;
+          if (uid && !userIds.includes(uid)) {
+            userIds.push(uid);
+          }
+        });
       });
-    });
 
-    return userIds;
-
-  } catch (error) {
-    console.error("Error getting user IDs by roles:", error);
-    throw error;
-  }
-},
+      return userIds;
+    } catch (error) {
+      console.error("Error getting user IDs by roles:", error);
+      throw error;
+    }
+  },
 
   /**
    * Get pending approval users
@@ -176,6 +176,117 @@ const MSUserModel = {
       return formatDocs(snapshot.docs);
     } catch (error) {
       console.error("Error getting pending approval MS users:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get users with their rating statistics
+   * @param {String} role - User role
+   * @param {Number} limit - Number of users to return
+   * @param {Number} offset - Offset for pagination
+   * @param {Boolean} includeRatings - Whether to include rating stats
+   * @returns {Array} Array of users with rating stats
+   */
+  async getByRoleWithRatings(role, limit, offset, includeRatings = true) {
+    try {
+      const users = await this.getByRole(role, limit, offset);
+
+      if (!includeRatings) {
+        return users;
+      }
+
+      // Batch fetch rating stats to avoid N+1 queries
+      const userIds = users.map((user) => user.userId);
+      const ratingStatsMap = await this.getBatchRatingStats(userIds);
+
+      // Attach rating stats to users
+      return users.map((user) => ({
+        ...user,
+        ratingStats: ratingStatsMap[user.userId] || {
+          totalRatings: 0,
+          averageRating: 0,
+          lastUpdated: null,
+        },
+      }));
+    } catch (error) {
+      console.error("Error getting users with ratings:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get rating statistics for multiple users in batch
+   * @param {Array} userIds - Array of user IDs
+   * @returns {Object} Map of userId -> ratingStats
+   */
+  async getBatchRatingStats(userIds) {
+    try {
+      if (!userIds || userIds.length === 0) {
+        return {};
+      }
+
+      const ratingStatsPromises = userIds.map(async (userId) => {
+        try {
+          const stats = await RatingModel.getUserRatingStats(userId);
+          return { userId, stats };
+        } catch (error) {
+          console.error(
+            `Error fetching rating stats for user ${userId}:`,
+            error
+          );
+          return {
+            userId,
+            stats: { totalRatings: 0, averageRating: 0, lastUpdated: null },
+          };
+        }
+      });
+
+      const results = await Promise.all(ratingStatsPromises);
+
+      // Convert to map for easy lookup
+      const statsMap = {};
+      results.forEach(({ userId, stats }) => {
+        statsMap[userId] = stats;
+      });
+
+      return statsMap;
+    } catch (error) {
+      console.error("Error getting batch rating stats:", error);
+      return {};
+    }
+  },
+
+  /**
+   * Get user profile with comprehensive rating information
+   * @param {String} id - User ID
+   * @param {Boolean} includeRecentRatings - Whether to include recent ratings
+   * @returns {Object} User data with rating information
+   */
+  async getProfileWithRatings(id, includeRecentRatings = true) {
+    try {
+      const user = await this.getById(id);
+
+      if (!user) {
+        return null;
+      }
+
+      // Get rating stats
+      const ratingStats = await RatingModel.getUserRatingStats(id);
+
+      // Get recent ratings if requested
+      let recentRatings = [];
+      if (includeRecentRatings) {
+        recentRatings = await RatingModel.getUserRatings(id, 5, 0);
+      }
+
+      return {
+        ...user,
+        ratingStats,
+        recentRatings,
+      };
+    } catch (error) {
+      console.error("Error getting user profile with ratings:", error);
       throw error;
     }
   },
@@ -516,7 +627,7 @@ const MSUserModel = {
           }`,
           {
             role: userData.role,
-            actionUrl:"/profile",
+            actionUrl: "/profile",
             tips: [
               "Complete your profile for better visibility",
               "Explore the marketplace",
