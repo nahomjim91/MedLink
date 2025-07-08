@@ -11,6 +11,7 @@ export const GET_USER_RATINGS = gql`
       ratedUserId
       ratedUserName
       ratedUserCompanyName
+      raterProfileImage
       orderId
       rating
       comment
@@ -29,6 +30,7 @@ export const GET_PRODUCT_RATINGS = gql`
       userId
       userName
       userCompanyName
+      userProfileImage
       productId
       productName
       productSellerId
@@ -53,6 +55,7 @@ export const GET_MY_RATINGS = gql`
         ratedUserId
         ratedUserName
         ratedUserCompanyName
+        raterProfileImage
         orderId
         rating
         comment
@@ -66,6 +69,7 @@ export const GET_MY_RATINGS = gql`
         userId
         userName
         userCompanyName
+        userProfileImage
         productId
         productName
         productSellerId
@@ -91,6 +95,7 @@ export const GET_ORDER_RATINGS = gql`
         ratedUserId
         ratedUserName
         ratedUserCompanyName
+        raterProfileImage
         orderId
         rating
         comment
@@ -104,6 +109,7 @@ export const GET_ORDER_RATINGS = gql`
         userId
         userName
         userCompanyName
+        userProfileImage
         productId
         productName
         productSellerId

@@ -36,7 +36,14 @@ const RatingModel = {
    * @param {String} ratingType - Type of rating (seller_rating, buyer_rating)
    * @returns {Object} Created rating
    */
-  async createUserRating(raterId, ratedUserId, orderId, rating, comment, ratingType) {
+  async createUserRating(
+    raterId,
+    ratedUserId,
+    orderId,
+    rating,
+    comment,
+    ratingType
+  ) {
     try {
       // Validate rating value
       if (rating < 1 || rating > 5) {
@@ -44,7 +51,11 @@ const RatingModel = {
       }
 
       // Check if rating already exists for this order and rater combination
-      const existingRating = await this.getUserRatingByOrder(orderId, raterId, ratedUserId);
+      const existingRating = await this.getUserRatingByOrder(
+        orderId,
+        raterId,
+        ratedUserId
+      );
       if (existingRating) {
         throw new Error("Rating already exists for this order");
       }
@@ -52,14 +63,21 @@ const RatingModel = {
       // Get user details for notification
       const raterUser = await MSUserModel.getById(raterId);
       const ratedUser = await MSUserModel.getById(ratedUserId);
+      // console.log("Rater user:", raterUser);
+      // console.log("Rated user:", ratedUser);
+
+      // Prepare rating data
 
       const ratingData = {
         raterId,
-        raterName: raterUser?.contactName || raterUser?.companyName || "Unknown",
+        raterName:
+          raterUser?.contactName || raterUser?.companyName || "Unknown",
         raterCompanyName: raterUser?.companyName,
         ratedUserId,
-        ratedUserName: ratedUser?.contactName || ratedUser?.companyName || "Unknown",
+        ratedUserName:
+          ratedUser?.contactName || ratedUser?.companyName || "Unknown",
         ratedUserCompanyName: ratedUser?.companyName,
+        raterProfileImage: raterUser?.profileImageUrl,
         orderId,
         rating,
         comment: comment || "",
@@ -71,7 +89,7 @@ const RatingModel = {
 
       // Create rating document
       const ratingRef = await ratingsRef.add(ratingData);
-      
+
       // Update user's rating statistics
       await this.updateUserRatingStats(ratedUserId);
 
@@ -80,7 +98,9 @@ const RatingModel = {
         await this.notificationService.createNotification(
           ratedUserId,
           "rating_received",
-          `You received a ${rating}-star rating from ${raterUser?.contactName || raterUser?.companyName}`,
+          `You received a ${rating}-star rating from ${
+            raterUser?.contactName || raterUser?.companyName
+          }`,
           {
             rating,
             raterName: raterUser?.contactName || raterUser?.companyName,
@@ -119,7 +139,11 @@ const RatingModel = {
       }
 
       // Check if rating already exists for this product and user combination
-      const existingRating = await this.getProductRatingByUser(productId, userId, orderId);
+      const existingRating = await this.getProductRatingByUser(
+        productId,
+        userId,
+        orderId
+      );
       if (existingRating) {
         throw new Error("Rating already exists for this product in this order");
       }
@@ -127,11 +151,13 @@ const RatingModel = {
       // Get user and product details
       const user = await MSUserModel.getById(userId);
       const product = await ProductModel.getById(productId);
+      // Prepare rating data
 
       const ratingData = {
         userId,
         userName: user?.contactName || user?.companyName || "Unknown",
         userCompanyName: user?.companyName,
+        userProfileImage: user?.profileImageUrl,
         productId,
         productName: product?.productName || "Unknown Product",
         productSellerId: product?.ownerId,
@@ -145,7 +171,7 @@ const RatingModel = {
 
       // Create rating document
       const ratingRef = await ratingsRef.add(ratingData);
-      
+
       // Update product's rating statistics
       await this.updateProductRatingStats(productId);
 
@@ -186,7 +212,10 @@ const RatingModel = {
    */
   async getUserRatings(userId, limit, offset) {
     try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
+      const { limit: limitVal, offset: offsetVal } = paginationParams(
+        limit,
+        offset
+      );
 
       let query = ratingsRef
         .where("ratedUserId", "==", userId)
@@ -210,7 +239,7 @@ const RatingModel = {
 
       query = query.limit(limitVal);
       const snapshot = await query.get();
-      console.log(formatDocs(snapshot.docs))
+      console.log(formatDocs(snapshot.docs));
       return formatDocs(snapshot.docs);
     } catch (error) {
       console.error("Error getting user ratings:", error);
@@ -227,7 +256,10 @@ const RatingModel = {
    */
   async getProductRatings(productId, limit, offset) {
     try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
+      const { limit: limitVal, offset: offsetVal } = paginationParams(
+        limit,
+        offset
+      );
 
       let query = ratingsRef
         .where("productId", "==", productId)
@@ -267,7 +299,10 @@ const RatingModel = {
    */
   async getRatingsByUser(userId, limit, offset) {
     try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
+      const { limit: limitVal, offset: offsetVal } = paginationParams(
+        limit,
+        offset
+      );
 
       let query = ratingsRef
         .where("raterId", "==", userId)
@@ -377,19 +412,23 @@ const RatingModel = {
 
       if (snapshot.empty) return;
 
-      const ratings = snapshot.docs.map(doc => doc.data().rating);
+      const ratings = snapshot.docs.map((doc) => doc.data().rating);
       const totalRatings = ratings.length;
-      const averageRating = ratings.reduce((sum, rating) => sum + rating, 0) / totalRatings;
+      const averageRating =
+        ratings.reduce((sum, rating) => sum + rating, 0) / totalRatings;
 
       // Update user document with rating stats
-      await db.collection("msUsers").doc(userId).update({
-        ratingStats: {
-          totalRatings,
-          averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
-          lastUpdated: timestamp(),
-        },
-        updatedAt: timestamp(),
-      });
+      await db
+        .collection("msUsers")
+        .doc(userId)
+        .update({
+          ratingStats: {
+            totalRatings,
+            averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+            lastUpdated: timestamp(),
+          },
+          updatedAt: timestamp(),
+        });
     } catch (error) {
       console.error("Error updating user rating stats:", error);
       // Don't throw error to avoid breaking the main rating flow
@@ -409,19 +448,23 @@ const RatingModel = {
 
       if (snapshot.empty) return;
 
-      const ratings = snapshot.docs.map(doc => doc.data().rating);
+      const ratings = snapshot.docs.map((doc) => doc.data().rating);
       const totalRatings = ratings.length;
-      const averageRating = ratings.reduce((sum, rating) => sum + rating, 0) / totalRatings;
+      const averageRating =
+        ratings.reduce((sum, rating) => sum + rating, 0) / totalRatings;
 
       // Update product document with rating stats
-      await db.collection("products").doc(productId).update({
-        ratingStats: {
-          totalRatings,
-          averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
-          lastUpdated: timestamp(),
-        },
-        updatedAt: timestamp(),
-      });
+      await db
+        .collection("products")
+        .doc(productId)
+        .update({
+          ratingStats: {
+            totalRatings,
+            averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+            lastUpdated: timestamp(),
+          },
+          updatedAt: timestamp(),
+        });
     } catch (error) {
       console.error("Error updating product rating stats:", error);
       // Don't throw error to avoid breaking the main rating flow
@@ -457,9 +500,10 @@ const RatingModel = {
 
       // Send notification about deletion
       if (this.notificationService) {
-        const notificationTarget = ratingData.type === "user_rating" 
-          ? ratingData.raterId 
-          : ratingData.userId;
+        const notificationTarget =
+          ratingData.type === "user_rating"
+            ? ratingData.raterId
+            : ratingData.userId;
 
         await this.notificationService.createNotification(
           notificationTarget,
@@ -489,13 +533,14 @@ const RatingModel = {
    */
   async getUserRatingStats(userId) {
     try {
-      
       const userDoc = await MSUserModel.getById(userId);
-      return userDoc?.ratingStats || {
-        totalRatings: 0,
-        averageRating: 0,
-        lastUpdated: null,
-      };
+      return (
+        userDoc?.ratingStats || {
+          totalRatings: 0,
+          averageRating: 0,
+          lastUpdated: null,
+        }
+      );
     } catch (error) {
       console.error("Error getting user rating stats:", error);
       return {
@@ -514,11 +559,13 @@ const RatingModel = {
   async getProductRatingStats(productId) {
     try {
       const productDoc = await ProductModel.getById(productId);
-      return productDoc?.ratingStats || {
-        totalRatings: 0,
-        averageRating: 0,
-        lastUpdated: null,
-      };
+      return (
+        productDoc?.ratingStats || {
+          totalRatings: 0,
+          averageRating: 0,
+          lastUpdated: null,
+        }
+      );
     } catch (error) {
       console.error("Error getting product rating stats:", error);
       return {

@@ -11,6 +11,7 @@ export const CREATE_USER_RATING = gql`
       ratedUserId
       ratedUserName
       ratedUserCompanyName
+      raterProfileImage
       orderId
       rating
       comment
@@ -29,6 +30,7 @@ export const CREATE_PRODUCT_RATING = gql`
       userId
       userName
       userCompanyName
+      userProfileImage
       productId
       productName
       productSellerId

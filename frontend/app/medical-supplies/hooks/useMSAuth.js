@@ -239,6 +239,8 @@ export const MSAuthProvider = ({ children }) => {
         address: profileData.address,
         efdaLicenseUrl: profileData.efdaLicenseUrl,
         businessLicenseUrl: profileData.businessLicenseUrl,
+        ratingStats: profileData.ratingStats,
+        recentRatings: profileData.recentRatings,
       });
 
        // Fetch cart data after setting user

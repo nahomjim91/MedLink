@@ -125,7 +125,7 @@ export const useRatings = (options = {}) => {
     getOrderRatings,
     { data: lazyOrderRatingsData, loading: lazyOrderRatingsLoading },
   ] = useLazyQuery(GET_ORDER_RATINGS, {
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only", // Changed to network-only to ensure fresh data
     errorPolicy: "all",
   });
 
@@ -145,46 +145,93 @@ export const useRatings = (options = {}) => {
     errorPolicy: "all",
   });
 
+  // Enhanced refetch function
+  const refetchOrderRatingsWithDelay = async (delay = 0) => {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+    if (orderId) {
+      return await getOrderRatings({
+        variables: { orderId },
+        fetchPolicy: "network-only", // Force fresh data
+      });
+    }
+  };
+
   // Mutations
   const [createUserRatingMutation, { loading: createUserRatingLoading }] =
     useMutation(CREATE_USER_RATING, {
-      onCompleted: () => {
-        // Refetch relevant queries after creating user rating
-        refetchMyRatings();
-        if (userId) refetchUserRatings();
-        if (orderId) refetchOrderRatings();
-        if (userId) refetchUserRatingStats();
+      onCompleted: async (data) => {
+        try {
+          console.log("User rating created successfully:", data);
+
+          // Refetch order ratings immediately
+          await refetchOrderRatingsWithDelay(0);
+
+          // Refetch other relevant queries
+          await refetchMyRatings();
+          if (userId) await refetchUserRatings();
+          if (userId) await refetchUserRatingStats();
+
+          // Force another refetch after a delay to ensure consistency
+          setTimeout(() => {
+            refetchOrderRatingsWithDelay(0);
+          }, 1000);
+        } catch (error) {
+          console.error("Error in onCompleted refetch:", error);
+        }
       },
       onError: (error) => {
         console.error("Error creating user rating:", error);
       },
-    });
+      // Add update function to manually update cache
+      update: (cache, { data: { createProductRating } }) => {
+        try {
+          if (orderId) {
+            const existingData = cache.readQuery({
+              query: GET_ORDER_RATINGS,
+              variables: { orderId },
+            });
 
-  const [createProductRatingMutation, { loading: createProductRatingLoading }] =
-    useMutation(CREATE_PRODUCT_RATING, {
-      onCompleted: () => {
-        // Refetch relevant queries after creating product rating
-        refetchMyRatings();
-        if (productId) refetchProductRatings();
-        if (orderId) refetchOrderRatings();
-        if (productId) refetchProductRatingStats();
-      },
-      onError: (error) => {
-        console.error("Error creating product rating:", error);
+            if (existingData) {
+              cache.writeQuery({
+                query: GET_ORDER_RATINGS,
+                variables: { orderId },
+                data: {
+                  orderRatings: [
+                    ...existingData.orderRatings,
+                    createProductRating,
+                  ],
+                },
+              });
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Error updating cache after product rating creation:",
+            error
+          );
+        }
       },
     });
 
   const [deleteRatingMutation, { loading: deleteRatingLoading }] = useMutation(
     DELETE_RATING,
     {
-      onCompleted: () => {
-        // Refetch all relevant queries after deleting rating
-        refetchMyRatings();
-        if (userId) refetchUserRatings();
-        if (productId) refetchProductRatings();
-        if (orderId) refetchOrderRatings();
-        if (userId) refetchUserRatingStats();
-        if (productId) refetchProductRatingStats();
+      onCompleted: async () => {
+        try {
+          // Refetch order ratings immediately
+          await refetchOrderRatingsWithDelay(0);
+
+          // Refetch all relevant queries after deleting rating
+          await refetchMyRatings();
+          if (userId) await refetchUserRatings();
+          if (productId) await refetchProductRatings();
+          if (userId) await refetchUserRatingStats();
+          if (productId) await refetchProductRatingStats();
+        } catch (error) {
+          console.error("Error in onCompleted refetch:", error);
+        }
       },
       onError: (error) => {
         console.error("Error deleting rating:", error);
@@ -222,6 +269,58 @@ export const useRatings = (options = {}) => {
       throw error;
     }
   };
+  const [createProductRatingMutation, { loading: createProductRatingLoading }] =
+    useMutation(CREATE_PRODUCT_RATING, {
+      onCompleted: async (data) => {
+        try {
+          console.log("Product rating created successfully:", data);
+
+          // Refetch order ratings
+          await refetchOrderRatingsWithDelay(0);
+          await refetchMyRatings();
+          if (productId) await refetchProductRatings();
+          if (productId) await refetchProductRatingStats();
+
+          // Optional delayed refetch
+          setTimeout(() => {
+            refetchOrderRatingsWithDelay(0);
+          }, 1000);
+        } catch (error) {
+          console.error("Error in onCompleted refetch (product):", error);
+        }
+      },
+      onError: (error) => {
+        console.error("Error creating product rating:", error);
+      },
+      update: (cache, { data: { createProductRating } }) => {
+        try {
+          if (orderId) {
+            const existingData = cache.readQuery({
+              query: GET_ORDER_RATINGS,
+              variables: { orderId },
+            });
+
+            if (existingData) {
+              cache.writeQuery({
+                query: GET_ORDER_RATINGS,
+                variables: { orderId },
+                data: {
+                  orderRatings: [
+                    ...existingData.orderRatings,
+                    createProductRating,
+                  ],
+                },
+              });
+            }
+          }
+        } catch (error) {
+          console.error(
+            "Error updating cache after product rating creation:",
+            error
+          );
+        }
+      },
+    });
 
   const createProductRating = async (input) => {
     try {
@@ -285,14 +384,14 @@ export const useRatings = (options = {}) => {
     }
   };
 
-  // Refetch function
+  // Enhanced refetch function
   const refetch = async () => {
     const promises = [];
 
     if (userId) promises.push(refetchUserRatings());
     if (productId) promises.push(refetchProductRatings());
     promises.push(refetchMyRatings());
-    if (orderId) promises.push(refetchOrderRatings());
+    if (orderId) promises.push(refetchOrderRatingsWithDelay(0));
     if (userId) promises.push(refetchUserRatingStats());
     if (productId) promises.push(refetchProductRatingStats());
 
@@ -355,6 +454,7 @@ export const useRatings = (options = {}) => {
     canRateUser,
     canRateProduct,
     refetch,
+    refetchOrderRatingsWithDelay, // New enhanced function
 
     // Lazy query functions
     getUserRatings,

@@ -10,6 +10,8 @@ import { Rating } from "../../../components/ui/FormField";
 import { NumberInput } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
 import { RelatedProducts } from "../../../components/ui/Cards";
+import { useProductRatings, useRatings } from "../../../hooks/useRatings";
+import ProductReviews from "../../../components/ui/product/ProductReviews";
 
 export default function ProductDetails() {
   const searchParams = useSearchParams();
@@ -52,6 +54,20 @@ export default function ProductDetails() {
     refreshCart,
     cart: cartData,
   } = useMSAuth();
+
+  const {
+    productRatings,
+    productRatingStats,
+    loading: ratingsLoading,
+  } = useRatings({ productId });
+  console.log(
+    "productRatings",
+    productRatings,
+    "\nproductRatingStats",
+    productRatingStats,
+    "\nratingsLoading",
+    ratingsLoading
+  );
 
   // Local state
   const [activeTab, setActiveTab] = useState("automatically");
@@ -446,8 +462,10 @@ export default function ProductDetails() {
                   {isDrugProduct && processedData.concentration}
                 </h1>
                 <div className="flex items-center">
-                  <span className="text-secondary/50 mr-2">1238 Sold</span>
-                  <Rating value={4.5} maxStars={5} />
+                  <Rating
+                    value={productRatingStats.averageRating}
+                    maxStars={5}
+                  />
                 </div>
               </div>
             </div>
@@ -799,6 +817,13 @@ export default function ProductDetails() {
         {/* Related Products */}
         <div>
           <RelatedProducts {...relatedProductsProps} />
+        </div>
+        <div>
+          <ProductReviews
+            productRatings={productRatings}
+            productRatingStats={productRatingStats}
+            loading={ratingsLoading}
+          />
         </div>
       </div>
     </div>

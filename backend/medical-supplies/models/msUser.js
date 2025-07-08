@@ -10,7 +10,6 @@ const {
   timestamp,
 } = require("../../utils/helpers");
 const { createNotificationService } = require("../service/notificationService");
-const RatingModel = require("./RatingModel"); // Import your rating model
 
 // Collection reference
 const msUsersRef = db.collection("msUsers");

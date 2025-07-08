@@ -1,6 +1,6 @@
 // components/modal/RatingModal.js
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRatings } from "../../hooks/useRatings";
 import { Modal } from "./Modal";
 import { Button } from "../ui/Button";
@@ -9,9 +9,6 @@ import { toast } from "react-hot-toast";
 import { useMSAuth } from "../../hooks/useMSAuth";
 import { CheckCircle, Star, User, Package, Clock } from "lucide-react";
 
-
-
-//   RatingModal with original logic preserved
 export const RatingModal = ({ isOpen, onClose, order }) => {
   if (!isOpen || !order) {
     return null;
@@ -26,6 +23,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
     createUserRatingLoading,
     createProductRatingLoading,
     extractProductId,
+    refetch, // Add this to force refetch all related data
   } = useRatings({ orderId: order.orderId, autoFetch: false });
 
   const { user } = useMSAuth();
@@ -34,27 +32,46 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [skippedItems, setSkippedItems] = useState(new Set());
+  const [forceRefresh, setForceRefresh] = useState(0); // Add force refresh state
 
   const userPerspective = user.userId === order.sellerId ? "seller" : "buyer";
   const isLoading = createUserRatingLoading || createProductRatingLoading;
 
+  // Load order ratings when modal opens
   useEffect(() => {
-    if (order?.orderId) {
+    if (order?.orderId && isOpen) {
       getOrderRatings({ variables: { orderId: order.orderId } });
     }
+  }, [order?.orderId, getOrderRatings, isOpen]);
+
+  // Force refresh helper
+  const forceRefreshData = useCallback(async () => {
+    if (order?.orderId) {
+      try {
+        await getOrderRatings({ variables: { orderId: order.orderId } });
+        setForceRefresh((prev) => prev + 1);
+      } catch (error) {
+        console.error("Error refreshing order ratings:", error);
+      }
+    }
   }, [order?.orderId, getOrderRatings]);
+
+  console.log("order ratings:", lazyOrderRatings);
+  console.log("force refresh counter:", forceRefresh);
 
   const ratingProgress = useMemo(() => {
     if (lazyOrderRatingsLoading || !lazyOrderRatings) return null;
 
     const expectedRatingType = `${userPerspective}_rating`;
     const currentUserHasRatedUser = lazyOrderRatings.some(
-      (r) => r.ratingType === expectedRatingType
-    );
+  (r) =>
+    r.type === "user_rating" &&
+    r.ratingType === expectedRatingType
+);
 
     const ratedProducts = new Set();
     lazyOrderRatings.forEach((r) => {
-      if (r.type === "product") {
+      if (r.type === "product_rating") {
         const ratedProductId = r.product?.id || r.productId;
         ratedProducts.add(ratedProductId);
       }
@@ -73,12 +90,14 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
     if (userPerspective === "buyer") {
       order.items.forEach((item) => {
         const productId = extractProductId(item.orderItemId);
+        console.log("product id:", productId);
+
         if (ratedProducts.has(productId) || skippedItems.has(productId)) {
           completedItems++;
         }
       });
     }
-
+    console.log("lazyOrderRatings", lazyOrderRatings);
     return {
       completed: completedItems,
       total: totalItems,
@@ -93,6 +112,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
     userPerspective,
     extractProductId,
     skippedItems,
+    forceRefresh, // Add forceRefresh as dependency
   ]);
 
   const whatToRate = useMemo(() => {
@@ -134,6 +154,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
     extractProductId,
     ratingProgress,
     skippedItems,
+    forceRefresh, // Add forceRefresh as dependency
   ]);
 
   useEffect(() => {
@@ -150,6 +171,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
   const handleClose = () => {
     resetForm();
     setSkippedItems(new Set());
+    setForceRefresh(0);
     onClose();
   };
 
@@ -162,42 +184,19 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
       setSkippedItems((prev) => new Set([...prev, productId]));
       resetForm();
 
-      // Find next unrated product or go to done
-      const nextUnratedIndex = order.items.findIndex((item, index) => {
-        if (index <= productIndex) return false;
-        const id = extractProductId(item.orderItemId);
-        return !ratingProgress.ratedProducts.has(id) && !skippedItems.has(id);
-      });
-
-      if (nextUnratedIndex !== -1) {
-        setCurrentStep(`product_${nextUnratedIndex}`);
-      } else {
-        setCurrentStep("done");
-      }
+      // Force refresh data and then find next step
+      setTimeout(() => {
+        setForceRefresh((prev) => prev + 1);
+      }, 100);
     } else if (currentStep === "user") {
       // Skip user rating
       setSkippedItems((prev) => new Set([...prev, "user_rating"]));
       resetForm();
 
-      // Move to next step based on user perspective
-      if (userPerspective === "seller") {
-        setCurrentStep("done");
-      } else {
-        // For buyer, check if there are products to rate
-        const firstUnratedProductIndex = order.items.findIndex((item) => {
-          const productId = extractProductId(item.orderItemId);
-          return (
-            !ratingProgress.ratedProducts.has(productId) &&
-            !skippedItems.has(productId)
-          );
-        });
-
-        if (firstUnratedProductIndex !== -1) {
-          setCurrentStep(`product_${firstUnratedProductIndex}`);
-        } else {
-          setCurrentStep("done");
-        }
-      }
+      // Force refresh data
+      setTimeout(() => {
+        setForceRefresh((prev) => prev + 1);
+      }, 100);
     }
   };
 
@@ -232,8 +231,13 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
         toast.success(`${productItem.productName} rated successfully!`);
       }
 
-      await getOrderRatings({ variables: { orderId: order.orderId } });
+      // Reset form immediately
       resetForm();
+
+      // Force refresh data after a short delay to ensure backend has processed
+      setTimeout(async () => {
+        await forceRefreshData();
+      }, 500);
     } catch (error) {
       console.error("Failed to submit rating:", error);
       toast.error(error.message || "Failed to submit rating.");
@@ -247,7 +251,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
       2: { text: "Fair", color: "text-orange-500", emoji: "😐" },
       3: { text: "Good", color: "text-yellow-500", emoji: "🙂" },
       4: { text: "Very Good", color: "text-green-500", emoji: "😊" },
-      5: { text: "Excellent", color: "text-green-600", emoji: "🤩" }
+      5: { text: "Excellent", color: "text-green-600", emoji: "🤩" },
     };
     return labels[rating] || null;
   };
@@ -266,7 +270,9 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
             <div className="h-2 bg-secondary/20 rounded-full overflow-hidden">
               <div className="h-full bg-primary animate-pulse"></div>
             </div>
-            <p className="text-secondary/60 font-medium">Loading rating information...</p>
+            <p className="text-secondary/60 font-medium">
+              Loading rating information...
+            </p>
           </div>
         </div>
       );
@@ -289,11 +295,11 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
               </div>
             </div>
           </div>
-          
+
           <h3 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-primary bg-clip-text text-transparent mb-3">
             {hasCompletedRatings ? "Thank You! 🎉" : "Already Completed"}
           </h3>
-          
+
           <p className="text-secondary/60 mb-6 text-lg">
             {hasCompletedRatings
               ? "Your ratings help build a better marketplace for everyone."
@@ -337,7 +343,9 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
                 <div
                   className="bg-primary h-2 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
                   style={{
-                    width: `${(ratingProgress.completed / ratingProgress.total) * 100}%`,
+                    width: `${
+                      (ratingProgress.completed / ratingProgress.total) * 100
+                    }%`,
                   }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
@@ -346,8 +354,8 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
             </div>
           )}
 
-          <Button 
-            onClick={handleClose} 
+          <Button
+            onClick={handleClose}
             className="bg-gradient-to-r from-primary/50 to-primary/60 hover:from-primary/60 hover:to-primary/70 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
           >
             <span className="flex items-center gap-2">
@@ -387,7 +395,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
 
     return (
       <div className="p-3">
-        {/*   Progress Bar */}
+        {/* Progress Bar */}
         {ratingProgress && (
           <div className="mb-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-2 border border-blue-100">
             <div className="flex items-center justify-between text-sm font-semibold text-secondary/70 mb-3">
@@ -401,9 +409,11 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
             </div>
             <div className="w-full bg-secondary/20 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-primary  h-2 rounded-full transition-all duration-500 ease-out relative"
+                className="bg-primary h-2 rounded-full transition-all duration-500 ease-out relative"
                 style={{
-                  width: `${(ratingProgress.completed / ratingProgress.total) * 100}%`,
+                  width: `${
+                    (ratingProgress.completed / ratingProgress.total) * 100
+                  }%`,
                 }}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
@@ -412,18 +422,16 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
           </div>
         )}
 
-        {/*   Header */}
+        {/* Header */}
         <div className="flex items-center gap-4 mb-4">
-          <div className={`p-3 rounded-2xl ${iconBg} shadow-md`}>
-            {icon}
-          </div>
+          <div className={`p-3 rounded-2xl ${iconBg} shadow-md`}>{icon}</div>
           <div>
             <h3 className="text-xl font-bold text-secondary/80">{title}</h3>
             <p className="text-secondary/60 font-medium">{subTitle}</p>
           </div>
         </div>
 
-        {/*   Star Rating */}
+        {/* Star Rating */}
         <div className="bg-primary/10 rounded-2xl p-3 mb-6 border border-primary/20">
           <div className="flex items-center justify-center mb-4">
             <Star className="h-5 w-5 text-primary mr-2" />
@@ -431,14 +439,16 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
               How would you rate this experience?
             </span>
           </div>
-          
+
           <div className="flex justify-center mb-4">
             <StarRating value={rating} onChange={setRating} />
           </div>
-          
+
           {ratingLabel && (
             <div className="text-center bg-white rounded-xl p-3 shadow-sm">
-              <p className={`text-lg font-bold ${ratingLabel.color} flex items-center justify-center gap-2`}>
+              <p
+                className={`text-lg font-bold ${ratingLabel.color} flex items-center justify-center gap-2`}
+              >
                 <span className="text-2xl">{ratingLabel.emoji}</span>
                 {ratingLabel.text}
               </p>
@@ -446,9 +456,9 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
           )}
         </div>
 
-        {/*   Comment */}
+        {/* Comment */}
         <div className="mb-3">
-          <label className=" text-sm font-semibold text-secondary/70 mb-3 flex items-center gap-2">
+          <label className="text-sm font-semibold text-secondary/70 mb-3 flex items-center gap-2">
             <span>💬</span>
             Share your thoughts (optional)
           </label>
@@ -460,21 +470,21 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
           />
         </div>
 
-        {/*   Actions */}
+        {/* Actions */}
         <div className="flex flex-col md:flex-row w-full gap-3 justify-between items-center">
           <div className="flex w-full md:w-1/2 gap-3">
-            <Button 
-              variant="fill" 
-              onClick={handleClose} 
-              disabled={isLoading} 
+            <Button
+              variant="fill"
+              onClick={handleClose}
+              disabled={isLoading}
               className="w-full bg-gradient-to-r from-secondary/50 to-secondary/60 hover:from-secondary/60 hover:to-secondary/70 text-white font-semibold py-3 px-6 md:px-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
             >
               Cancel
             </Button>
             {canSkip && (
-              <Button 
-                variant="outline" 
-                onClick={handleSkip} 
+              <Button
+                variant="outline"
+                onClick={handleSkip}
                 disabled={isLoading}
                 className="flex-1 border-2 border-red-500 text-red-500 hover:bg-red-50 hover:border-red-600 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105"
               >
@@ -505,9 +515,9 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
       title={
         <span className="flex items-center gap-1">
           <span className="text-2xl">✨</span>

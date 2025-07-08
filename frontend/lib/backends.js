@@ -1,907 +1,519 @@
-// /graphql/orderSchema.js
-const { gql } = require("apollo-server-express");
+/**
+ * Rating Model with Notification Integration
+ */
+const { db } = require("../config/firebase");
+const {
+  formatDoc,
+  formatDocs,
+  sanitizeInput,
+  paginationParams,
+  timestamp,
+} = require("../../utils/helpers");
+const { createNotificationService } = require("../service/notificationService");
+const MSUserModel = require("./msUser");
+const ProductModel = require("./productModel");
 
-const orderTypeDefs = gql`
-  # Order Status Enum
-  enum OrderStatus {
-    PENDING_CONFIRMATION
-    CONFIRMED
-    REJECTED_BY_SELLER
-    PREPARING
-    READY_FOR_PICKUP
-    PICKUP_SCHEDULED
-    PICKUP_CONFIRMED
-    COMPLETED
-    CANCELLED
-    DISPUTED
-  }
+// Collection references
+const ratingsRef = db.collection("ratings");
 
-  # Payment Status Enum
-  enum PaymentStatus {
-    PENDING
-    PROCESSING
-    PAID_HELD_BY_SYSTEM
-    RELEASED_TO_SELLER
-    REFUNDED
-    FAILED
-  }
+/**
+ * Rating Model
+ */
+const RatingModel = {
+  notificationService: null,
 
-  # Contact Information Type
-  type ContactInfo {
-    phone: String
-    email: String!
-    address: Address
-  }
+  setNotificationService(io) {
+    this.notificationService = createNotificationService(io);
+  },
 
-  # Order Batch Item Type
-  type OrderBatchItem {
-    orderBatchItemId: ID!
-    orderItemId: ID!
-    orderId: ID!
-    batchId: ID!
-    productId: ID!
-    quantity: Float!
-    unitPrice: Float!
-    subtotal: Float!
-    expiryDate: Date
-    manufacturingDate: Date
-    lotNumber: String
-    batchSellerId: ID!
-    batchSellerName: String!
-    createdAt: Date!
-  }
+  /**
+   * Get user ratings (ratings received by a user)
+   * @param {String} userId - User ID
+   * @param {Number} limit - Number of ratings to return
+   * @param {Number} offset - Offset for pagination
+   * @returns {Array} Array of ratings
+   */
+  async getUserRatings(userId, limit, offset) {
+    try {
+      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
 
-  # Order Item Type
-  type OrderItem {
-    orderItemId: ID!
-    orderId: ID!
-    productId: ID!
-    productName: String!
-    productType: String!
-    productCategory: String!
-    productImage: String
-    batchItems: [OrderBatchItem!]!
-    totalQuantity: Float!
-    totalPrice: Float!
-    createdAt: Date!
-  }
+      let query = ratingsRef
+        .where("ratedUserId", "==", userId)
+        .where("type", "==", "user_rating")
+        .orderBy("createdAt", "desc");
 
-  # Main Order Type
-  type Order {
-    orderId: ID!
-    orderNumber: Int!
-    buyerId: ID!
-    buyerName: String!
-    buyerCompanyName: String
-    buyerContactInfo: ContactInfo!
-    sellerId: ID!
-    sellerName: String!
-    sellerCompanyName: String
-    sellerContactInfo: ContactInfo
-    items: [OrderItem!]!
-    totalItems: Int!
-    totalCost: Float!
-    orderDate: Date!
-    status: OrderStatus!
-    paymentStatus: PaymentStatus!
-    pickupScheduledDate: Date
-    pickupConfirmedDate: Date
-    transactionId: String
-    notes: String
-    cancellationReason: String
-    cancelledBy: ID
-    cancelledAt: Date
-    createdAt: Date!
-    updatedAt: Date!
-  }
+      // Apply pagination
+      if (offsetVal > 0) {
+        const prevPageSnapshot = await ratingsRef
+          .where("ratedUserId", "==", userId)
+          .where("type", "==", "user_rating")
+          .orderBy("createdAt", "desc")
+          .limit(offsetVal)
+          .get();
 
-  # Order Summary Type (for lists)
-  type OrderSummary {
-    orderId: ID!
-    orderNumber: Int!
-    buyerName: String!
-    sellerName: String!
-    totalItems: Int!
-    totalCost: Float!
-    status: OrderStatus!
-    paymentStatus: PaymentStatus!
-    orderDate: Date!
-    pickupScheduledDate: Date
-  }
+        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
+        }
+      }
 
-  # Input Types for creating orders directly
-  input OrderBatchItemInput {
-    orderBatchItemId: ID!
-    batchId: ID!
-    quantity: Float!
-    unitPrice: Float!
-    subtotal: Float
-    expiryDate: Date
-    manufacturingDate: Date
-    lotNumber: String
-    batchSellerId: ID!
-    batchSellerName: String!
-    createdAt: Date
-  }
+      query = query.limit(limitVal);
+      const snapshot = await query.get();
+      console.log(formatDocs(snapshot.docs))
+      return formatDocs(snapshot.docs);
+    } catch (error) {
+      console.error("Error getting user ratings:", error);
+      throw error;
+    }
+  },
 
-  input OrderItemInput {
-    orderItemId: ID!
-    productId: ID!
-    productName: String!
-    productType: String!
-    productCategory: String
-    productImage: String
-    batchItems: [OrderBatchItemInput!]!
-    totalQuantity: Float!
-    totalPrice: Float!
-    createdAt: Date
-  }
+  /**
+   * Get product ratings
+   * @param {String} productId - Product ID
+   * @param {Number} limit - Number of ratings to return
+   * @param {Number} offset - Offset for pagination
+   * @returns {Array} Array of ratings
+   */
+  async getProductRatings(productId, limit, offset) {
+    try {
+      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
 
-  input CreateOrderDirectInput {
-    orderId: ID!
-    orderNumber: Int
-    buyerId: ID!
-    buyerName: String!
-    buyerCompanyName: String
-    buyerContactInfo: ContactInfoInput!
-    sellerId: ID!
-    sellerName: String!
-    sellerCompanyName: String
-    sellerContactInfo: ContactInfoInput
-    items: [OrderItemInput!]!
-    totalItems: Int!
-    totalCost: Float!
-    orderDate: Date
-    status: OrderStatus
-    paymentStatus: PaymentStatus
-    pickupScheduledDate: Date
-    pickupConfirmedDate: Date
-    transactionId: String
-    notes: String
-  }
+      let query = ratingsRef
+        .where("productId", "==", productId)
+        .where("type", "==", "product_rating")
+        .orderBy("createdAt", "desc");
 
-  # Legacy input for cart-based orders
-  input CreateOrderInput {
-    sellerId: ID!
-    notes: String
-    pickupScheduledDate: Date
-  }
+      // Apply pagination
+      if (offsetVal > 0) {
+        const prevPageSnapshot = await ratingsRef
+          .where("productId", "==", productId)
+          .where("type", "==", "product_rating")
+          .orderBy("createdAt", "desc")
+          .limit(offsetVal)
+          .get();
 
-  input OrderFilterInput {
-    status: OrderStatus
-    paymentStatus: PaymentStatus
-    sellerId: ID
-    buyerId: ID
-    dateFrom: Date
-    dateTo: Date
-  }
+        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
+        }
+      }
 
-  input ContactInfoInput {
-    phone: String
-    email: String!
-    address: AddressInput
-  }
+      query = query.limit(limitVal);
+      const snapshot = await query.get();
+      return formatDocs(snapshot.docs);
+    } catch (error) {
+      console.error("Error getting product ratings:", error);
+      throw error;
+    }
+  },
 
-  input AddressInput {
-    street: String
-    city: String
-    state: String
-    country: String
-    postalCode: String
-    geoLocation: GeoPointInput
-    geoLocationText: String
-  }
-  # Extend existing Query type
-  extend type Query {
-    # Get single order
-    order(orderId: ID!): Order
+  /**
+   * Get ratings given by a user
+   * @param {String} userId - User ID
+   * @param {Number} limit - Number of ratings to return
+   * @param {Number} offset - Offset for pagination
+   * @returns {Array} Array of ratings
+   */
+  async getRatingsByUser(userId, limit, offset) {
+    try {
+      const { limit: limitVal, offset: offsetVal } = paginationParams(limit, offset);
 
-    # Get my orders (as buyer)
-    myOrders( status: OrderStatus): [Order!]!
+      let query = ratingsRef
+        .where("raterId", "==", userId)
+        .orderBy("createdAt", "desc");
 
-    # Get orders I need to fulfill (as seller)
-    ordersToFulfill(
+      // Apply pagination
+      if (offsetVal > 0) {
+        const prevPageSnapshot = await ratingsRef
+          .where("raterId", "==", userId)
+          .orderBy("createdAt", "desc")
+          .limit(offsetVal)
+          .get();
+
+        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
+        }
+      }
+
+      query = query.limit(limitVal);
+      const snapshot = await query.get();
+      return formatDocs(snapshot.docs);
+    } catch (error) {
+      console.error("Error getting ratings by user:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get ratings for a specific order
+   * @param {String} orderId - Order ID
+   * @returns {Array} Array of ratings
+   */
+  async getRatingsByOrder(orderId) {
+    try {
+      const snapshot = await ratingsRef
+        .where("orderId", "==", orderId)
+        .orderBy("createdAt", "desc")
+        .get();
+      return formatDocs(snapshot.docs);
+    } catch (error) {
+      console.error("Error getting ratings by order:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check if user rating exists for order
+   * @param {String} orderId - Order ID
+   * @param {String} raterId - Rater ID
+   * @param {String} ratedUserId - Rated user ID
+   * @returns {Object|null} Rating document or null
+   */
+  async getUserRatingByOrder(orderId, raterId, ratedUserId) {
+    try {
+      const snapshot = await ratingsRef
+        .where("orderId", "==", orderId)
+        .where("raterId", "==", raterId)
+        .where("ratedUserId", "==", ratedUserId)
+        .where("type", "==", "user_rating")
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) return null;
+      return formatDoc(snapshot.docs[0]);
+    } catch (error) {
+      console.error("Error checking user rating by order:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check if product rating exists for user and order
+   * @param {String} productId - Product ID
+   * @param {String} userId - User ID
+   * @param {String} orderId - Order ID
+   * @returns {Object|null} Rating document or null
+   */
+  async getProductRatingByUser(productId, userId, orderId) {
+    try {
+      const snapshot = await ratingsRef
+        .where("productId", "==", productId)
+        .where("userId", "==", userId)
+        .where("orderId", "==", orderId)
+        .where("type", "==", "product_rating")
+        .limit(1)
+        .get();
+
+      if (snapshot.empty) return null;
+      return formatDoc(snapshot.docs[0]);
+    } catch (error) {
+      console.error("Error checking product rating by user:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get rating statistics for a user
+   * @param {String} userId - User ID
+   * @returns {Object} Rating statistics
+   */
+  async getUserRatingStats(userId) {
+    try {
       
-      status: OrderStatus
-    ): [Order!]!
+      const userDoc = await MSUserModel.getById(userId);
+      return userDoc?.ratingStats || {
+        totalRatings: 0,
+        averageRating: 0,
+        lastUpdated: null,
+      };
+    } catch (error) {
+      console.error("Error getting user rating stats:", error);
+      return {
+        totalRatings: 0,
+        averageRating: 0,
+        lastUpdated: null,
+      };
+    }
+  },
 
-    # Get order summaries (lightweight for listing)
-    orderSummaries(
-      filter: OrderFilterInput
-     
-    ): [OrderSummary!]!
+  /**
+   * Get rating statistics for a product
+   * @param {String} productId - Product ID
+   * @returns {Object} Rating statistics
+   */
+  async getProductRatingStats(productId) {
+    try {
+      const productDoc = await ProductModel.getById(productId);
+      return productDoc?.ratingStats || {
+        totalRatings: 0,
+        averageRating: 0,
+        lastUpdated: null,
+      };
+    } catch (error) {
+      console.error("Error getting product rating stats:", error);
+      return {
+        totalRatings: 0,
+        averageRating: 0,
+        lastUpdated: null,
+      };
+    }
+  },
+};
 
-    # Get orders by status (admin)
-    ordersByStatus(
-      status: OrderStatus!
-    
-    ): [Order!]!
+module.exports = RatingModel;
+
+// /graphql/ratingResolvers.js
+const RatingModel = require("../../models/ratingModel");
+const MSUserModel = require("../../models/msUser");
+const ProductModel = require("../../models/productModel");
+const {
+  AuthenticationError,
+  ForbiddenError,
+  UserInputError,
+} = require("apollo-server-express");
+
+// Check if user is authenticated
+const isAuthenticated = (context) => {
+  if (!context.user) {
+    throw new AuthenticationError("Authentication required");
   }
+  return context.user;
+};
 
-  # Extend existing Mutation type
-  extend type Mutation {
-    # Create order directly with complete data (new method)
-    createOrderDirect(input: CreateOrderDirectInput!): Order!
-
-    # Create order from cart (legacy method)
-    createOrderFromCart(input: CreateOrderInput!): Order!
-
-    # Update order status
-    updateOrderStatus(orderId: ID!, status: OrderStatus!): Order!
-
-    # Update payment status (system/admin only)
-    updatePaymentStatus(
-      orderId: ID!
-      paymentStatus: PaymentStatus!
-      transactionId: String
-    ): Order!
-
-    # Schedule pickup
-    schedulePickup(orderId: ID!, pickupDate: Date!): Order!
-
-    # Confirm pickup
-    confirmPickup(orderId: ID!): Order!
-
-    # Cancel order
-    cancelOrder(orderId: ID!, reason: String): Order!
-
-    # Dispute order
-    disputeOrder(orderId: ID!, reason: String!): Order!
+// Check if user has admin role
+const isAdmin = async (context) => {
+  const user = isAuthenticated(context);
+  const userDoc = await MSUserModel.getById(user.uid);
+  if (!userDoc || userDoc.role !== "admin") {
+    throw new ForbiddenError("Admin access required");
   }
-`;
+  return user;
+};
 
-module.exports = orderTypeDefs;
+// Check if user can rate (healthcare-facility or supplier)
+const canRate = async (context) => {
+  const user = isAuthenticated(context);
+  const userDoc = await MSUserModel.getById(user.uid);
+  if (!userDoc || !["healthcare-facility", "supplier" , "importer"].includes(userDoc.role)) {
+    throw new ForbiddenError("Only healthcare facilities , suppliers  and importer can create ratings");
+  }
+  return user;
+};
 
-// /graphql/schemas/product-schema.js
+const ratingResolvers = {
+   Rating: {
+    __resolveType(obj, context, info) {
+      if (obj.productId) {
+        return 'ProductRating';
+      }
+      if (obj.ratedUserId) {
+        return 'UserRating';
+      }
+      return null;
+    },
+  },
+  Query: {
+    // Get user ratings (ratings received by a user)
+    userRatings: async (_, { userId, limit, offset }, context) => {
+      try {
+        isAuthenticated(context);
+        return await RatingModel.getUserRatings(userId, limit, offset);
+      } catch (error) {
+        console.error("Error in userRatings resolver:", error);
+        throw error;
+      }
+    },
+
+    // Get product ratings
+    productRatings: async (_, { productId, limit, offset }, context) => {
+      try {
+        return await RatingModel.getProductRatings(productId, limit, offset);
+      } catch (error) {
+        console.error("Error in productRatings resolver:", error);
+        throw error;
+      }
+    },
+
+    // Get ratings given by current user
+    myRatings: async (_, { limit, offset }, context) => {
+      try {
+        const user = isAuthenticated(context);
+        return await RatingModel.getRatingsByUser(user.uid, limit, offset);
+      } catch (error) {
+        console.error("Error in myRatings resolver:", error);
+        throw error;
+      }
+    },
+
+    // Get ratings for a specific order
+    orderRatings: async (_, { orderId }, context) => {
+      try {
+        isAuthenticated(context);
+        return await RatingModel.getRatingsByOrder(orderId);
+      } catch (error) {
+        console.error("Error in orderRatings resolver:", error);
+        throw error;
+      }
+    },
+
+    // Get user rating statistics
+    userRatingStats: async (_, { userId }, context) => {
+      try {
+        isAuthenticated(context);
+        return await RatingModel.getUserRatingStats(userId);
+      } catch (error) {
+        console.error("Error in userRatingStats resolver:", error);
+        throw error;
+      }
+    },
+
+    // Get product rating statistics
+    productRatingStats: async (_, { productId }, context) => {
+      try {
+        return await RatingModel.getProductRatingStats(productId);
+      } catch (error) {
+        console.error("Error in productRatingStats resolver:", error);
+        throw error;
+      }
+    },
+
+    // Check if user can rate another user for specific order
+    canRateUser: async (_, { orderId, ratedUserId }, context) => {
+      try {
+        const user = await canRate(context);
+        const existingRating = await RatingModel.getUserRatingByOrder(orderId, user.uid, ratedUserId);
+        return !existingRating;
+      } catch (error) {
+        console.error("Error in canRateUser resolver:", error);
+        return false;
+      }
+    },
+
+    // Check if user can rate a product for specific order
+    canRateProduct: async (_, { orderId, productId }, context) => {
+      try {
+        const user = await canRate(context);
+        const existingRating = await RatingModel.getProductRatingByUser(productId, user.uid, orderId);
+        return !existingRating;
+      } catch (error) {
+        console.error("Error in canRateProduct resolver:", error);
+        return false;
+      }
+    },
+  },
+
+  Mutation: {
+    // Create user rating
+  
+  },
+};
+
+module.exports = ratingResolvers;
+
+
+// /graphql/ratingSchema.js
 const { gql } = require("apollo-server-express");
 
-const productSchema = gql`
-  scalar Date # Custom Date scalar for Firestore Timestamps
-  "Interface for common product fields"
-  interface Product {
-    productId: ID!
-    productType: String! # e.g., "DRUG", "EQUIPMENT"
-    name: String!
-    originalListerId: ID!
-    originalListerName: String!
-    ownerId: ID! # Current owner ID
-    ownerName: String! # Current owner name
-    category: String
-    description: String
-    imageList: [String] # URLs for images
-    isActive: Boolean!
-    createdAt: Date!
-    distanceText: String
-    distance: Float
-    lastUpdatedAt: Date!
-    # Relationship to batches
-    batches: [Batch]
+const ratingTypeDefs = gql`
+  enum RatingType {
+    seller_rating
+    buyer_rating
   }
 
-  "Represents a Drug Product"
-  type DrugProduct implements Product {
-    # Fields from Product interface
-    productId: ID!
-    productType: String!
-    name: String!
-    originalListerId: ID!
-    originalListerName: String!
-    ownerId: ID!
-    ownerName: String!
-    category: String
-    description: String
-    imageList: [String]
-    isActive: Boolean!
-    createdAt: Date!
-    lastUpdatedAt: Date!
-    distanceText: String
-    distance: Float
-    batches: [Batch]
-
-    # Drug-specific fields
-    packageType: String
-    concentration: String
-    requiresPrescription: Boolean!
-  }
-
-  "Represents an Equipment Product"
-  type EquipmentProduct implements Product {
-    # Fields from Product interface
-    productId: ID!
-    productType: String!
-    name: String!
-    originalListerId: ID!
-    originalListerName: String!
-    ownerId: ID!
-    ownerName: String!
-    category: String
-    description: String
-    imageList: [String]
-    isActive: Boolean!
-    createdAt: Date!
-    lastUpdatedAt: Date!
-    distanceText: String
-    distance: Float
-    batches: [Batch]
-
-    # Equipment-specific fields
-
-    brandName: String
-    modelNumber: String
-    warrantyInfo: String
-    sparePartInfo: [String]
-  }
-
-  "Interface for common batch fields"
-  interface Batch {
-    batchId: ID!
-    productId: ID!
-    product: Product! # The product this batch belongs to
-    currentOwnerId: ID!
-    currentOwnerName: String!
-    quantity: Float! # Using Float for Number type
-    costPrice: Float
-    sellingPrice: Float
-    addedAt: Date!
-    lastUpdatedAt: Date
-    # If this batch was copied from another batch during purchase
-    sourceOriginalBatchId: ID
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-  }
-
-  "Represents a Drug Batch"
-  type DrugBatch implements Batch {
-    # Fields from Batch interface
-    batchId: ID!
-    productId: ID!
-    product: Product!
-    currentOwnerId: ID!
-    currentOwnerName: String!
-    quantity: Float!
-    costPrice: Float
-    sellingPrice: Float
-    addedAt: Date!
-    lastUpdatedAt: Date
-    sourceOriginalBatchId: ID
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-
-    # DrugBatch-specific fields
-    expiryDate: Date!
-    sizePerPackage: Float # Using Float for Number type
-  }
-
-  "Represents an Equipment Batch"
-  type EquipmentBatch implements Batch {
-    # Fields from Batch interface
-    batchId: ID!
-    productId: ID!
-    product: Product!
-    currentOwnerId: ID!
-    currentOwnerName: String!
-    quantity: Float!
-    costPrice: Float
-    sellingPrice: Float
-    addedAt: Date!
-    lastUpdatedAt: Date
-    sourceOriginalBatchId: ID
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-
-    # EquipmentBatch-specific fields
-    serialNumbers: [String]
-    technicalSpecifications: String
-    userManuals: [String]
-    certification: String
-  }
-
-  # Input types for creating products
-  input CreateDrugProductInput {
-    name: String!
-    category: String
-    description: String
-    originalListerId: ID!
-    originalListerName: String!
-    imageList: [String]
-    isActive: Boolean = true
-    packageType: String
-    concentration: String
-    requiresPrescription: Boolean!
-  }
-
-  input CreateEquipmentProductInput {
-    name: String!
-    category: String
-    description: String
-    imageList: [String]
-    originalListerName: String!
-    originalListerId: ID!
-    isActive: Boolean = true
-    brandName: String
-    modelNumber: String
-    warrantyInfo: String
-    sparePartInfo: [String]
-  }
-
-  # Input types for updating products
-  input UpdateDrugProductInput {
-    name: String
-    category: String
-    description: String
-    imageList: [String]
-    isActive: Boolean
-    packageType: String
-    concentration: String
-    requiresPrescription: Boolean
-  }
-
-  input UpdateEquipmentProductInput {
-    name: String
-    category: String
-    description: String
-    imageList: [String]
-    isActive: Boolean
-    brandName: String
-    modelNumber: String
-    warrantyInfo: String
-    sparePartInfo: [String]
-  }
-
-  # Input types for creating batches
-  input CreateDrugBatchInput {
-    currentOwnerId: ID!
-    currentOwnerName: String
-    productId: ID!
-    quantity: Float!
-    costPrice: Float
-    sellingPrice: Float
-    expiryDate: Date!
-    sizePerPackage: Float
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-  }
-
-  input CreateEquipmentBatchInput {
-    productId: ID!
-    quantity: Float!
-    costPrice: Float
-    sellingPrice: Float
-    serialNumbers: [String]
-    currentOwnerId: ID!
-    currentOwnerName: String
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-    technicalSpecifications: String
-    userManuals: [String]
-    certification: String
-  }
-
-  # Input types for updating batches
-  input UpdateDrugBatchInput {
-    quantity: Float
-    costPrice: Float
-    sellingPrice: Float
-    expiryDate: Date
-    sizePerPackage: Float
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-  }
-
-  input UpdateEquipmentBatchInput {
-    quantity: Float
-    costPrice: Float
-    sellingPrice: Float
-    serialNumbers: [String]
-    manufacturer: String
-    manufacturerCountry: String
-    manufactureredDate: Date
-    technicalSpecifications: String
-    userManuals: [String]
-    certification: String
-  }
-
-  # Input for purchasing a product (will create a copy for the buyer)
-  input PurchaseProductInput {
-    productId: ID!
-    batchId: ID!
-    quantity: Float!
-    purchasePrice: Float!
-    notes: String
-  }
-
-  # Input for searching products
-  input SearchProductsInput {
-    searchTerm: String
-    productType: String
-    category: String
-    expiryDateStart: Date
-    expiryDateEnd: Date
-    sortByDistance: Boolean
-    maxDistance: Float
-    limit: Int
-    offset: Int
-    sortBy: String
-    sortOrder: String
-  }
-
-  type Query {
-    "Get a product by its ID. Returns either DrugProduct or EquipmentProduct"
-    productById(productId: ID!): Product
-
-    "Get all products. Can be filtered by productType or ownership"
-    products(
-      productType: String
-      ownerId: ID
-      category: String
-      limit: Int
-      offset: Int
-    ): [Product!]!
-
-    "Get products owned by the current authenticated user"
-    myProducts(
-      productType: String
-      category: String
-      limit: Int
-      offset: Int
-    ): [Product!]!
-
-    "Search products by various criteria"
-    searchProducts(searchInput: SearchProductsInput!): [Product!]!
-
-    "Get a batch by its ID. Returns either DrugBatch or EquipmentBatch"
-    batchById(batchId: ID!): Batch
-
-    "Get all batches for a specific product"
-    batchesByProductId(productId: ID!, limit: Int, offset: Int): [Batch!]!
-
-    "Get all batches. Can be filtered by type or owner"
-    allBatches(
-      ownerId: ID
-      productType: String
-      limit: Int
-      offset: Int
-    ): [Batch!]!
-
-    "Get batches owned by the current authenticated user"
-    myBatches(productType: String, limit: Int, offset: Int): [Batch!]!
-  }
-
-  type Mutation {
-    "Create a new Drug Product"
-    createDrugProduct(input: CreateDrugProductInput!): DrugProduct!
-
-    "Create a new Equipment Product"
-    createEquipmentProduct(
-      input: CreateEquipmentProductInput!
-    ): EquipmentProduct!
-
-    "Update a Drug Product"
-    updateDrugProduct(
-      productId: ID!
-      input: UpdateDrugProductInput!
-    ): DrugProduct!
-
-    "Update an Equipment Product"
-    updateEquipmentProduct(
-      productId: ID!
-      input: UpdateEquipmentProductInput!
-    ): EquipmentProduct!
-
-    "Delete a product (sets isActive to false)"
-    deleteProduct(productId: ID!): Boolean!
-
-    "Create a new Drug Batch"
-    createDrugBatch(input: CreateDrugBatchInput!): DrugBatch!
-
-    "Create a new Equipment Batch"
-    createEquipmentBatch(input: CreateEquipmentBatchInput!): EquipmentBatch!
-
-    "Update a Drug Batch"
-    updateDrugBatch(batchId: ID!, input: UpdateDrugBatchInput!): DrugBatch!
-
-    "Update an Equipment Batch"
-    updateEquipmentBatch(
-      batchId: ID!
-      input: UpdateEquipmentBatchInput!
-    ): EquipmentBatch!
-
-    "Delete a batch"
-    deleteBatch(batchId: ID!): Boolean!
-
-    "Purchase a product - creates a copy of the product and a new batch for the buyer"
-    purchaseProduct(input: PurchaseProductInput!): Product!
-  }
-`;
-
-module.exports = productSchema;
-
-// /graphql/transactionSchema.js
-const { gql } = require("apollo-server-express");
-
-const transactionTypeDefs = gql`
-  # Transaction Status Enum
-  enum TransactionStatus {
-    PENDING
-    PROCESSING
-    PAID_HELD_BY_SYSTEM
-    RELEASED_TO_SELLER
-    REFUNDED
-    FAILED
-    CANCELLED
-  }
-
-  # Transaction Type
-  type Transaction {
-    buyerId: ID
-    sellerId: ID
-    transactionId: ID!
-    orderId: ID!
-    chapaRef: String
-    chapaStatus: String
-    amount: Float!
-    currency: String!
-    status: TransactionStatus!
-    createdAt: Date!
-    updatedAt: Date!
-  }
-
-  # Transaction Summary Type (for lists)
-  type TransactionSummary {
-    buyerId: ID
-    sellerId: ID
-    transactionId: ID!
-    orderId: ID!
-    chapaRef: String
-    chapaStatus: String
-    amount: Float!
-    currency: String!
-    status: TransactionStatus!
-    createdAt: Date!
-  }
-
-  # Input Types
-  input CreateTransactionInput {
-    buyerId: ID
-    sellerId: ID
-    transactionId: ID!
-    orderId: ID!
-    chapaRef: String
-    chapaStatus: String
-    amount: Float!
-    currency: String = "ETB"
-    status: TransactionStatus = PENDING
-  }
-
-  input UpdateTransactionInput {
-    chapaRef: String
-    chapaStatus: String
-    amount: Float
-    currency: String
-    status: TransactionStatus
-  }
-
-  input TransactionFilterInput {
-    buyerId: ID
-    sellerId: ID
-    orderId: ID
-    chapaRef: String
-    chapaStatus: String
-    status: TransactionStatus
-    dateFrom: Date
-    dateTo: Date
-    minAmount: Float
-    maxAmount: Float
-  }
-
-  # Extend existing Query type
-  extend type Query {
-    # Get single transaction
-    transaction(transactionId: ID!): Transaction
-
-    # Get transactions by order ID
-    transactionsByOrder(orderId: ID!): [Transaction!]!
-
-    # Get my transactions (user's transactions based on their orders)
-    myTransactions(status: TransactionStatus): [Transaction!]!
-
-    # Get transaction summaries (lightweight for listing)
-    transactionSummaries(filter: TransactionFilterInput): [TransactionSummary!]!
-
-    # Get transactions by status (admin)
-    transactionsByStatus(status: TransactionStatus!): [Transaction!]!
-
-    # Get transactions by Chapa reference
-    transactionByChapa(chapaRef: String!): Transaction
-  }
-
-  # Extend existing Mutation type
-  extend type Mutation {
-    # Create new transaction
-    createTransaction(input: CreateTransactionInput!): Transaction!
-
-    # Update transaction
-    updateTransaction(
-      transactionId: ID!
-      input: UpdateTransactionInput!
-    ): Transaction!
-
-    # Update transaction status
-    updateTransactionStatus(
-      transactionId: ID!
-      status: TransactionStatus!
-      chapaRef: String
-    ): Transaction!
-  }
-`;
-
-module.exports = transactionTypeDefs;
-
-// /graphql/msSchemas.js
-const { gql } = require("apollo-server-express");
-
-const typeDefs = gql`
-  scalar Date
-
-  type GeoPoint {
-    latitude: Float!
-    longitude: Float!
-  }
-
-  type Address {
-    street: String
-    city: String
-    state: String
-    country: String
-    postalCode: String
-    geoLocation: GeoPoint
-    geoLocationText: String
-  }
-
-  type MSUser {
-    userId: ID!
-    email: String!
-    role: String
-    companyName: String
-    contactName: String
-    phoneNumber: String
-    address: Address
-    profileImageUrl: String
-    createdAt: Date
-    isApproved: Boolean
-    rejectionReason: String
-    approvedBy: String
-    approvedAt: Date
-    efdaLicenseUrl: String
-    businessLicenseUrl: String
-    profileComplete: Boolean
-  }
-
-
-  #"Represents a single batch item in a cart"
-  type CartBatchItem {
-    batchId: ID!
-    productId: ID!
-    quantity: Float!
-    unitPrice: Float!
-    addedAt: Date!
-    expiryDate: Date
-    batchSellerName: String!
-    batchSellerId: ID!
-  }
-
-  #"Represents a product in the cart, potentially with multiple batches"
-  type CartItem {
-    productId: ID!
-    productName: String!
-    productType: String!
-    productImage: String
-    productCategory: String
-    batchItems: [CartBatchItem!]!
-    totalQuantity: Float!
-    totalPrice: Float!
-  }
-
-  #"Represents the user's shopping cart"
-  type Cart {
-    userId: ID!
-    items: [CartItem]
-    totalItems: Int
-    totalPrice: Float
+  type RatingStats {
+    totalRatings: Int!
+    averageRating: Float!
     lastUpdated: Date
   }
 
-  
-  #"Input for adding a specific batch to cart"
-  input AddSpecificBatchToCartInput {
+  type UserRating {
+    id: ID!
+    raterId: ID!
+    raterName: String!
+    raterCompanyName: String
+    ratedUserId: ID!
+    ratedUserName: String!
+    ratedUserCompanyName: String
+    orderId: ID!
+    rating: Int!
+    comment: String
+    ratingType: RatingType!
+    type: String!
+    createdAt: Date!
+    updatedAt: Date!
+  }
+
+  type ProductRating {
+    id: ID!
+    userId: ID!
+    userName: String!
+    userCompanyName: String
     productId: ID!
-    batchId: ID!
-    quantity: Float!
+    productName: String!
+    productSellerId: ID
+    orderId: ID!
+    rating: Int!
+    comment: String
+    type: String!
+    createdAt: Date!
+    updatedAt: Date!
   }
 
-  #"Input for adding product to cart with auto-batch selection"
-  input AddToCartInput {
+  union Rating = UserRating | ProductRating
+
+  input CreateUserRatingInput {
+    ratedUserId: ID!
+    orderId: ID!
+    rating: Int!
+    comment: String
+    ratingType: RatingType!
+  }
+
+  input CreateProductRatingInput {
     productId: ID!
-    quantity: Float!
+    orderId: ID!
+    rating: Int!
+    comment: String
   }
 
-  #"Input for updating a specific batch quantity in cart"
-  input UpdateCartBatchItemInput {
-    productId: ID!
-    batchId: ID!
-    quantity: Float!
+  extend type Query {
+    # Get user ratings (ratings received by a user)
+    userRatings(userId: ID!, limit: Int, offset: Int): [UserRating!]!
+    
+    # Get product ratings
+    productRatings(productId: ID!, limit: Int, offset: Int): [ProductRating!]!
+    
+    # Get ratings given by current user
+    myRatings(limit: Int, offset: Int): [Rating!]!
+    
+    # Get ratings for a specific order
+    orderRatings(orderId: ID!): [Rating!]!
+    
+    # Get user rating statistics
+    userRatingStats(userId: ID!): RatingStats!
+    
+    # Get product rating statistics
+    productRatingStats(productId: ID!): RatingStats!
+    
+    # Check if user can rate another user for specific order
+    canRateUser(orderId: ID!, ratedUserId: ID!): Boolean!
+    
+    # Check if user can rate a product for specific order
+    canRateProduct(orderId: ID!, productId: ID!): Boolean!
   }
 
-
-  input AddressInput {
-    street: String
-    city: String
-    state: String
-    country: String
-    postalCode: String
-    geoLocation: GeoPointInput
-    geoLocationText: String
-  }
-
-  input GeoPointInput {
-    latitude: Float!
-    longitude: Float!
-  }
-
-  input MSUserInput {
-    email: String
-    role: String
-    companyName: String
-    contactName: String
-    phoneNumber: String
-    address: AddressInput
-    profileImageUrl: String
-    efdaLicenseUrl: String
-    businessLicenseUrl: String
-    profileComplete: Boolean
-    rejectionReason: String
-  }
-
-  type Query {
-    # User queries
-    msMe: MSUser
-    msUserById(userId: ID!): MSUser
-    msUsersByRole(role: String!): [MSUser]
-    pendingApprovalUsers(limit: Int, offset: Int): [MSUser]
-
-    # Search queries
-    searchMSUsers(query: String!): [MSUser]
-
-    # Cart queries
-    myCart: Cart
-    cartItemsByProduct(productId: ID!): CartItem
-  }
-
-  type Mutation {
-    # User mutations
-    initializeMSUserProfile(email: String!): MSUser
-    updateMSUserProfile(input: MSUserInput!): MSUser
-    completeMSRegistration(input: MSUserInput!): MSUser
-
-    # Admin mutations
-    approveMSUser(userId: ID!): MSUser
-    rejectMSUser(userId: ID!, reason: String!): Boolean
-
-    # Cart mutations
-    addToCart(input: AddToCartInput!): Cart!
-    addSpecificBatchToCart(input: AddSpecificBatchToCartInput!): Cart!
-    updateCartBatchItem(input: UpdateCartBatchItemInput!): Cart!
-    removeProductFromCart(productId: ID!): Cart!
-    removeBatchFromCart(productId: ID!, batchId: ID!): Cart!
-    clearCart: Cart!
+  extend type Mutation {
+    # Create user rating
+    createUserRating(input: CreateUserRatingInput!): UserRating!
+    
+    # Create product rating
+    createProductRating(input: CreateProductRatingInput!): ProductRating!
+    
+    # Delete rating (admin only)
+    deleteRating(ratingId: ID!, reason: String!): Boolean!
   }
 `;
 
-module.exports = typeDefs;
+module.exports = ratingTypeDefs;
 

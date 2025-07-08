@@ -26,7 +26,6 @@ export default function ProfilePage() {
     UPDATE_MS_USER_PROFILE
   );
   const { uploadSingle, uploading, deleteFile } = useFileUpload();
-
   const [userData, setUserData] = useState({
     role: user?.role || "",
     email: user?.email || "",
@@ -48,6 +47,8 @@ export default function ProfilePage() {
     profileImageUrl: user?.profileImageUrl || null,
     efdaLicenseUrl: user?.efdaLicenseUrl || "",
     businessLicenseUrl: user?.businessLicenseUrl || "",
+    ratingStats: user.ratingStats,
+    recentRatings: user.recentRatings,
   });
 
   useEffect(() => {
@@ -76,6 +77,8 @@ export default function ProfilePage() {
         profileImageUrl: user.profileImageUrl || null,
         efdaLicenseUrl: user.efdaLicenseUrl || "",
         businessLicenseUrl: user.businessLicenseUrl || "",
+        ratingStats: user.ratingStats,
+        recentRatings: user.recentRatings,
       });
     }
   }, [user, router]);
@@ -211,6 +214,8 @@ export default function ProfilePage() {
       profileImageUrl: user.profileImageUrl || null,
       efdaLicenseUrl: user.efdaLicenseUrl || "",
       businessLicenseUrl: user.businessLicenseUrl || "",
+      ratingStats: user.ratingStats,
+      recentRatings: user.recentRatings,
     });
     setIsEditing(false);
   };
@@ -309,7 +314,7 @@ export default function ProfilePage() {
           <div>
             {userData.companyName} Drug & Medical Supplies {userData.role}
           </div>
-          <Rating value={4} />
+          <Rating value={userData.ratingStats.averageRating} />
         </div>
         <div className="flex-1/4 flex justify-end pr-11">
           {!isEditing ? (
@@ -454,7 +459,10 @@ export default function ProfilePage() {
                       ? userData.efdaLicenseUrl.split("/").pop()
                       : "Not available"
                   }
-                  fileUrl={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+userData.efdaLicenseUrl}
+                  fileUrl={
+                    process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                    userData.efdaLicenseUrl
+                  }
                 />
                 <FileField
                   label="Business License"
@@ -463,7 +471,10 @@ export default function ProfilePage() {
                       ? userData.businessLicenseUrl.split("/").pop()
                       : "Not available"
                   }
-                  fileUrl={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+userData.businessLicenseUrl}
+                  fileUrl={
+                    process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                    userData.businessLicenseUrl
+                  }
                 />
               </>
             )}

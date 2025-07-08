@@ -180,7 +180,7 @@ const ratingResolvers = {
     createProductRating: async (_, { input }, context) => {
       try {
         const user = await canRate(context);
-        
+        console.log("input:", input);
         // Validate input
         if (!input.productId || !input.orderId || !input.rating) {
           throw new UserInputError("Missing required fields");

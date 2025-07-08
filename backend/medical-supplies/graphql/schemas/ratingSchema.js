@@ -19,6 +19,7 @@ const ratingTypeDefs = gql`
     raterId: ID!
     raterName: String!
     raterCompanyName: String
+    raterProfileImage: String
     ratedUserId: ID!
     ratedUserName: String!
     ratedUserCompanyName: String
@@ -36,6 +37,7 @@ const ratingTypeDefs = gql`
     userId: ID!
     userName: String!
     userCompanyName: String
+    userProfileImage: String
     productId: ID!
     productName: String!
     productSellerId: ID

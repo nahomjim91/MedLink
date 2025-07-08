@@ -236,11 +236,12 @@ const ProductModel = {
   ) {
     try {
       // Get current user's role
+      console.log("Current user ID:", currentUserId);
       const userDoc = await MSUserModel.getById(currentUserId);
       const currentUserRole = userDoc?.role;
 
       console.log("Current user role:", currentUserRole);
-      console.log("User doc:", userDoc);
+      // console.log("User doc:", userDoc);
 
       const { limit: limitVal, offset: offsetVal } = paginationParams(
         limit,
@@ -413,7 +414,7 @@ const ProductModel = {
           if (b.distance === null) return -1;
           return a.distance - b.distance;
         });
-        // console.log("=== DEBUG: Products sorted by distance");
+        ////////// console.log("=== DEBUG: Products sorted by distance");
       } else {
         // Apply original sorting
         finalProducts.sort((a, b) => {
@@ -456,15 +457,15 @@ const ProductModel = {
   // Debug version of getAllowedOwnerIds with detailed logging
   async getAllowedOwnerIds(currentUserRole, currentUserId) {
     try {
-      console.log(
-        `=== DEBUG: Getting allowed owners for role: ${currentUserRole}`
-      );
+      // console.log(
+      //   `=== DEBUG: Getting allowed owners for role: ${currentUserRole}`
+      // );
 
       let allowedOwnerIds = [];
 
       switch (currentUserRole) {
         case "supplier":
-          console.log("=== DEBUG: Fetching importers and suppliers");
+          ////////// console.log("=== DEBUG: Fetching importers and suppliers");
           allowedOwnerIds = await MSUserModel.getUserIdsByRoles([
             "importer",
             "supplier",
@@ -472,12 +473,12 @@ const ProductModel = {
           break;
 
         case "healthcare-facility":
-          console.log("=== DEBUG: Fetching suppliers only");
+          //////// console.log("=== DEBUG: Fetching suppliers only");
           allowedOwnerIds = await MSUserModel.getUserIdsByRoles(["supplier"]);
           break;
 
         case "importer":
-          console.log("=== DEBUG: Fetching importers and suppliers");
+          //////// console.log("=== DEBUG: Fetching importers and suppliers");
           allowedOwnerIds = await MSUserModel.getUserIdsByRoles([
             "importer",
             "supplier",
@@ -489,16 +490,16 @@ const ProductModel = {
           return [];
       }
 
-      console.log(
-        `=== DEBUG: Found ${allowedOwnerIds.length} users with allowed roles:`,
-        allowedOwnerIds
-      );
+      // console.log(
+      //   `=== DEBUG: Found ${allowedOwnerIds.length} users with allowed roles:`,
+      //   allowedOwnerIds
+      // );
 
       // Remove current user from allowed owners
       const filteredIds = allowedOwnerIds.filter((id) => id !== currentUserId);
-      console.log(
-        `=== DEBUG: After removing current user, ${filteredIds.length} allowed owners remain`
-      );
+      // console.log(
+      //   `=== DEBUG: After removing current user, ${filteredIds.length} allowed owners remain`
+      // );
 
       return filteredIds;
     } catch (error) {
@@ -510,7 +511,7 @@ const ProductModel = {
   // Additional debug function to check a specific product owner
   async debugProductOwner(productOwnerId) {
     try {
-      console.log(`=== DEBUG: Checking owner ${productOwnerId}`);
+      // console.log(`=== DEBUG: Checking owner ${productOwnerId}`);
       const ownerDoc = await MSUserModel.getById(productOwnerId);
       console.log("Owner details:", {
         uid: ownerDoc?.uid,
