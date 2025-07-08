@@ -11,6 +11,7 @@ import { MessageCircleIcon, UserRound, Download } from "lucide-react";
 import { Button, TablePageButtons } from "../../../components/ui/Button";
 import { downloadOrderReceipt } from "../../../components/ui/downloadReceipt/downloadOrderReceipt";
 import { useRouter } from "next/navigation";
+import { useRatings } from "../../../hooks/useRatings";
 
 const StatusBadge = ({ status }) => {
   const getStatusColor = (status) => {
@@ -52,7 +53,7 @@ const StarRating = ({ rating }) => {
         <svg
           key={star}
           className={`w-4 h-4 ${
-            star <= rating ? "text-yellow-400" : "text-secondary/30"
+            star <= rating ? "text-primary" : "text-secondary/30"
           }`}
           fill="currentColor"
           viewBox="0 0 20 20"
@@ -60,7 +61,7 @@ const StarRating = ({ rating }) => {
           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.967a1 1 0 00.95.69h4.173c.969 0 1.371 1.24.588 1.81l-3.372 2.45a1 1 0 00-.364 1.118l1.286 3.967c.3.921-.755 1.688-1.539 1.118l-3.372-2.45a1 1 0 00-1.176 0l-3.372 2.45c-.784.57-1.838-.197-1.539-1.118l1.286-3.967a1 1 0 00-.364-1.118L2.049 9.394c-.783-.57-.38-1.81.588-1.81h4.173a1 1 0 00.95-.69l1.286-3.967z" />
         </svg>
       ))}
-      <span className="ml-1 text-sm text-secondary/60">{rating}</span>
+      <span className="ml-1 text-sm text-secondary">{rating}</span>
     </div>
   );
 };
@@ -91,6 +92,14 @@ export default function OrderDetailsPage({ params }) {
       fetchPolicy: "network-only",
     }
   );
+
+  // Move useRatings hook to top level, before any conditional returns
+  // Use the otherUser ID from the query data, with fallback to prevent errors
+  const otherUserId = otherUserData?.msUserById?.userId;
+  const { userRatingStats, userRatingStatsLoading } = useRatings({
+    userId: otherUserId,
+    autoFetch: !!otherUserId, 
+  });
 
   // Flatten all batch items for the table
   const allBatchItems = useMemo(() => {
@@ -126,6 +135,7 @@ export default function OrderDetailsPage({ params }) {
     }
   };
 
+  // Now you can safely use early returns after all hooks have been called
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -155,6 +165,7 @@ export default function OrderDetailsPage({ params }) {
   const order = data.order;
   const otherUser = otherUserData?.msUserById;
   const isCurrentUserBuyer = order.buyerId === user.userId;
+
 
   return (
     <div className=" px-4 sm:px-6 ">
@@ -230,7 +241,10 @@ export default function OrderDetailsPage({ params }) {
               onClick={() => {
                 const params = new URLSearchParams({
                   orderId: order.orderId || "",
-                  userId:  user.userId === order?.sellerId ? order.buyerId : order.sellerId || "",
+                  userId:
+                    user.userId === order?.sellerId
+                      ? order.buyerId
+                      : order.sellerId || "",
                 });
 
                 router.push(
@@ -258,7 +272,10 @@ export default function OrderDetailsPage({ params }) {
                 <div className="relative">
                   {otherUser?.profileImageUrl ? (
                     <Image
-                      src={process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL+otherUser.profileImageUrl}
+                      src={
+                        process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                        otherUser.profileImageUrl
+                      }
                       alt="Profile"
                       width={64}
                       height={64}
@@ -296,14 +313,14 @@ export default function OrderDetailsPage({ params }) {
                 <div>
                   <span className="text-secondary/70">Rating</span>
                   <div className="mt-1">
-                    <StarRating rating={4.5} className="text-primary" />
+                    <StarRating rating={userRatingStatsLoading ? 0 : userRatingStats?.averageRating || 0} className="text-primary" />
                   </div>
                 </div>
                 <div>
                   <span className="text-secondary/70">FDA Certificate</span>
                   <div className="mt-1">
                     {otherUser?.efdaLicenseUrl ? (
-                      <span className="text-green-600 text-xs">✓ Verified</span>
+                      <span className="text-primary text-xs">✓ Verified</span>
                     ) : (
                       <span className="text-secondary/40 text-xs">
                         Not available
@@ -317,7 +334,7 @@ export default function OrderDetailsPage({ params }) {
                 <span className="text-secondary/70">License</span>
                 <div className="mt-1">
                   {otherUser?.businessLicenseUrl ? (
-                    <span className="text-green-600 text-xs">
+                    <span className="text-primary text-xs">
                       ✓ Business License Verified
                     </span>
                   ) : (
