@@ -10,7 +10,7 @@ import { Rating } from "../../../components/ui/FormField";
 import { NumberInput } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
 import { RelatedProducts } from "../../../components/ui/Cards";
-import { useProductRatings, useRatings } from "../../../hooks/useRatings";
+import { useRatings } from "../../../hooks/useRatings";
 import ProductReviews from "../../../components/ui/product/ProductReviews";
 
 export default function ProductDetails() {
@@ -462,6 +462,8 @@ export default function ProductDetails() {
                   {isDrugProduct && processedData.concentration}
                 </h1>
                 <div className="flex items-center">
+                  <span className="text-secondary/50 mr-2">{productRatingStats.totalRatings} raters</span>
+
                   <Rating
                     value={productRatingStats.averageRating}
                     maxStars={5}

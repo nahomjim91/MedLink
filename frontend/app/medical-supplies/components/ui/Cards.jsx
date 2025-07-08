@@ -29,6 +29,7 @@ import { SEARCH_PRODUCTS } from "../../api/graphql/product/productQueries";
 import { useQuery } from "@apollo/client";
 import { GET_MS_USER_BY_ID } from "../../api/graphql/queries";
 import Link from "next/link";
+import { useRatings } from "../../hooks/useRatings";
 
 // Define types for our props
 export const MetricCard = ({
@@ -1214,6 +1215,28 @@ export const OrderStatCard = ({ title, metrics = [], subtitle = "" }) => {
   );
 };
 
+export const ProductRatingStats = ({ productId }) => {
+  const {
+    productRatingStats,
+    ratingsLoading,
+  } = useRatings({ productId, autoFetch: true });
+
+  if (ratingsLoading || !productRatingStats) return null;
+
+  return (
+    <div className="flex items-center mt-1">
+      <div className="flex items-center">
+        <StarIcon className="h-3 w-3 text-primary fill-primary" />
+        <span className="text-xs ml-1 text-secondary/70">
+          {productRatingStats.averageRating.toFixed(1)}
+        </span>
+      </div>
+      <span className="text-xs text-secondary/50 ml-2">
+        {productRatingStats.totalRatings} rated
+      </span>
+    </div>
+  );
+};
 // Move RelatedProducts component outside to prevent unnecessary re-renders
 export const RelatedProducts = ({
   currentProductId,
@@ -1307,24 +1330,14 @@ export const RelatedProducts = ({
                   <h3 className="font-medium text-sm mb-1 line-clamp-2">
                     {product.name}
                   </h3>
-                  <div className="mt-auto">
+                  <div className="mt-auto flex flex-col md:flex-row justify-between">
                     <div className="font-bold text-secondary/90 mt-1">
                       $
                       {(product.batches &&
                         product.batches[0]?.sellingPrice?.toFixed(2)) ||
                         "32"}
                     </div>
-                    <div className="flex items-center mt-1">
-                      <div className="flex items-center">
-                        <StarIcon className="h-3 w-3 text-green-500 fill-green-500" />
-                        <span className="text-xs ml-1 text-secondary/70">
-                          {(Math.random() * (5 - 4) + 4).toFixed(1)}
-                        </span>
-                      </div>
-                      <span className="text-xs text-secondary/50 ml-2">
-                        {Math.floor(Math.random() * 1000) + 200} Sold
-                      </span>
-                    </div>
+                    <ProductRatingStats productId={product.productId} />
                   </div>
                 </div>
               </div>
