@@ -13,6 +13,7 @@ import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { OrderFilterModal } from "../../components/modal/OrderFilterModal";
 import { OrderHistoryModal } from "../../components/modal/OrderHistoryModal";
+import { RatingModal } from "../../components/modal/RatingModal";
 
 const ordersColumns = [
   { key: "orderBy", label: "Order By" },
@@ -44,6 +45,8 @@ export default function OrdersPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState({});
   const [itemsPerPage, setItemsPerPage] = useState(9);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedOrderForRating, setSelectedOrderForRating] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState(null);
   const router = useRouter();
@@ -323,6 +326,11 @@ export default function OrdersPage() {
     setOrdersPage(1);
   };
 
+  const handleRateOrder = (order) => {
+    setSelectedOrderForRating(order);
+    setShowRatingModal(true);
+  };
+
   if (loading && !orders.length && !ordersToFulfill.length) {
     return (
       <div className="flex flex-col gap-2">
@@ -427,6 +435,7 @@ export default function OrdersPage() {
               }`
             );
           }}
+          onRateOrder={handleRateOrder}
         />
       </div>
 
@@ -447,6 +456,14 @@ export default function OrdersPage() {
         userRole={user?.role?.toLowerCase()}
         getUserPerspective={(order) => getUserPerspective(order, user)}
       />
+      {selectedOrderForRating && showRatingModal && (
+        <RatingModal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          order={selectedOrderForRating}
+          user={user}
+        />
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ const userSchema = require('./userSchemas');
 const productSchema = require('./productSchema');
 const orderSchema = require('./orderSchema');
 const transactionSchema = require('./transactionSchema');
+const ratingSchema = require('./ratingSchema');
 
 // Base schema with common types and queries
 const baseSchema = gql`
@@ -21,4 +22,4 @@ const baseSchema = gql`
 `;
 
 // Combine and export all schemas
-module.exports = [baseSchema, userSchema, productSchema, orderSchema, transactionSchema];
+module.exports = [baseSchema, userSchema, productSchema, orderSchema, transactionSchema , ratingSchema];

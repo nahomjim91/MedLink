@@ -10,10 +10,51 @@ import {
   Send,
   Plus,
   FileText,
+  Star
 } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { IconButton } from "./Button";
 
+export const StarRating = ({ count = 5, value, onChange }) => {
+  const [hoverValue, setHoverValue] = useState(undefined);
+
+  const handleMouseOver = (newHoverValue) => {
+    setHoverValue(newHoverValue);
+  };
+
+  const handleMouseLeave = () => {
+    setHoverValue(undefined);
+  };
+
+  const handleClick = (newValue) => {
+    if (onChange) {
+      onChange(newValue);
+    }
+  };
+
+  const stars = Array(count).fill(0);
+
+  return (
+    <div className="flex items-center space-x-1">
+      {stars.map((_, index) => {
+        const ratingValue = index + 1;
+        const isFilled = (hoverValue || value) >= ratingValue;
+        return (
+          <Star
+            key={index}
+            size={28}
+            className={`cursor-pointer transition-colors ${
+              isFilled ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
+            }`}
+            onClick={() => handleClick(ratingValue)}
+            onMouseOver={() => handleMouseOver(ratingValue)}
+            onMouseLeave={handleMouseLeave}
+          />
+        );
+      })}
+    </div>
+  );
+};
 export function TextInput({
   type = "text",
   label,

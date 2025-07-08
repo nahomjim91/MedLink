@@ -13,6 +13,7 @@ import {
   ClipboardList,
   CircleDollarSignIcon,
   StarIcon,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
 import React, { useState, useEffect } from "react";
@@ -760,6 +761,7 @@ export function OrderTableCard({
   onSchedulePickup,
   onCancelOrder,
   onViewDetails,
+  onRateOrder,
 }) {
   const [statusUpdating, setStatusUpdating] = useState({});
 
@@ -881,7 +883,6 @@ export function OrderTableCard({
 
     return value;
   };
-
   const renderRowActions = (item) => {
     if (!item.rawOrder) return null;
 
@@ -933,6 +934,20 @@ export function OrderTableCard({
           </button>
         )}
 
+        {/* Rate Button - ADD THIS */}
+        {showRateButton(item) && onRateOrder && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRateOrder(item.rawOrder);
+            }}
+            className="px-2 text-xs border border-primary text-primary rounded-lg hover:bg-primary hover:text-white flex items-center gap-1"
+          >
+            <Star className="w-3 h-3" />
+            Rate
+          </button>
+        )}
+
         {/* View Details Button */}
         <button
           onClick={(e) => {
@@ -945,6 +960,29 @@ export function OrderTableCard({
         </button>
       </div>
     );
+  };
+
+  const RATEABLE_STATUSES = {
+    DELIVERED: "DELIVERED",
+    COMPLETED: "COMPLETED",
+  };
+
+  // Update showRateButton function to use these constants:
+  const showRateButton = (item) => {
+    if (!item.rawOrder) return false;
+
+    const userPerspective = getUserPerspective
+      ? getUserPerspective(item.rawOrder)
+      : item.rawOrder.buyerId === user?.id
+      ? "buyer"
+      : "seller";
+
+    const orderStatus = item.rawOrder.status;
+
+    // Check if order status allows rating
+    const canRate = Object.values(RATEABLE_STATUSES).includes(orderStatus);
+
+    return canRate;
   };
 
   return (

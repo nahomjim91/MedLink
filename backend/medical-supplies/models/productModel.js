@@ -235,11 +235,6 @@ const ProductModel = {
     currentUserId
   ) {
     try {
-      console.log("=== DEBUG: Starting product search ===");
-      console.log("Current user ID:", currentUserId);
-      console.log("Sort by distance:", sortByDistance);
-      console.log("Max distance filter:", maxDistance);
-
       // Get current user's role
       const userDoc = await MSUserModel.getById(currentUserId);
       const currentUserRole = userDoc?.role;
@@ -266,29 +261,17 @@ const ProductModel = {
       let snapshot = await query.get();
       let allProducts = formatDocs(snapshot.docs);
 
-      console.log("=== DEBUG: Initial products count:", allProducts.length);
-
       // Filter out current user's own products
       if (currentUserId) {
         const beforeFilter = allProducts.length;
         allProducts = allProducts.filter(
           (product) => product.ownerId !== currentUserId
         );
-        console.log(
-          `=== DEBUG: After filtering own products: ${
-            allProducts.length
-          } (removed ${beforeFilter - allProducts.length})`
-        );
       }
 
       // Filter by active products
       const beforeActiveFilter = allProducts.length;
       allProducts = allProducts.filter((product) => product.isActive === true);
-      console.log(
-        `=== DEBUG: After filtering active products: ${
-          allProducts.length
-        } (removed ${beforeActiveFilter - allProducts.length})`
-      );
 
       // Role-based filtering
       if (currentUserRole) {
@@ -296,42 +279,19 @@ const ProductModel = {
           currentUserRole,
           currentUserId
         );
-        console.log("=== DEBUG: Allowed owner IDs:", allowedOwnerIds);
 
         if (allowedOwnerIds.length > 0) {
           const beforeRoleFilter = allProducts.length;
 
           // Log some product owner IDs for debugging
-          console.log(
-            "=== DEBUG: Sample product owner IDs:",
-            allProducts
-              .slice(0, 5)
-              .map((p) => ({
-                productId: p.productId,
-                ownerId: p.ownerId,
-                ownerName: p.ownerName,
-              }))
-          );
 
           allProducts = allProducts.filter((product) => {
             const isAllowed = allowedOwnerIds.includes(product.ownerId);
             if (!isAllowed) {
-              console.log(
-                `=== DEBUG: Filtering out product ${product.productId} from owner ${product.ownerId} (${product.ownerName})`
-              );
             }
             return isAllowed;
           });
-
-          console.log(
-            `=== DEBUG: After role-based filtering: ${
-              allProducts.length
-            } (removed ${beforeRoleFilter - allProducts.length})`
-          );
         } else {
-          console.log(
-            "=== DEBUG: No allowed owners found, returning empty results"
-          );
           return [];
         }
       }
@@ -350,12 +310,6 @@ const ProductModel = {
           const hasValid = batches.some(
             (batch) => batch.sellingPrice && batch.sellingPrice > 0
           );
-
-          if (!hasValid) {
-            console.log(
-              `=== DEBUG: Product ${product.productId} has no valid batches`
-            );
-          }
 
           return hasValid;
         } catch (error) {
@@ -382,10 +336,6 @@ const ProductModel = {
         );
       }
 
-      console.log(
-        `=== DEBUG: After batch validation: ${validProducts.length} valid products`
-      );
-
       // Add distance information to all valid products
       let productsWithDistance = await this.addDistanceToProducts(
         validProducts,
@@ -399,11 +349,11 @@ const ProductModel = {
           (product) =>
             product.distance !== null && product.distance <= maxDistance
         );
-        console.log(
-          `=== DEBUG: After distance filtering (${maxDistance}km): ${
-            productsWithDistance.length
-          } (removed ${beforeDistanceFilter - productsWithDistance.length})`
-        );
+        // console.log(
+        //   `=== DEBUG: After distance filtering (${maxDistance}km): ${
+        //     productsWithDistance.length
+        //   } (removed ${beforeDistanceFilter - productsWithDistance.length})`
+        // );
       }
 
       // Handle search term filtering
@@ -449,9 +399,9 @@ const ProductModel = {
         }
 
         finalProducts = matchingProducts;
-        console.log(
-          `=== DEBUG: After search filtering: ${finalProducts.length} products match search term`
-        );
+        // console.log(
+        //   `=== DEBUG: After search filtering: ${finalProducts.length} products match search term`
+        // );
       }
 
       // Sort products
@@ -463,7 +413,7 @@ const ProductModel = {
           if (b.distance === null) return -1;
           return a.distance - b.distance;
         });
-        console.log("=== DEBUG: Products sorted by distance");
+        // console.log("=== DEBUG: Products sorted by distance");
       } else {
         // Apply original sorting
         finalProducts.sort((a, b) => {
@@ -476,7 +426,7 @@ const ProductModel = {
             return aValue < bValue ? 1 : -1;
           }
         });
-        console.log(`=== DEBUG: Products sorted by ${sortBy} ${sortOrder}`);
+        // console.log(`=== DEBUG: Products sorted by ${sortBy} ${sortOrder}`);
       }
 
       // Apply pagination
@@ -485,16 +435,16 @@ const ProductModel = {
         offsetVal + limitVal
       );
 
-      console.log(`=== DEBUG: Final results count: ${paginatedResults.length}`);
-      console.log(
-        "=== DEBUG: Sample results with distance:",
-        paginatedResults.slice(0, 3).map((p) => ({
-          productId: p.productId,
-          name: p.name,
-          distance: p.distance,
-          distanceText: p.distanceText,
-        }))
-      );
+      // console.log(`=== DEBUG: Final results count: ${paginatedResults.length}`);
+      // console.log(
+      //   "=== DEBUG: Sample results with distance:",
+      //   paginatedResults.slice(0, 3).map((p) => ({
+      //     productId: p.productId,
+      //     name: p.name,
+      //     distance: p.distance,
+      //     distanceText: p.distanceText,
+      //   }))
+      // );
 
       return paginatedResults;
     } catch (error) {
