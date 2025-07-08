@@ -182,7 +182,7 @@ export const Modal = ({
   return (
     // Backdrop: a full-screen semi-transparent overlay
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 bg-opacity-50 transition-opacity"
       onClick={onClose} // Close modal on backdrop click
       role="dialog"
       aria-modal="true"

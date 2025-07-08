@@ -9,6 +9,9 @@ import { toast } from "react-hot-toast";
 import { useMSAuth } from "../../hooks/useMSAuth";
 import { CheckCircle, Star, User, Package, Clock } from "lucide-react";
 
+
+
+//   RatingModal with original logic preserved
 export const RatingModal = ({ isOpen, onClose, order }) => {
   if (!isOpen || !order) {
     return null;
@@ -237,14 +240,34 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
     }
   };
 
+  // Helper function to get rating label with emoji
+  const getRatingLabel = (rating) => {
+    const labels = {
+      1: { text: "Poor", color: "text-red-500", emoji: "😞" },
+      2: { text: "Fair", color: "text-orange-500", emoji: "😐" },
+      3: { text: "Good", color: "text-yellow-500", emoji: "🙂" },
+      4: { text: "Very Good", color: "text-green-500", emoji: "😊" },
+      5: { text: "Excellent", color: "text-green-600", emoji: "🤩" }
+    };
+    return labels[rating] || null;
+  };
+
   const getModalContent = () => {
     if (currentStep === "loading" || lazyOrderRatingsLoading) {
       return (
-        <div className="p-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <Clock className="h-8 w-8 text-primary animate-spin" />
+        <div className="p-4 text-center">
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <Clock className="h-12 w-12 text-primary animate-spin" />
+              <div className="absolute inset-0 h-12 w-12 rounded-full bg-blue-100 animate-ping opacity-25"></div>
+            </div>
           </div>
-          <p className="text-secondary">Loading rating information...</p>
+          <div className="space-y-2">
+            <div className="h-2 bg-secondary/20 rounded-full overflow-hidden">
+              <div className="h-full bg-primary animate-pulse"></div>
+            </div>
+            <p className="text-secondary/60 font-medium">Loading rating information...</p>
+          </div>
         </div>
       );
     }
@@ -256,56 +279,81 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
 
       return (
         <div className="p-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <CheckCircle className="h-12 w-12 text-primary" />
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <CheckCircle className="h-16 w-16 text-primary" />
+              <div className="absolute -top-2 -right-2 animate-bounce">
+                <div className="h-6 w-6 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-xs">✨</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <h3 className="text-xl font-semibold text-secondary/80 mb-2">
-            {hasCompletedRatings ? "Thank You!" : "Already Completed"}
+          
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-primary bg-clip-text text-transparent mb-3">
+            {hasCompletedRatings ? "Thank You! 🎉" : "Already Completed"}
           </h3>
-          <p className="text-secondary/60 mb-4">
+          
+          <p className="text-secondary/60 mb-6 text-lg">
             {hasCompletedRatings
-              ? "Your ratings for this order have been submitted successfully."
+              ? "Your ratings help build a better marketplace for everyone."
               : "You have already completed all ratings for this order."}
           </p>
 
           {hasSkippedItems && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-yellow-800">
-                You skipped {skippedItems.size} rating
-                {skippedItems.size > 1 ? "s" : ""}
-                {skippedItems.has("user_rating") && skippedItems.size === 1
-                  ? " (user rating)"
-                  : ""}
-                {skippedItems.has("user_rating") && skippedItems.size > 1
-                  ? " (including user rating)"
-                  : ""}
-              </p>
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-primary rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-yellow-800">
+                    You skipped {skippedItems.size} rating
+                    {skippedItems.size > 1 ? "s" : ""}
+                    {skippedItems.has("user_rating") && skippedItems.size === 1
+                      ? " (user rating)"
+                      : ""}
+                    {skippedItems.has("user_rating") && skippedItems.size > 1
+                      ? " (including user rating)"
+                      : ""}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
           {ratingProgress && (
-            <div className="bg-secondary/5 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between text-sm text-secondary/60">
-                <span>Rating Progress</span>
-                <span>
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-6 mb-6 border border-blue-100">
+              <div className="flex items-center justify-between text-sm font-semibold text-secondary/70 mb-3">
+                <span className="flex items-center gap-2">
+                  <span className="text-lg">📊</span>
+                  Rating Progress
+                </span>
+                <span className="bg-white px-3 py-1 rounded-full text-xs shadow-sm">
                   {ratingProgress.completed}/{ratingProgress.total} completed
                 </span>
               </div>
-              <div className="w-full bg-secondary/20 rounded-full h-2 mt-2">
+              <div className="w-full bg-secondary/20 rounded-full h-2 overflow-hidden">
                 <div
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  className="bg-primary h-2 rounded-full transition-all duration-700 ease-out relative overflow-hidden"
                   style={{
-                    width: `${
-                      (ratingProgress.completed / ratingProgress.total) * 100
-                    }%`,
+                    width: `${(ratingProgress.completed / ratingProgress.total) * 100}%`,
                   }}
-                />
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                </div>
               </div>
             </div>
           )}
 
-          <Button onClick={handleClose} className="text-primary">
-            Close
+          <Button 
+            onClick={handleClose} 
+            className="bg-gradient-to-r from-primary/50 to-primary/60 hover:from-primary/60 hover:to-primary/70 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+          >
+            <span className="flex items-center gap-2">
+              <span>✅</span>
+              Close
+            </span>
           </Button>
         </div>
       );
@@ -314,6 +362,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
     let title = "";
     let subTitle = "";
     let icon = null;
+    let iconBg = "";
 
     if (currentStep === "user") {
       title =
@@ -322,93 +371,113 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
         userPerspective === "buyer"
           ? order.sellerCompanyName || order.sellerName
           : order.buyerCompanyName || order.buyerName;
-      icon = <User className="h-6 w-6 text-blue-600" />;
+      icon = <User className="h-6 w-6 text-primary" />;
+      iconBg = "bg-primary/10";
     } else if (currentStep.startsWith("product_")) {
       const productIndex = parseInt(currentStep.split("_")[1]);
       const productItem = order.items[productIndex];
       title = "Rate the Product";
       subTitle = productItem.productName;
-      icon = <Package className="h-6 w-6 text-green-600" />;
+      icon = <Package className="h-6 w-6 text-primary" />;
+      iconBg = "bg-primary/10";
     }
 
-    const canSkip = true; // Both user and product ratings can be skipped
+    const canSkip = true;
+    const ratingLabel = getRatingLabel(rating);
 
     return (
-      <div className="p-6">
-        {/* Progress Bar */}
+      <div className="p-3">
+        {/*   Progress Bar */}
         {ratingProgress && (
-          <div className="mb-6 bg-secondary/5 rounded-lg p-4">
-            <div className="flex items-center justify-between text-sm text-secondary/60 mb-2">
-              <span>Progress</span>
-              <span>
+          <div className="mb-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-2 border border-blue-100">
+            <div className="flex items-center justify-between text-sm font-semibold text-secondary/70 mb-3">
+              <span className="flex items-center gap-2">
+                <span className="text-lg">🎯</span>
+                Progress
+              </span>
+              <span className="bg-white px-3 py-1 rounded-full text-xs shadow-sm">
                 {ratingProgress.completed}/{ratingProgress.total} completed
               </span>
             </div>
-            <div className="w-full bg-secondary/20 rounded-full h-2">
+            <div className="w-full bg-secondary/20 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                className="bg-primary  h-2 rounded-full transition-all duration-500 ease-out relative"
                 style={{
-                  width: `${
-                    (ratingProgress.completed / ratingProgress.total) * 100
-                  }%`,
+                  width: `${(ratingProgress.completed / ratingProgress.total) * 100}%`,
                 }}
-              />
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          {icon}
+        {/*   Header */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className={`p-3 rounded-2xl ${iconBg} shadow-md`}>
+            {icon}
+          </div>
           <div>
-            <h3 className="text-xl font-semibold text-secondary/80">{title}</h3>
-            <p className="text-sm text-secondary/50">{subTitle}</p>
+            <h3 className="text-xl font-bold text-secondary/80">{title}</h3>
+            <p className="text-secondary/60 font-medium">{subTitle}</p>
           </div>
         </div>
 
-        {/* Star Rating */}
-        <div className="bg-secondary/5 rounded-lg p-6 mb-6">
+        {/*   Star Rating */}
+        <div className="bg-primary/10 rounded-2xl p-3 mb-6 border border-primary/20">
           <div className="flex items-center justify-center mb-4">
-            <Star className="h-5 w-5 text-yellow-400 mr-2" />
-            <span className="text-sm font-medium text-secondary/70">
-              How would you rate this?
+            <Star className="h-5 w-5 text-primary mr-2" />
+            <span className="text-sm font-semibold text-secondary/70">
+              How would you rate this experience?
             </span>
           </div>
+          
           <div className="flex justify-center mb-4">
             <StarRating value={rating} onChange={setRating} />
           </div>
-          {rating > 0 && (
-            <p className="text-center text-sm text-secondary/60">
-              {rating === 1 && "Poor"}
-              {rating === 2 && "Fair"}
-              {rating === 3 && "Good"}
-              {rating === 4 && "Very Good"}
-              {rating === 5 && "Excellent"}
-            </p>
+          
+          {ratingLabel && (
+            <div className="text-center bg-white rounded-xl p-3 shadow-sm">
+              <p className={`text-lg font-bold ${ratingLabel.color} flex items-center justify-center gap-2`}>
+                <span className="text-2xl">{ratingLabel.emoji}</span>
+                {ratingLabel.text}
+              </p>
+            </div>
           )}
         </div>
 
-        {/* Comment */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-secondary/70 mb-2">
-            Comment (optional)
+        {/*   Comment */}
+        <div className="mb-3">
+          <label className=" text-sm font-semibold text-secondary/70 mb-3 flex items-center gap-2">
+            <span>💬</span>
+            Share your thoughts (optional)
           </label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Share your experience..."
-            className="w-full p-3 border border-secondary/30 rounded-lg h-20 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            placeholder="Tell us about your experience..."
+            className="w-full p-4 border-2 border-secondary/20 rounded-2xl h-24 focus:ring-2 focus:ring-primary focus:ring-opacity-50 focus:outline-none focus:border-primary/40 resize-none transition-all duration-200 bg-gradient-to-br from-secondary/5 to-white"
           />
         </div>
 
-        {/* Actions */}
+        {/*   Actions */}
         <div className="flex flex-col md:flex-row w-full gap-3 justify-between items-center">
-          <div className="flex w-full gap-3 bg-amber-300">
-            <Button variant="fill" onClick={handleClose} disabled={isLoading} className="w-full">
+          <div className="flex w-full md:w-1/2 gap-3">
+            <Button 
+              variant="fill" 
+              onClick={handleClose} 
+              disabled={isLoading} 
+              className="w-full bg-gradient-to-r from-secondary/50 to-secondary/60 hover:from-secondary/60 hover:to-secondary/70 text-white font-semibold py-3 px-6 md:px-3 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+            >
               Cancel
             </Button>
             {canSkip && (
-              <Button variant="outline" color= "error" onClick={handleSkip} disabled={isLoading}>
+              <Button 
+                variant="outline" 
+                onClick={handleSkip} 
+                disabled={isLoading}
+                className="flex-1 border-2 border-red-500 text-red-500 hover:bg-red-50 hover:border-red-600 font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105"
+              >
                 Skip
               </Button>
             )}
@@ -416,7 +485,7 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
           <Button
             onClick={handleSubmit}
             disabled={isLoading || rating === 0}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-secondary/40"
+            className="w-full md:w-auto bg-gradient-to-r from-primary/50 to-primary/60 hover:from-primary/60 hover:to-primary/80 disabled:from-secondary/40 disabled:to-secondary/50 text-white font-semibold py-4 px-8 md:px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:transform-none disabled:hover:scale-100"
           >
             {isLoading ? (
               <div className="flex items-center gap-2">
@@ -424,7 +493,10 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
                 Submitting...
               </div>
             ) : (
-              "Submit Rating"
+              <span className="flex items-center gap-2">
+                <span>⭐</span>
+                Submit Rating
+              </span>
             )}
           </Button>
         </div>
@@ -433,7 +505,16 @@ export const RatingModal = ({ isOpen, onClose, order }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Rate Your Experience">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      title={
+        <span className="flex items-center gap-1">
+          <span className="text-2xl">✨</span>
+          Rate Your Experience
+        </span>
+      }
+    >
       {getModalContent()}
     </Modal>
   );

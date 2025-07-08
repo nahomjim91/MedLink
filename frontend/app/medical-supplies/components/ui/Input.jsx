@@ -10,13 +10,15 @@ import {
   Send,
   Plus,
   FileText,
-  Star
+  Star,
 } from "lucide-react";
 import { FaMapMarkerAlt } from "react-icons/fa";
 import { IconButton } from "./Button";
 
+// Enhanced StarRating Component (UI only changes)
 export const StarRating = ({ count = 5, value, onChange }) => {
   const [hoverValue, setHoverValue] = useState(undefined);
+  const [animatingStars, setAnimatingStars] = useState(new Set());
 
   const handleMouseOver = (newHoverValue) => {
     setHoverValue(newHoverValue);
@@ -29,27 +31,44 @@ export const StarRating = ({ count = 5, value, onChange }) => {
   const handleClick = (newValue) => {
     if (onChange) {
       onChange(newValue);
+      // Add sparkle animation
+      setAnimatingStars(new Set([newValue - 1]));
+      setTimeout(() => setAnimatingStars(new Set()), 600);
     }
   };
 
   const stars = Array(count).fill(0);
+  const displayValue = hoverValue || value;
 
   return (
-    <div className="flex items-center space-x-1">
+    <div className="flex items-center space-x-2">
       {stars.map((_, index) => {
         const ratingValue = index + 1;
-        const isFilled = (hoverValue || value) >= ratingValue;
+        const isFilled = displayValue >= ratingValue;
+        const isAnimating = animatingStars.has(index);
+
         return (
-          <Star
-            key={index}
-            size={28}
-            className={`cursor-pointer transition-colors ${
-              isFilled ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-            }`}
-            onClick={() => handleClick(ratingValue)}
-            onMouseOver={() => handleMouseOver(ratingValue)}
-            onMouseLeave={handleMouseLeave}
-          />
+          <div key={index} className="relative">
+            <Star
+              size={32}
+              className={`cursor-pointer transition-all duration-300 transform hover:scale-110 ${
+                isFilled
+                  ? "text-primary/40 fill-primary drop-shadow-lg filter"
+                  : "text-gray-300 hover:text-primary/30"
+              } ${isAnimating ? "animate-pulse scale-125" : ""}`}
+              onClick={() => handleClick(ratingValue)}
+              onMouseOver={() => handleMouseOver(ratingValue)}
+              onMouseLeave={handleMouseLeave}
+            />
+            {isFilled && (
+              <div className="absolute inset-0 pointer-events-none">
+                <Star
+                  size={32}
+                  className="text-primary/30 fill-primary/30 animate-ping opacity-50"
+                />
+              </div>
+            )}
+          </div>
         );
       })}
     </div>
@@ -1716,8 +1735,13 @@ export const EditableTextAreaField = ({
   );
 };
 
-
-export const EditableFileField = ({ label, value, onChange, name, uploading }) => {
+export const EditableFileField = ({
+  label,
+  value,
+  onChange,
+  name,
+  uploading,
+}) => {
   // Function to extract filename from the full path (similar to CertificatesList)
   const extractFilename = (fullPath) => {
     if (!fullPath) return "No file selected";
@@ -1738,35 +1762,35 @@ export const EditableFileField = ({ label, value, onChange, name, uploading }) =
   // Function to truncate long filenames
   const truncateFilename = (filename, maxLength = 25) => {
     if (!filename || filename.length <= maxLength) return filename;
-    
+
     // Find the last dot for file extension
-    const lastDotIndex = filename.lastIndexOf('.');
-    
+    const lastDotIndex = filename.lastIndexOf(".");
+
     if (lastDotIndex === -1) {
       // No extension, just truncate
-      return filename.substring(0, maxLength - 3) + '...';
+      return filename.substring(0, maxLength - 3) + "...";
     }
-    
+
     const extension = filename.substring(lastDotIndex);
     const nameWithoutExt = filename.substring(0, lastDotIndex);
-    
+
     // If even the extension is too long, just truncate everything
     if (extension.length > maxLength - 3) {
-      return filename.substring(0, maxLength - 3) + '...';
+      return filename.substring(0, maxLength - 3) + "...";
     }
-    
+
     // Truncate the name part but keep the extension
     const availableLength = maxLength - 3 - extension.length;
     if (nameWithoutExt.length > availableLength) {
-      return nameWithoutExt.substring(0, availableLength) + '...' + extension;
+      return nameWithoutExt.substring(0, availableLength) + "..." + extension;
     }
-    
+
     return filename;
   };
 
   const [fileName, setFileName] = useState(() => {
     if (value) {
-      return typeof value === 'string' ? extractFilename(value) : value.name;
+      return typeof value === "string" ? extractFilename(value) : value.name;
     }
     return "No file selected";
   });
@@ -1781,38 +1805,41 @@ export const EditableFileField = ({ label, value, onChange, name, uploading }) =
 
   // Function to handle existing file click
   const handleFileClick = () => {
-    if (value && typeof value === 'string' && value !== "No file selected") {
+    if (value && typeof value === "string" && value !== "No file selected") {
       window.open(value, "_blank");
     }
   };
 
   // Determine if the existing file is clickable
-  const isClickable = value && typeof value === 'string' && value !== "No file selected";
+  const isClickable =
+    value && typeof value === "string" && value !== "No file selected";
   const displayName = truncateFilename(fileName);
 
   return (
     <FormField label={label}>
       <div className="bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between">
-        <div 
+        <div
           className={`flex items-center flex-grow min-w-0 ${
-            isClickable ? 'cursor-pointer group' : ''
+            isClickable ? "cursor-pointer group" : ""
           }`}
           onClick={isClickable ? handleFileClick : undefined}
           title={fileName} // Show full filename on hover
         >
-          <FileText 
+          <FileText
             className={`mr-2 flex-shrink-0 ${
-              isClickable 
-                ? 'text-green-500 group-hover:text-primary' 
-                : 'text-primary'
-            }`} 
-            size={20} 
+              isClickable
+                ? "text-green-500 group-hover:text-primary"
+                : "text-primary"
+            }`}
+            size={20}
           />
-          <span className={`flex-grow truncate ${
-            isClickable 
-              ? 'text-secondary group-hover:text-secondary/80' 
-              : 'text-secondary'
-          }`}>
+          <span
+            className={`flex-grow truncate ${
+              isClickable
+                ? "text-secondary group-hover:text-secondary/80"
+                : "text-secondary"
+            }`}
+          >
             {displayName}
           </span>
           {isClickable && (
@@ -1821,7 +1848,7 @@ export const EditableFileField = ({ label, value, onChange, name, uploading }) =
             </span>
           )}
         </div>
-        
+
         <input
           type="file"
           onChange={handleFileChange}
@@ -1833,10 +1860,12 @@ export const EditableFileField = ({ label, value, onChange, name, uploading }) =
         <label
           htmlFor={`file-upload-${name}`}
           className={`text-white text-xs px-2 py-1 rounded cursor-pointer flex-shrink-0 ml-2 ${
-            uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'
+            uploading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-primary hover:bg-primary/90"
           }`}
         >
-          {uploading ? 'Uploading...' : 'Browse'}
+          {uploading ? "Uploading..." : "Browse"}
         </label>
       </div>
     </FormField>
