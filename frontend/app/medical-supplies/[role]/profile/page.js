@@ -14,6 +14,7 @@ import {
   EditableTextField,
 } from "../../components/ui/Input";
 import useFileUpload from "../../hooks/useFileUpoload";
+import { useRatings } from "../../hooks/useRatings";
 
 // Create editable versions of our form fields
 
@@ -47,9 +48,14 @@ export default function ProfilePage() {
     profileImageUrl: user?.profileImageUrl || null,
     efdaLicenseUrl: user?.efdaLicenseUrl || "",
     businessLicenseUrl: user?.businessLicenseUrl || "",
-    ratingStats: user.ratingStats,
-    recentRatings: user.recentRatings,
+   
   });
+
+    const { userRatingStats, userRatingStatsLoading } = useRatings({
+      userId: user?.userId,
+      autoFetch: !!user?.userId, 
+    });
+    console.log('userRatingStats', userRatingStats);
 
   useEffect(() => {
     if (!user) {
@@ -77,8 +83,7 @@ export default function ProfilePage() {
         profileImageUrl: user.profileImageUrl || null,
         efdaLicenseUrl: user.efdaLicenseUrl || "",
         businessLicenseUrl: user.businessLicenseUrl || "",
-        ratingStats: user.ratingStats,
-        recentRatings: user.recentRatings,
+    
       });
     }
   }, [user, router]);
@@ -214,8 +219,7 @@ export default function ProfilePage() {
       profileImageUrl: user.profileImageUrl || null,
       efdaLicenseUrl: user.efdaLicenseUrl || "",
       businessLicenseUrl: user.businessLicenseUrl || "",
-      ratingStats: user.ratingStats,
-      recentRatings: user.recentRatings,
+   
     });
     setIsEditing(false);
   };
@@ -314,7 +318,7 @@ export default function ProfilePage() {
           <div>
             {userData.companyName} Drug & Medical Supplies {userData.role}
           </div>
-          <Rating value={userData.ratingStats.averageRating} />
+          <Rating value={userRatingStatsLoading ? 0 : userRatingStats?.averageRating} />
         </div>
         <div className="flex-1/4 flex justify-end pr-11">
           {!isEditing ? (
