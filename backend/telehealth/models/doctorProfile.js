@@ -97,6 +97,42 @@ const DoctorProfileModel = {
     }
   },
 
+  async getPending(limit, offset) {
+    try {
+      const { limit: limitVal, offset: offsetVal } = paginationParams(
+        limit,
+        offset
+      );
+
+      let query = doctorsRef
+        .where("isApproved", "==", false)
+        .orderBy("createdAt", "desc");
+
+      // Apply pagination
+      if (offsetVal > 0) {
+        // Get the last document from the previous page
+        const prevPageSnapshot = await doctorsRef
+          .where("isApproved", "==", false)
+          .orderBy("createdAt", "desc")
+          .limit(offsetVal)
+          .get();
+
+        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
+        }
+      }
+
+      // Apply limit
+      query = query.limit(limitVal);
+
+      const snapshot = await query.get();
+      return  formatDocs(snapshot.docs);
+    } catch (error) {
+      console.error("Error getting pending doctors:", error);
+      throw error;
+    }
+  },
   // Add these new methods to your existing DoctorProfileModel
 
 /**
@@ -541,6 +577,33 @@ console.log(specializationsSet);
     }
   },
 
+  async reject(doctorId, reason , userId) {
+    try {
+      const docRef = doctorsRef.doc(doctorId);
+
+      // Check if doctor profile exists
+      const docSnapshot = await docRef.get();
+      if (!docSnapshot.exists) {
+        throw new Error("Doctor profile not found");
+      }
+
+      // Reject doctor profile
+      await docRef.update({
+        isApproved: false,
+        rejectionReason: reason,
+        rejectedAt: timestamp(),
+        rejectedBy: userId,
+        updatedAt: timestamp(),
+      });
+
+      // Get updated doctor profile
+      const updatedDoc = await docRef.get();
+      return formatDoc(updatedDoc);
+    } catch (error) {
+      console.error("Error rejecting doctor profile:", error);
+      throw error;
+    }
+  },
   /**
    * Delete doctor profile
    * @param {String} doctorId - Doctor ID

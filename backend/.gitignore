@@ -17,6 +17,7 @@ serviceAccountKey.json
 serviceAccountKey-old.json
 serviceAccountKey-Telehealth.json
 serviceAccountKey-Telehealth-old.json
+serviceAccountKey*
 telehealth/documents/
 telehealth/uploads/
 medical-supplies/uploads/

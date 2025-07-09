@@ -184,7 +184,10 @@ const resolvers = {
     allDoctors: async (_, { limit, offset }) => {
       return await DoctorProfileModel.getAllApproved(limit, offset);
     },
-
+   getPendingDoctors: async (_, {limit, offset}, context) => {
+      await isAdmin(context);
+      return await DoctorProfileModel.getPending(limit, offset);
+    },
     // Search doctors with comprehensive filtering
     searchDoctors: async (_, { input, limit = 20, offset = 0 }) => {
       try {
@@ -301,6 +304,14 @@ const resolvers = {
     approveDoctorProfile: async (_, { doctorId }, context) => {
       await isAdmin(context);
       return await DoctorProfileModel.approve(doctorId);
+    },
+
+ 
+
+    // Reject doctor profile (admin only)
+    rejectDoctorProfile: async (_, { doctorId , reason }, context) => {
+      await isAdmin(context);
+      return await DoctorProfileModel.reject(doctorId, reason , context.user.uid);
     },
 
     // Create availability slot(s)

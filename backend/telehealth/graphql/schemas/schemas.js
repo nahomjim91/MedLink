@@ -31,6 +31,8 @@ const typeDefs = gql`
     isApproved: Boolean
     approvedAt: Date
     rejectionReason: String
+    rejectedAt: Date
+    rejectedBy: String
     pricePerSession: Float
     telehealthWalletBalance: Float
     availabilitySlots: [DoctorAvailabilitySlot]
@@ -48,7 +50,6 @@ const typeDefs = gql`
     appointmentId: String
     patientId: String
     createdAt: Date!
-
   }
 
   type Certificate {
@@ -89,7 +90,9 @@ const typeDefs = gql`
     pricePerSession: Float
     telehealthWalletBalance: Float
     certificates: [CertificateInput]
-
+    rejectedAt: Date
+    rejectionReason : String
+    rejectedBy : String
   }
 
   input CertificateInput {
@@ -180,6 +183,7 @@ const typeDefs = gql`
     patientById(id: ID!): THUser
     # Admin queries
     allPatients(limit: Int, offset: Int): [PatientProfile]
+    getPendingDoctors(limit: Int, offset: Int):[DoctorProfile]
 
     # Availability queries
     doctorAvailableSlots(doctorId: ID!, date: String): [DoctorAvailabilitySlot]
@@ -201,6 +205,7 @@ const typeDefs = gql`
 
     # Admin mutations
     approveDoctorProfile(doctorId: ID!): DoctorProfile
+    rejectDoctorProfile(doctorId: ID!, reason: String!): DoctorProfile
 
     # Availability mutations
     addAvailabilitySlot(input: AvailabilitySlotInput!): [DoctorAvailabilitySlot]

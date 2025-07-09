@@ -487,7 +487,7 @@ export const ADMIN_SYSTEM_HEALTH_QUERY = gql`
     $refundFilter: RefundFilterInput
   ) {
     # Transaction health
-    allTransactionStats (filter: $transactionFilter) {
+    allTransactionStats(filter: $transactionFilter) {
       total
       success
       pending
@@ -506,7 +506,7 @@ export const ADMIN_SYSTEM_HEALTH_QUERY = gql`
     }
 
     # Refund health
-    allRefundStats (filter: $refundFilter) {
+    allRefundStats(filter: $refundFilter) {
       total
       requested
       approved
@@ -578,6 +578,31 @@ export const ADMIN_DOCTOR_PERFORMANCE_QUERY = gql`
       isBooked
       appointmentId
       patientId
+    }
+  }
+`;
+
+export const GET_PENDING_DOCTORS = gql`
+  query GetPendingDoctors($limit: Int, $offset: Int) {
+    getPendingDoctors(limit: $limit, offset: $offset) {
+      # Select the fields of DoctorProfile directly
+      doctorId
+      isApproved
+      rejectionReason
+      experienceYears
+      specialization
+      pricePerSession
+      certificates {
+        name
+        url
+      }
+      user {
+        id
+        firstName
+        lastName
+        email
+        profileImageUrl
+      }
     }
   }
 `;

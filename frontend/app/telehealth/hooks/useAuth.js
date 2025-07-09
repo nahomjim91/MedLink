@@ -16,7 +16,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { GET_MY_PROFILE } from "../api/graphql/queries";
 import { INITIALIZE_USER_PROFILE } from "../api/graphql/mutations";
 import client from "../api/graphql/client";
-import { useMutation } from '@apollo/client';
+import { useMutation } from "@apollo/client";
 
 const AuthContext = createContext();
 
@@ -26,9 +26,11 @@ export const AuthProvider = ({ children }) => {
   const [refetching, setRefetching] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  
+
   // Initialize the mutation hook
-  const [initializeUserProfileMutation] = useMutation(INITIALIZE_USER_PROFILE, { client });
+  const [initializeUserProfileMutation] = useMutation(INITIALIZE_USER_PROFILE, {
+    client,
+  });
 
   // Helper function to handle profile data processing
   const processProfileData = (firebaseUser, profileData) => {
@@ -39,7 +41,8 @@ export const AuthProvider = ({ children }) => {
       id: firebaseUser.uid,
       email: firebaseUser.email,
       displayName: firebaseUser.displayName || profileData.firstName || "",
-      profileImageUrl: profileData.profileImageUrl  ||firebaseUser.photoURL || "",
+      profileImageUrl:
+        profileData.profileImageUrl || firebaseUser.photoURL || "",
       emailVerified: firebaseUser.emailVerified,
       role: userRole,
       profileComplete: isProfileComplete,
@@ -63,11 +66,11 @@ export const AuthProvider = ({ children }) => {
     }
 
     setRefetching(true);
-    
+
     try {
       // Reload Firebase user to get latest data
       await reload(auth.currentUser);
-      
+
       // Get fresh Firebase token
       const token = await auth.currentUser.getIdToken(true); // Force refresh
       localStorage.setItem("token", token);
@@ -117,7 +120,6 @@ export const AuthProvider = ({ children }) => {
         setUser(incompleteUser);
         return incompleteUser;
       }
-
     } catch (error) {
       console.error("Error during user refetch:", error);
       throw error;
@@ -133,6 +135,7 @@ export const AuthProvider = ({ children }) => {
     const verifyEmailPath = "/telehealth/auth/verify-email";
     const homePath = "/telehealth/";
     const dashboardPath = "/telehealth/dashboard";
+    const wattingApprovalPath = "/telehealth/doctor/watting-approval";
 
     // Define public paths that don't require authentication
     const publicPaths = [loginPath, signupPath, homePath, verifyEmailPath];
@@ -143,7 +146,9 @@ export const AuthProvider = ({ children }) => {
 
       // Check if user can access the current path based on their role
       const rolePrefix = `/telehealth/${userRole}`;
-      return currentPath.startsWith(rolePrefix) || currentPath === dashboardPath;
+      return (
+        currentPath.startsWith(rolePrefix) || currentPath === dashboardPath
+      );
     };
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -159,7 +164,9 @@ export const AuthProvider = ({ children }) => {
           if (!firebaseUser.emailVerified) {
             // Redirect to email verification page if not verified and not already there
             if (pathname !== verifyEmailPath) {
-              console.log("Email not verified, redirecting to verification page");
+              console.log(
+                "Email not verified, redirecting to verification page"
+              );
               setUser({
                 id: firebaseUser.uid,
                 email: firebaseUser.email,
@@ -267,7 +274,22 @@ export const AuthProvider = ({ children }) => {
     const handleProfileData = (firebaseUser, profileData) => {
       const updatedUser = processProfileData(firebaseUser, profileData);
       setUser(updatedUser);
+      const isUnapprovedDoctor =
+        updatedUser.role === "doctor" &&
+        updatedUser.profileComplete &&
+        updatedUser.doctorProfile?.isApproved === false;
 
+      if (isUnapprovedDoctor) {
+        // If they are not already on the waiting page, redirect them there.
+        if (pathname !== wattingApprovalPath) {
+          console.log(
+            "Doctor profile is pending approval. Redirecting to waiting page."
+          );
+          router.push(wattingApprovalPath);
+        }
+        setLoading(false);
+        return; // Stop further routing logic for this user state.
+      }
       // 1. Handle incomplete profile: Redirect to registration if not already there.
       if (!updatedUser.profileComplete && pathname !== registrationPath) {
         console.log("Profile incomplete, redirecting to registration.");
@@ -288,8 +310,8 @@ export const AuthProvider = ({ children }) => {
           console.log(
             "Profile complete, redirecting from auth page to dashboard."
           );
-          const roleDashboard = updatedUser.role 
-            ? `/telehealth/${updatedUser.role}` 
+          const roleDashboard = updatedUser.role
+            ? `/telehealth/${updatedUser.role}`
             : dashboardPath;
           router.push(roleDashboard);
         }
@@ -298,8 +320,8 @@ export const AuthProvider = ({ children }) => {
           console.log(
             `User with role ${updatedUser.role} cannot access ${pathname}, redirecting to appropriate dashboard.`
           );
-          const roleDashboard = updatedUser.role 
-            ? `/telehealth/${updatedUser.role}` 
+          const roleDashboard = updatedUser.role
+            ? `/telehealth/${updatedUser.role}`
             : dashboardPath;
           router.push(roleDashboard);
         }
@@ -345,8 +367,10 @@ export const AuthProvider = ({ children }) => {
       : `/telehealth${route}`;
 
     // For specific roles, check if route starts with their role
-    return normalizedRoute.startsWith(`/telehealth/${user.role}`) || 
-           normalizedRoute === "/telehealth/dashboard";
+    return (
+      normalizedRoute.startsWith(`/telehealth/${user.role}`) ||
+      normalizedRoute === "/telehealth/dashboard"
+    );
   };
 
   const signup = async (email, password) => {
@@ -356,16 +380,16 @@ export const AuthProvider = ({ children }) => {
         email,
         password
       );
-      
+
       // Send email verification immediately after signup
       if (userCredential.user) {
         await sendEmailVerification(userCredential.user);
         console.log("Email verification sent");
-        
+
         // Don't initialize profile until email is verified
         // The profile will be initialized after email verification
       }
-      
+
       return userCredential.user;
     } catch (error) {
       console.error("Signup error:", error);
@@ -380,13 +404,13 @@ export const AuthProvider = ({ children }) => {
         email,
         password
       );
-      
+
       // Check if email is verified for login
       if (!userCredential.user.emailVerified) {
         // Don't proceed with profile fetch if email not verified
         return userCredential.user;
       }
-      
+
       await client.refetchQueries({ include: ["GetMyProfile"] });
       return userCredential.user;
     } catch (error) {
@@ -399,21 +423,21 @@ export const AuthProvider = ({ children }) => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      
+
       // Handle email verification for Google users (edge case)
       if (!result.user.emailVerified) {
         console.log("Google user email not verified, sending verification");
         await sendEmailVerification(result.user);
         return result.user; // Let the auth state handler manage the flow
       }
-      
+
       // Check if user profile already exists
       try {
         const { data } = await client.query({
           query: GET_MY_PROFILE,
           fetchPolicy: "network-only",
         });
-        
+
         if (data && data.me) {
           // Profile exists, user is logging in
           console.log("Existing Google user logging in");
@@ -436,15 +460,17 @@ export const AuthProvider = ({ children }) => {
           });
           console.log("User profile initialized after Google sign-in");
         } catch (mutationError) {
-          console.error("Error initializing user profile after Google sign-in:", mutationError);
+          console.error(
+            "Error initializing user profile after Google sign-in:",
+            mutationError
+          );
           // Don't throw here - let the auth state handler manage the user flow
         }
       }
-      
+
       // Refetch queries to ensure fresh data
       await client.refetchQueries({ include: ["GetMyProfile"] });
       return result.user;
-      
     } catch (error) {
       console.error("Google sign in error:", error);
       throw error;
@@ -481,7 +507,7 @@ export const AuthProvider = ({ children }) => {
       if (auth.currentUser) {
         await reload(auth.currentUser);
         const isVerified = auth.currentUser.emailVerified;
-        
+
         if (isVerified) {
           // Initialize profile after email verification
           try {
@@ -496,7 +522,7 @@ export const AuthProvider = ({ children }) => {
             );
           }
         }
-        
+
         return isVerified;
       }
       return false;
@@ -541,9 +567,7 @@ export const AuthProvider = ({ children }) => {
         canAccessRoute,
         refetchUser,
         getRolePath: () =>
-          user?.role
-            ? `/telehealth/${user.role}`
-            : "/telehealth/dashboard",
+          user?.role ? `/telehealth/${user.role}` : "/telehealth/dashboard",
       }}
     >
       {children}

@@ -121,7 +121,7 @@ export default function MultiStepSignup({ email }) {
   const saveUserData = async () => {
     if (!user?.id) {
       setError("No user authenticated. Please log in again.");
-      return;
+      return fasle;
     }
 
     setIsLoading(true);
@@ -185,7 +185,13 @@ export default function MultiStepSignup({ email }) {
           specialization: userData.specialization,
           experienceYears: parseInt(userData.experienceYears) || 0,
           aboutMe: userData.aboutYou || "", // Match the schema field name
-          certificates: userData.certificates || null,
+          certificates: userData.certificates.map((cert) => ({
+            name: cert.name,
+            url: cert.url,
+          })) || null,
+          rejectionReason: null,
+          rejectedBy: null,
+          rejectedAt: null,
           // Profile image URL would be handled separately if needed
         };
       }
@@ -219,6 +225,7 @@ export default function MultiStepSignup({ email }) {
       // Mark registration as complete and move to success step
       setRegistrationComplete(true);
       setCurrentStep(getTotalSteps()); // Move to success step
+      return true;
     } catch (error) {
       console.error("Error saving user data:", error);
       setError(`Failed to complete registration: ${error.message}`);
@@ -311,17 +318,9 @@ export default function MultiStepSignup({ email }) {
             />
           );
         }
-
-        // For other roles: go straight to confirmation
         return (
-          <ConfirmationStep
-            userData={userData}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            isLoading={isLoading}
-          />
+          <SignupSuccess userData={userData} onComplete={handleComplete} />
         );
-
       case 5:
         // Confirmation step for doctors and patients
         if (userData.role === "doctor" || userData.role === "patient") {

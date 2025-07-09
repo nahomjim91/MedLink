@@ -146,19 +146,10 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
     ],
     admin: [
       { name: "Home", path: "/telehealth/admin", icon: <Home /> },
+
       {
-        name: "Analytics",
-        path: "/telehealth/admin/analytics",
-        icon: <BarChart2 />,
-      },
-      {
-        name: "History",
-        path: "/telehealth/admin/history",
-        icon: <Clock />,
-      },
-      {
-        name: "Patients",
-        path: "/telehealth/admin/patients",
+        name: "Pending doctors",
+        path: "/telehealth/admin/pending-doctors",
         icon: <Users />,
       },
       {
@@ -256,7 +247,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
                 <Link
                   key={item.path}
                   href={item.path}
-                  title={item.name} 
+                  title={item.name}
                   className={`flex items-center text-lg rounded-lg transition-colors cursor-pointer ${
                     item.name === "Settings" ? "mt-8" : ""
                   }`}

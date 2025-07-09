@@ -23,6 +23,9 @@ export const GET_MY_PROFILE = gql`
         isApproved
         telehealthWalletBalance
         pricePerSession
+        rejectionReason
+        rejectedBy
+        rejectedAt
         certificates {
           name
           url

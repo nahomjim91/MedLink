@@ -116,3 +116,11 @@ export const UPDATE_PATIENT_PROFILE = gql`
     }
   }
 `;
+export const UPDATE_USER_PROFILE_STATUS = gql`
+  mutation UpdateUserProfile($input: THUserInput!) {
+    updateUserProfile(input: $input) {
+      id
+      profileComplete
+    }
+  }
+`;
