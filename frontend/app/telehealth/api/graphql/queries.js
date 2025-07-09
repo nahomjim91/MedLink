@@ -162,3 +162,25 @@ export const GET_DOCTOR_SPECIALIZATIONS = gql`
     getDoctorSpecializations
   }
 `;
+
+
+// Query to get a patient by ID
+export const GET_Patient_BY_ID = gql`
+ query GetPatientById($id: ID!) {
+  thUserById(id: $id) {
+      id
+      firstName
+      lastName
+      gender
+      dob
+      profileImageUrl
+      patientProfile {
+        patientId
+        height
+        weight
+        bloodType
+        telehealthWalletBalance
+      }
+    }
+  }
+`;

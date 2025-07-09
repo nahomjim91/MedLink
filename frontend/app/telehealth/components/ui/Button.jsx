@@ -220,7 +220,7 @@ export const ImageIconButton = ({
       <Image
         src={ imageUrl.startsWith("http") || imageUrl.startsWith("blob:")
       ? imageUrl
-      : process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL + imageUrl
+      : process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + imageUrl
   }
         alt={alt}
         fill

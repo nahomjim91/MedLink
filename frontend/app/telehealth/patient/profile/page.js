@@ -9,16 +9,23 @@ import {
   X,
   DownloadX,
   Download,
+  Eye,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import ProfileImage from "../../components/ui/ProfileImage";
 import { useAuth } from "../../hooks/useAuth";
 import EditProfileModal from "./EditProfileModal";
+import { usePrescriptionsByPatientId } from "../../hooks/usePrescription";
+import {PrescriptionViewModal} from "../../components/ui/modal/PrescriptionModal"
 
 export default function PatientProfile() {
-  const { user , refetchUser } = useAuth();
-  const [showEditModal, setShowEditModal] = useState(false); 
+  const { user, refetchUser } = useAuth();
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showManageSharing, setShowManageSharing] = useState(false);
+  const [showPrescriptionModalView, setShowPrescriptionModalView] =
+    useState(false);
+  const [selectedPrescription, setSelectedPrescription] = useState(null);
+
   const [permissions, setPermissions] = useState({
     duringMeeting: "Allow",
     afterMeeting: "Allow",
@@ -38,11 +45,11 @@ export default function PatientProfile() {
     });
   };
 
-const onClose = () =>{
-  setShowEditModal(false);
-  refetchUser();
-}
- 
+  const onClose = () => {
+    setShowEditModal(false);
+    refetchUser();
+  };
+
   const accessList = Array(4)
     .fill(null)
     .map((_, index) => ({
@@ -60,14 +67,10 @@ const onClose = () =>{
     console.log("Remove access:", accessId);
   };
 
-  const handleViewFile = (fileId) => {
-    console.log("View file:", fileId);
-  };
-
-   const handleProfileUpdateSuccess = (updatedData) => {
+  const handleProfileUpdateSuccess = (updatedData) => {
     console.log("Profile updated successfully:", updatedData);
     setShowEditModal(false);
-    
+
     alert("Profile updated successfully!");
   };
   console.log("user: ", user);
@@ -88,8 +91,7 @@ const onClose = () =>{
         </h2>
         <button
           className="flex items-center text-teal-600 hover:text-teal-700 transition-colors"
-         onClick={() => setShowEditModal(true)}
-
+          onClick={() => setShowEditModal(true)}
         >
           <span className="mr-2">Edit</span>
           <Edit size={16} />
@@ -170,164 +172,6 @@ const onClose = () =>{
       </div>
     </div>
   );
-
-  const ResponsiveFilesSection = () => {
-    const [currentPage, setCurrentPage] = useState(1);
-    const filesPerPage = 6; // Show 5 files per page on desktop
-
-    // Sample files data - increased to 15 for better pagination demo
-    const files = Array.from({ length: 15 }, (_, i) => ({
-      id: i + 1,
-      name: `document${i + 1}.png`,
-      appointmentNo: `#${123456 + i}`,
-    }));
-
-    // Calculate pagination
-    const totalPages = Math.ceil(files.length / filesPerPage);
-    const startIndex = (currentPage - 1) * filesPerPage;
-    const endIndex = startIndex + filesPerPage;
-    const currentFiles = files.slice(startIndex, endIndex);
-
-    const handleViewFile = (id) => {
-      console.log("View file:", id);
-    };
-
-    const handleRemoveFile = (id) => {
-      console.log("Remove file:", id);
-    };
-
-    const handleDownloadFile = (id) => {
-      console.log("Download file:", id);
-    };
-
-    const handlePreviousPage = () => {
-      setCurrentPage((prev) => Math.max(1, prev - 1));
-    };
-
-    const handleNextPage = () => {
-      setCurrentPage((prev) => Math.min(totalPages, prev + 1));
-    };
-
-    return (
-      <div className="bg-none md:bg-white rounded-lg md:shadow-sm p-3 md:py-4 ">
-        {/* Desktop Table View - Hidden on mobile */}
-        <div className="hidden lg:block overflow-x-auto py-2">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-teal-50">
-                <th className="text-left py-3  font-medium text-gray-700">
-                  File Name
-                </th>
-                <th className="text-left py-3  font-medium text-gray-700">
-                  Appointment No
-                </th>
-                <th className="text-center py-3  font-medium text-gray-700">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentFiles.map((file) => (
-                <tr key={file.id} className="border-b border-gray-100">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center">
-                      <FileText size={16} className="text-teal-600 mr-2" />
-                      <span className="text-gray-700">{file.name}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-gray-600">
-                    {file.appointmentNo}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex justify-center gap-2">
-                      <button
-                        onClick={() => handleViewFile(file.id)}
-                        className="bg-teal-500 text-white px-4 py-1 rounded-xl text-sm hover:bg-teal-600 transition-colors"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleRemoveFile(file.id)}
-                        className="bg-red-500 text-white px-4 py-1 rounded-xl text-sm hover:bg-red-600 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile/Tablet Card View - Shown on smaller screens */}
-        <div className="h-[50vh] overflow-y-auto lg:hidden scrollbar-hide">
-          <div className="lg:hidden grid grid-cols-2 md:grid-cols-3 gap-4">
-            {files.map((file) => (
-              <div
-                key={file.id}
-                className="bg-gray-50 rounded-lg p-2 relative border border-gray-200 hover:shadow-md transition-shadow"
-              >
-                {/* Delete button - positioned at top right */}
-                <button
-                  onClick={() => handleRemoveFile(file.id)}
-                  className="absolute top-2 right-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-1 transition-colors"
-                  aria-label="Delete file"
-                >
-                  <X size={16} />
-                </button>
-
-                {/* File icon and content */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="bg-teal-100 rounded-lg p-2 mb-3">
-                    <FileText size={32} className="text-teal-600" />
-                  </div>
-
-                  <h4 className="text-sm font-medium text-secondary mb-1 truncate w-full">
-                    {file.name}
-                  </h4>
-
-                  <p className="text-xs text-gray-500 mb-3">
-                    {file.appointmentNo}
-                  </p>
-
-                  {/* Download button */}
-                  <button
-                    onClick={() => handleDownloadFile(file.id)}
-                    className="bg-teal-500 text-white p-2 rounded-full hover:bg-teal-600 transition-colors"
-                    aria-label="Download file"
-                  >
-                    <Download size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pagination - only shown on desktop */}
-        <div className="hidden lg:flex justify-between items-center mt-4">
-          <button
-            onClick={handlePreviousPage}
-            disabled={currentPage === 1}
-            className="bg-teal-500 text-white px-4 py-2 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-teal-600 transition-colors"
-          >
-            Previous
-          </button>
-          <span className="text-gray-600">
-            Page {currentPage} of {totalPages} ({files.length} total files)
-          </span>
-          <button
-            onClick={handleNextPage}
-            disabled={currentPage === totalPages}
-            className="bg-teal-500 text-white px-4 py-2 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-teal-600 transition-colors"
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   const ManageSharingSettings = () => (
     <div className=" bg-none md:bg-white rounded-lg md:shadow-sm p-3">
@@ -445,6 +289,16 @@ const onClose = () =>{
     </div>
   );
 
+  const onClickPrescription = (prescriptionId) => {
+    setSelectedPrescription(prescriptionId);
+    setShowPrescriptionModalView(true);
+  };
+
+  const handleClosePrescriptionModal = () => {
+    setShowPrescriptionModalView(false);
+    setSelectedPrescription(null);
+  };
+
   // Mobile view
   if (showManageSharing && window.innerWidth < 1024) {
     return (
@@ -459,7 +313,6 @@ const onClose = () =>{
       {/* Mobile View */}
       <div className="lg:hidden p-4">
         <ProfileInfo />
-
         <div className="flex justify-between items-center ">
           <h2 className="text-lg font-semibold px-2">Your File</h2>
           <Button
@@ -469,7 +322,10 @@ const onClose = () =>{
             Manage Sharing
           </Button>
         </div>
-        <ResponsiveFilesSection />
+        <ResponsivePrescriptionsSection
+          userId={user.id}
+          onClickPrescription={onClickPrescription}
+        />{" "}
       </div>
 
       {/* Desktop View */}
@@ -483,7 +339,10 @@ const onClose = () =>{
           {/* Middle Column - General Info & Files */}
           <div className="col-span-5">
             <GeneralInfo />
-            <ResponsiveFilesSection />
+            <ResponsivePrescriptionsSection
+              userId={user.id}
+              onClickPrescription={onClickPrescription}
+            />
           </div>
 
           {/* Right Column - Manage Sharing */}
@@ -492,13 +351,285 @@ const onClose = () =>{
           </div>
         </div>
       </div>
-        {/* Edit Profile Modal */}
-        <EditProfileModal
-          isOpen={showEditModal}
-          onClose={onClose}
-          user={user}
-          onSuccess={handleProfileUpdateSuccess}
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditModal}
+        onClose={onClose}
+        user={user}
+        onSuccess={handleProfileUpdateSuccess}
+      />
+
+        {showPrescriptionModalView && (
+        <PrescriptionViewModal
+          isOpen={showPrescriptionModalView}
+          onClose={handleClosePrescriptionModal}
+          prescriptionId={selectedPrescription}
+          isPatient={user.role === "patient"}
         />
+      )}
     </div>
   );
 }
+
+export const ResponsivePrescriptionsSection = ({
+  userId,
+  onClickPrescription,
+}) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const prescriptionsPerPage = 6;
+
+  // Fetch prescriptions using the hook
+  const {
+    prescriptions = [],
+    loading,
+    error,
+    fetchPrescriptions,
+  } = usePrescriptionsByPatientId(userId);
+
+  // Fetch prescriptions on component mount
+  React.useEffect(() => {
+    if (userId) {
+      fetchPrescriptions(userId);
+    }
+  }, [userId, fetchPrescriptions]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(prescriptions.length / prescriptionsPerPage);
+  const startIndex = (currentPage - 1) * prescriptionsPerPage;
+  const endIndex = startIndex + prescriptionsPerPage;
+  const currentPrescriptions = prescriptions.slice(startIndex, endIndex);
+
+  const handleViewPrescription = (prescriptionId) => {
+    onClickPrescription(prescriptionId);
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getMedicationSummary = (medications) => {
+    if (!medications || medications.length === 0) return "No medications";
+    if (medications.length === 1) return medications[0].drugName;
+    return `${medications[0].drugName} +${medications.length - 1} more`;
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-none md:bg-white rounded-lg md:shadow-sm p-3 md:py-4">
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+          <span className="ml-2 text-gray-600">Loading prescriptions...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-none md:bg-white rounded-lg md:shadow-sm p-3 md:py-4">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-red-500 text-center">
+            <p className="font-medium">Error loading prescriptions</p>
+            <p className="text-sm mt-1">{error.message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (prescriptions.length === 0) {
+    return (
+      <div className="bg-none md:bg-white rounded-lg md:shadow-sm p-3 md:py-4">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-gray-500 text-center">
+            <FileText size={48} className="mx-auto mb-2 text-gray-400" />
+            <p className="font-medium">No prescriptions found</p>
+            <p className="text-sm mt-1">Your prescriptions will appear here</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-none md:bg-white rounded-lg md:shadow-sm p-3 md:py-4">
+      {/* Desktop Table View - Hidden on mobile */}
+      <div className="hidden lg:block overflow-x-auto py-2">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-teal-50">
+              <th className="text-left py-3 px-4 font-medium text-gray-700">
+                Doctor
+              </th>
+              <th className="text-left py-3 px-4 font-medium text-gray-700">
+                Medications
+              </th>
+              <th className="text-left py-3 px-4 font-medium text-gray-700">
+                Date
+              </th>
+              <th className="text-center py-3 px-4 font-medium text-gray-700">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentPrescriptions.map((prescription) => (
+              <tr
+                key={prescription.id}
+                className="border-b border-gray-100 hover:bg-gray-50"
+              >
+                <td className="py-3 px-4">
+                  <div className="flex items-center">
+                    {prescription.doctorDetails.profileImage ? (
+                      <img
+                        src={prescription.doctorDetails.profileImage}
+                        alt={prescription.doctorDetails.name}
+                        className="w-8 h-8 rounded-full mr-3"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center mr-3">
+                        <span className="text-teal-600 font-medium text-sm">
+                          {prescription.doctorDetails.name.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-gray-700 font-medium">
+                      {prescription.doctorDetails.name}
+                    </span>
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-gray-600 text-sm">
+                    {getMedicationSummary(prescription.medications)}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-gray-600 text-sm">
+                  {formatDate(prescription.createdAt)}
+                </td>
+                
+                <td className="py-3 px-4">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => handleViewPrescription(prescription.id)}
+                      className="bg-teal-500 text-white px-4 py-1 rounded-xl text-sm hover:bg-teal-600 transition-colors flex items-center gap-1"
+                    >
+                      <Eye size={14} />
+                      View
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile/Tablet Card View - Shown on smaller screens */}
+      <div className="h-[50vh] overflow-y-auto lg:hidden scrollbar-hide">
+        <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+          {prescriptions.map((prescription) => (
+            <div
+              key={prescription.id}
+              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              {/* Doctor Info */}
+              <div className="flex items-center mb-3">
+                {prescription.doctorDetails.profileImage ? (
+                  <img
+                    src={prescription.doctorDetails.profileImage}
+                    alt={prescription.doctorDetails.name}
+                    className="w-10 h-10 rounded-full mr-3"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center mr-3">
+                    <span className="text-teal-600 font-medium">
+                      {prescription.doctorDetails.name.charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-medium text-gray-900 text-sm">
+                    {prescription.doctorDetails.name}
+                  </h4>
+                  <p className="text-xs text-gray-500">
+                    {formatDate(prescription.createdAt)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Medications */}
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-1">Medications:</p>
+                <p className="text-sm text-gray-700">
+                  {getMedicationSummary(prescription.medications)}
+                </p>
+              </div>
+
+              {/* Status */}
+              <div className="mb-3">
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    prescription.status === "active"
+                      ? "bg-green-100 text-green-800"
+                      : prescription.status === "completed"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {prescription.status || "Active"}
+                </span>
+              </div>
+
+              {/* Action Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleViewPrescription(prescription.id)}
+                  className="bg-teal-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-teal-600 transition-colors flex items-center gap-2 w-full justify-center"
+                >
+                  <Eye size={16} />
+                  View Prescription
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Pagination - only shown on desktop when needed */}
+      {totalPages > 1 && (
+        <div className="hidden lg:flex justify-between items-center mt-4">
+          <button
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+            className="bg-teal-500 text-white px-4 py-2 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-teal-600 transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-gray-600">
+            Page {currentPage} of {totalPages} ({prescriptions.length} total
+            prescriptions)
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+            className="bg-teal-500 text-white px-4 py-2 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-teal-600 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

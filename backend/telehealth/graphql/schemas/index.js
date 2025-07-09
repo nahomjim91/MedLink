@@ -5,6 +5,7 @@ const { gql } = require('apollo-server-express');
 const thUser = require('./schemas');
 const appointmentSchema = require('./appointmentSchema');
 const transactionSchema = require('./transactionSchema');
+const prescriptionSchema = require('./prescriptionSchema');
 
 // Base schema with common types and queries
 const baseSchema = gql`
@@ -18,4 +19,4 @@ const baseSchema = gql`
 `;
 
 // Combine and export all schemas
-module.exports = [baseSchema, thUser, appointmentSchema, transactionSchema];
+module.exports = [baseSchema, thUser, appointmentSchema, transactionSchema , prescriptionSchema];

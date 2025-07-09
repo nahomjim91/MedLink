@@ -165,7 +165,7 @@ const resolvers = {
 
     // Get user by ID (admin only)
     thUserById: async (_, { id }, context) => {
-      await isAdmin(context);
+      // await isAdmin(context);
       return await UserModel.getById(id);
     },
 

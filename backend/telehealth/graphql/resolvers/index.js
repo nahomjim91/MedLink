@@ -2,6 +2,7 @@
 const thUser = require('./resolvers')
 const appointment = require('./appointmentResolver')  
 const transaction = require('./transactionResolvers')
+const prescription = require('./prescriptionResolver')
 
 // Merge resolvers
 const resolvers = {
@@ -9,11 +10,13 @@ const resolvers = {
     ...thUser.Query,
     ...appointment.Query,
     ...transaction.Query,
+    ...prescription.Query
   },
   Mutation: {
     ...thUser.Mutation,
     ...appointment.Mutation,
     ...transaction.Mutation,
+    ...prescription.Mutation
   },
   // Custom scalars
   Date:  thUser.Date, 
@@ -25,6 +28,7 @@ const resolvers = {
   DoctorProfile: thUser.DoctorProfile,
   Transaction: transaction.Transaction,
   Refund: transaction.Refund
+  
 };
 
 module.exports = resolvers;

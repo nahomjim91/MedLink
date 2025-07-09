@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect , useCallback} from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Search,
   MessageCircle,
@@ -23,6 +23,10 @@ import {
 import DoctorExtensionModal from "./modal/DoctorExtensionModal";
 import PatientExtensionResultModal from "./modal/PatientExtensionResultModal";
 import VideoCallModal from "./modal/VideoCallModal";
+import {
+  PrescriptionModal,
+  PrescriptionViewModal,
+} from "./modal/PrescriptionModal";
 
 const AppointmentStatus = {
   REQUESTED: "REQUESTED",
@@ -94,6 +98,10 @@ const MedicalChatInterface = ({ appointmentId }) => {
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [showPatientResultModal, setShowPatientResultModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showPrescriptionModalView, setShowPrescriptionModalView] =
+    useState(false);
+  const [selectedPrescription, setSelectedPrescription] = useState(null);
   const [participantName, setParticipantName] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
@@ -265,6 +273,7 @@ const MedicalChatInterface = ({ appointmentId }) => {
 
     return () => clearInterval(interval);
   }, [isConnected, chatRooms, checkOnlineStatus]);
+
   ///////////////////////////////////////////
   // Handle extension request for doctors
   useEffect(() => {
@@ -703,6 +712,31 @@ const MedicalChatInterface = ({ appointmentId }) => {
     originalDuration: "30 minutes", // You can get this from your appointment data
   };
 
+  const handleOpenModal = () => {
+    console.log("Opening modal...");
+    setShowPrescriptionModal(true);
+    console.log("Modal opened:", true); // This will always show true because you're logging the literal value
+  };
+
+  const handleCloseModal = () => {
+    setShowPrescriptionModal(false);
+  };
+  const onSubmittPrescrption = (message, id) => {
+    console.log("Message:", message);
+    sendMessage(id, message.trim());
+    setMessage("");
+  };
+
+  const onClickPrescription = (prescriptionId) => {
+    setSelectedPrescription(prescriptionId);
+    setShowPrescriptionModalView(true);
+  };
+
+  const handleClosePrescriptionModal = () => {
+    setShowPrescriptionModalView(false);
+    setSelectedPrescription(null);
+  };
+
   return (
     <div className="flex h-[89vh] bg-amber-300 overflow-hidden bg-gradient-to-br rounded-none sm:rounded-2xl">
       {/* Connection Status */}
@@ -832,7 +866,10 @@ const MedicalChatInterface = ({ appointmentId }) => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                       {chat.avatar ? (
                         <img
-                          src={ process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + chat.avatar}
+                          src={
+                            process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                            chat.avatar
+                          }
                           alt={chat.doctorName || chat.patientName}
                           className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full object-cover"
                         />
@@ -912,7 +949,10 @@ const MedicalChatInterface = ({ appointmentId }) => {
                     <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                       {activeChat.avatar ? (
                         <img
-                          src={ process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +activeChat.avatar}
+                          src={
+                            process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                            activeChat.avatar
+                          }
                           alt={activeChat.doctorName || activeChat.patientName}
                           className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full object-cover"
                         />
@@ -972,6 +1012,18 @@ const MedicalChatInterface = ({ appointmentId }) => {
                       </span>
                     </button>
                   )}
+                  {activeAppointment?.status === "IN_PROGRESS" &&
+                    user.role === "doctor" && (
+                      <button
+                        onClick={() => handleOpenModal()}
+                        className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-2 py-1.5 sm:px-3 sm:py-2 lg:px-5 lg:py-2.5 rounded-lg sm:rounded-xl flex items-center space-x-1 lg:space-x-2 hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span className="hidden sm:inline font-medium text-xs sm:text-sm lg:text-base">
+                          Prescription
+                        </span>
+                      </button>
+                    )}
 
                   {activeAppointment?.status === "IN_PROGRESS" &&
                     user.role === "patient" && (
@@ -1066,100 +1118,163 @@ const MedicalChatInterface = ({ appointmentId }) => {
                   </div>
 
                   {/* Messages */}
-                  {currentMessages.map((msg) => (
-                    <div
-                      key={msg.messageId}
-                      className={`mb-3 sm:mb-4 lg:mb-6 flex ${
-                        msg.senderId === user?.id
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
-                    >
+                  {currentMessages.map((msg) => {
+                    // Check if message is a prescription
+                    const isPrescription = msg.textContent?.includes(
+                      "New Prescription Submitted"
+                    );
+                    const prescriptionId = isPrescription
+                      ? msg.textContent.match(/ID:\s*([A-Za-z0-9]+)/)?.[1]
+                      : null;
+                    return (
                       <div
-                        className={`max-w-[85%] sm:max-w-[75%] lg:max-w-md px-3 sm:px-4 lg:px-5 py-2 sm:py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
+                        key={msg.messageId}
+                        className={`mb-3 sm:mb-4 lg:mb-6 flex ${
                           msg.senderId === user?.id
-                            ? "bg-gradient-to-br from-teal-500 to-primary/80 text-white"
-                            : "bg-white textsecondary/90 border border-gray-100"
+                            ? "justify-end"
+                            : "justify-start"
                         }`}
                       >
-                        {/* File Message */}
-                        {msg.fileUrl ? (
-                          <div className="space-y-2 sm:space-y-3">
-                            <div className="flex items-center space-x-2 sm:space-x-3">
-                              <div
-                                className={`p-1.5 sm:p-2 rounded-lg ${
-                                  msg.senderId === user?.id
-                                    ? "bg-white bg-opacity-20"
-                                    : "bg-gray-100"
-                                }`}
-                              >
-                                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                              </div>
-                              <a
-                                href={`${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}${msg.fileUrl}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs sm:text-sm underline break-all hover:opacity-80 font-medium transition-opacity duration-200"
-                              >
-                                {msg.fileName || "Download file"}
-                              </a>
-                            </div>
-                            {msg.textContent && (
-                              <p className="text-xs sm:text-sm break-words leading-relaxed">
-                                {msg.textContent}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          /* Text Message */
-                          <p className="text-xs sm:text-sm break-words leading-relaxed">
-                            {msg.textContent}
-                          </p>
-                        )}
-
-                        {/* Message Footer */}
                         <div
-                          className={`flex items-center mt-1 sm:mt-2 ${
+                          className={`max-w-[85%] sm:max-w-[75%] lg:max-w-md px-3 sm:px-4 lg:px-5 py-2 sm:py-3 rounded-2xl shadow-sm transition-all duration-200 hover:shadow-md ${
                             msg.senderId === user?.id
-                              ? "justify-end"
-                              : "justify-start"
+                              ? "bg-gradient-to-br from-teal-500 to-primary/80 text-white"
+                              : "bg-white textsecondary/90 border border-gray-100"
                           }`}
                         >
-                          <span
-                            className={`text-xs font-medium ${
+                          {/* Prescription Message */}
+                          {isPrescription ? (
+                            <div
+                              className="space-y-2 sm:space-y-3 cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                              onClick={() =>
+                                prescriptionId &&
+                                onClickPrescription(prescriptionId)
+                              }
+                            >
+                              <div className="flex items-center space-x-2 sm:space-x-3">
+                                <div
+                                  className={`p-1.5 sm:p-2 rounded-lg ${
+                                    msg.senderId === user?.id
+                                      ? "bg-white bg-opacity-20"
+                                      : "bg-gray-100"
+                                  }`}
+                                >
+                                  {/* Prescription Icon */}
+                                  <svg
+                                    className="w-4 h-4 sm:w-5 sm:h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
+                                  </svg>
+                                </div>
+                                <div className="flex-1">
+                                  {/* Mobile: Short text */}
+                                  <p className="text-xs sm:text-sm font-medium break-words leading-relaxed sm:hidden">
+                                    New Prescription
+                                  </p>
+                                  {/* Desktop: Full text */}
+                                  <p className="text-xs sm:text-sm font-medium break-words leading-relaxed hidden sm:block">
+                                    New Prescription Submitted
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Additional text content if present */}
+                              {msg.textContent &&
+                                !msg.textContent.includes(
+                                  "New Prescription Submitted"
+                                ) && (
+                                  <p className="text-xs sm:text-sm break-words leading-relaxed">
+                                    {msg.textContent}
+                                  </p>
+                                )}
+                            </div>
+                          ) : /* File Message */
+                          msg.fileUrl ? (
+                            <div className="space-y-2 sm:space-y-3">
+                              <div className="flex items-center space-x-2 sm:space-x-3">
+                                <div
+                                  className={`p-1.5 sm:p-2 rounded-lg ${
+                                    msg.senderId === user?.id
+                                      ? "bg-white bg-opacity-20"
+                                      : "bg-gray-100"
+                                  }`}
+                                >
+                                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </div>
+                                <a
+                                  href={`${process.env.NEXT_PUBLIC_TELEHEALTH_API_URL}${msg.fileUrl}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs sm:text-sm underline break-all hover:opacity-80 font-medium transition-opacity duration-200"
+                                >
+                                  {msg.fileName || "Download file"}
+                                </a>
+                              </div>
+                              {msg.textContent && (
+                                <p className="text-xs sm:text-sm break-words leading-relaxed">
+                                  {msg.textContent}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            /* Regular Text Message */
+                            <p className="text-xs sm:text-sm break-words leading-relaxed">
+                              {msg.textContent}
+                            </p>
+                          )}
+
+                          {/* Message Footer */}
+                          <div
+                            className={`flex items-center mt-1 sm:mt-2 ${
                               msg.senderId === user?.id
-                                ? "text-white text-opacity-70"
-                                : "textsecondary/20"
+                                ? "justify-end"
+                                : "justify-start"
                             }`}
                           >
-                            {formatMessageTime(msg.createdAt)}
-                          </span>
-                          {msg.senderId === user?.id && (
-                            <Check
-                              className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1 sm:ml-2 ${
-                                msg.readBy && msg.readBy.length > 1
-                                  ? "text-white"
-                                  : "text-white text-opacity-70"
+                            <span
+                              className={`text-xs font-medium ${
+                                msg.senderId === user?.id
+                                  ? "text-white text-opacity-70"
+                                  : "textsecondary/20"
                               }`}
-                            />
+                            >
+                              {formatMessageTime(msg.createdAt)}
+                            </span>
+                            {msg.senderId === user?.id && (
+                              <Check
+                                className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ml-1 sm:ml-2 ${
+                                  msg.readBy && msg.readBy.length > 1
+                                    ? "text-white"
+                                    : "text-white text-opacity-70"
+                                }`}
+                              />
+                            )}
+                          </div>
+
+                          {/* Edited Indicator */}
+                          {msg.editedAt && (
+                            <div
+                              className={`text-xs mt-1 font-medium ${
+                                msg.senderId === user?.id
+                                  ? "text-white text-opacity-70"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              (edited)
+                            </div>
                           )}
                         </div>
-
-                        {/* Edited Indicator */}
-                        {msg.editedAt && (
-                          <div
-                            className={`text-xs mt-1 font-medium ${
-                              msg.senderId === user?.id
-                                ? "text-white text-opacity-70"
-                                : "text-gray-400"
-                            }`}
-                          >
-                            (edited)
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Typing Indicator */}
                   {typingUsers.length > 0 && (
@@ -1466,6 +1581,26 @@ const MedicalChatInterface = ({ appointmentId }) => {
         extensionStatus={extensionStatus}
         autoCloseDelay={8000}
       />
+
+      {showPrescriptionModal && (
+        <PrescriptionModal
+          isOpen={showPrescriptionModal}
+          onClose={handleCloseModal}
+          patientId={activeChat?.patientId}
+          appointmentId={activeAppointment?.appointmentId}
+          onSubmittPrescrption={onSubmittPrescrption}
+        />
+      )}
+
+      {showPrescriptionModalView && (
+        <PrescriptionViewModal
+          isOpen={showPrescriptionModalView}
+          onClose={handleClosePrescriptionModal}
+          prescriptionId={selectedPrescription}
+          error={error}
+          isPatient={user.role === "patient"}
+        />
+      )}
     </div>
   );
 };
