@@ -73,6 +73,8 @@ const prescriptionTypeDefs = `
     prescriptionsByDoctorId(doctorId: ID!): [Prescription!]!
     myPrescriptions: [Prescription!]!
     myPatientsPrescriptions: [Prescription!]!
+    #admin
+    allPrescriptions: [Prescription!]
   }
 
   extend type Mutation {

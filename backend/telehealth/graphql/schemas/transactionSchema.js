@@ -171,14 +171,14 @@ const transactionTypeDefs = gql`
     
     # Search transactions with filters
     searchTransactions(
-      filter: TransactionFilterInput!
+      filter: TransactionFilterInput
       limit: Int
       offset: Int
     ): TransactionSearchResult
     
     # Search refunds with filters
     searchRefunds(
-      filter: RefundFilterInput!
+      filter: RefundFilterInput
       limit: Int
       offset: Int
     ): RefundSearchResult
@@ -190,10 +190,10 @@ const transactionTypeDefs = gql`
     refundStats: RefundStats
     
     # Get all transaction statistics (admin only)
-    allTransactionStats: TransactionStats
+    allTransactionStats(filter: TransactionFilterInput): TransactionStats
     
     # Get all refund statistics (admin only)
-    allRefundStats: RefundStats
+    allRefundStats(filter: RefundFilterInput): RefundStats
   }
 
   extend type Mutation {

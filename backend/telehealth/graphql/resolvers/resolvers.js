@@ -247,6 +247,17 @@ const resolvers = {
       const user = await isDoctor(context);
       return await DoctorAvailabilitySlotModel.getDoctorSlots(user.uid);
     },
+
+    // Get patient by ID
+    patientById: async (_, { id }) => {
+      return await PatientProfileModel.getById(id);
+    },
+
+    // Get all patients
+   allPatients: async (_, __, context) => {
+  await isAdmin(context);
+  return await PatientProfileModel.getAll();
+},
   },
 
   Mutation: {

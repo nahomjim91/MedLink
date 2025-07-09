@@ -1,681 +1,1572 @@
-import React, { useState, useEffect } from 'react';
-import { Search, X, Plus, Trash2, Edit3, Check, AlertCircle, Loader2, FileText, User, Calendar, Shield, Sparkles } from 'lucide-react';
-import { useQuery } from '@apollo/client';
-import Image from 'next/image';
-import { useCreatePrescription, usePrescriptionForm } from '../../../hooks/usePrescription';
-import { GET_Patient_BY_ID } from '../../../api/graphql/queries';
-import { useAuth } from '../../../hooks/useAuth';
+"use client";
+import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@apollo/client";
+import {
+  Users,
+  DollarSign,
+  Calendar,
+  RefreshCw,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Activity,
+  FileText,
+  UserCheck,
+  CreditCard,
+  Eye,
+  Filter,
+  Download,
+  Search,
+  ChevronRight,
+  BarChart3,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  Settings,
+  Bell,
+  Menu,
+  X,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+// Import your queries
+import {
+  ADMIN_DASHBOARD_OVERVIEW_QUERY,
+  ADMIN_TRANSACTIONS_QUERY,
+  ADMIN_REFUNDS_QUERY,
+  ADMIN_APPOINTMENTS_QUERY,
+  ADMIN_PATIENTS_QUERY,
+  ADMIN_DOCTORS_QUERY,
+  ADMIN_DOCTOR_APPROVALS_QUERY,
+  ADMIN_PRESCRIPTIONS_QUERY,
+  ADMIN_FINANCIAL_ANALYTICS_QUERY,
+  getTransactionFilterForPeriod,
+  getAppointmentFilterForStatus,
+  getRefundFilterForStatus,
+} from "../api/graphql/admin/queries";
 
-const PrescriptionModal = ({ 
-  isOpen, 
-  onClose, 
-  patientId, 
-  appointmentId 
-}) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isSigned, setIsSigned] = useState(false);
-  const [signatureData, setSignatureData] = useState('');
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+const AdminDashboard = () => {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Get doctor data from auth context
-  const { user } = useAuth();
-  console.log("patientId:", patientId);
+  const analyticsQueryVariables = useMemo(() => {
+    return {
+      transactionFilter: getTransactionFilterForPeriod(selectedPeriod),
+      refundFilter: getRefundFilterForStatus("all"),
+    };
+  }, [selectedPeriod]);
 
-  // Fetch patient data using the provided query
-  const { 
-    data: patientData, 
-    loading: patientLoading, 
-    error: patientError 
-  } = useQuery(GET_Patient_BY_ID, {
-    variables: { id: patientId },
-    skip: !patientId || !isOpen,
-    errorPolicy: 'all'
+  const {
+    data: overviewData,
+    loading: overviewLoading,
+    error: overviewError,
+    refetch: refetchOverview,
+  } = useQuery(ADMIN_DASHBOARD_OVERVIEW_QUERY, {
+    pollInterval: 30000, // Refresh every 30 seconds
+    errorPolicy: "all",
   });
 
-  // Extract patient profile from query result
-  const patient = patientData?.thUserById;
+  // Transactions Query
+  const {
+    data: transactionsData,
+    loading: transactionsLoading,
+    refetch: refetchTransactions,
+  } = useQuery(ADMIN_TRANSACTIONS_QUERY, {
+    variables: {
+      filter: getTransactionFilterForPeriod(selectedPeriod), // Always provide filter
+      limit: 50,
+      offset: 0,
+    },
+    skip: activeTab !== "transactions",
+  });
 
-  // Initialize form with proper data structure
-  const initialFormData = {
-    appointmentId: appointmentId || '',
-    patientDetails: {
-      patientId: patient?.patientProfile?.patientId || patientId || '',
-      name: patient ? `${patient.firstName} ${patient.lastName}` : '',
-      profileImage: patient?.profileImageUrl || ''
+  // Refunds Query
+  const {
+    data: refundsData,
+    loading: refundsLoading,
+    refetch: refetchRefunds,
+  } = useQuery(ADMIN_REFUNDS_QUERY, {
+    variables: {
+      filter: getRefundFilterForStatus(statusFilter), // Always provide filter
+      limit: 50,
+      offset: 0,
     },
-    doctorDetails: {
-      doctorId: user?.doctorProfile?.doctorId || user?.id || '',
-      name: user ? `${user.firstName} ${user.lastName}` : '',
-      profileImage: user?.profileImageUrl || ''
+    skip: activeTab !== "refunds",
+  });
+
+  // Appointments Query
+  const {
+    data: appointmentsData,
+    loading: appointmentsLoading,
+    refetch: refetchAppointments,
+  } = useQuery(ADMIN_APPOINTMENTS_QUERY, {
+    variables: {
+      filter: getAppointmentFilterForStatus(statusFilter), // Always provide filter
+      limit: 50,
+      offset: 0,
     },
-    medications: [],
-    recommendations: ''
+    skip: activeTab !== "appointments",
+  });
+
+  // Patients Query
+  const {
+    data: patientsData,
+    loading: patientsLoading,
+    refetch: refetchPatients,
+  } = useQuery(ADMIN_PATIENTS_QUERY, {
+    variables: { limit: 50, offset: 0 },
+    skip: activeTab !== "patients",
+  });
+
+  // Doctors Query
+  const {
+    data: doctorsData,
+    loading: doctorsLoading,
+    refetch: refetchDoctors,
+  } = useQuery(ADMIN_DOCTORS_QUERY, {
+    variables: { limit: 50, offset: 0 },
+    skip: activeTab !== "doctors",
+  });
+
+  // Doctor Approvals Query
+  const {
+    data: approvalsData,
+    loading: approvalsLoading,
+    refetch: refetchApprovals,
+  } = useQuery(ADMIN_DOCTOR_APPROVALS_QUERY, {
+    variables: { limit: 50, offset: 0 },
+    skip: activeTab !== "approvals",
+  });
+
+  // Prescriptions Query
+  const {
+    data: prescriptionsData,
+    loading: prescriptionsLoading,
+    refetch: refetchPrescriptions,
+  } = useQuery(ADMIN_PRESCRIPTIONS_QUERY, {
+    variables: { limit: 50, offset: 0 },
+    skip: activeTab !== "prescriptions",
+  });
+
+  const revenueTrendData = useMemo(() => {
+    if (!analyticsData?.searchTransactions?.transactions) return [];
+    
+    const dailyRevenue = analyticsData.searchTransactions.transactions
+        .filter(t => t.status === 'SUCCESS')
+        .reduce((acc, transaction) => {
+            const date = new Date(transaction.createdAt).toLocaleDateString('en-CA');
+            if (!acc[date]) acc[date] = 0;
+            acc[date] += transaction.amount;
+            return acc;
+        }, {});
+
+    return Object.entries(dailyRevenue)
+        .map(([date, total]) => ({ name: date, Revenue: total }))
+        .sort((a, b) => new Date(a.name) - new Date(b.name));
+  }, [analyticsData]); // Dependency is the raw data from the query
+
+  // 2. Data for Transaction Types (Pie Chart)
+  const transactionTypeData = useMemo(() => {
+    if (!analyticsData?.searchTransactions?.transactions) return [];
+    
+    const typeCounts = analyticsData.searchTransactions.transactions.reduce((acc, t) => {
+        acc[t.type] = (acc[t.type] || 0) + 1;
+        return acc;
+    }, {});
+
+    return Object.entries(typeCounts).map(([name, value]) => ({ name, value }));
+  }, [analyticsData]);
+
+  // 3. Data for Payment Status (Bar Chart)
+  const paymentStatusData = useMemo(() => {
+    if (!analyticsData?.allTransactionStats) return [];
+    const stats = analyticsData.allTransactionStats;
+    return [
+        { name: 'Success', count: stats.success, fill: '#22c55e' },
+        { name: 'Pending', count: stats.pending, fill: '#f59e0b' },
+        { name: 'Failed', count: stats.failed, fill: '#ef4444' },
+    ];
+  }, [analyticsData]);
+
+  const PIE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+
+
+  // Financial Analytics Query
+  const {
+    data: analyticsData,
+    loading: analyticsLoading,
+    refetch: refetchAnalytics,
+  } = useQuery(ADMIN_FINANCIAL_ANALYTICS_QUERY, {
+    variables: analyticsQueryVariables, // Use the stable, memoized variables
+    skip: activeTab !== "analytics",
+  });
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount || 0);
   };
 
-  // Use the prescription hooks
-  const {
-    createPrescription,
-    loading: createLoading,
-    error: createError,
-    submitSuccess,
-    submitError
-  } = useCreatePrescription();
-
-  const {
-    formData,
-    errors,
-    updateFormData,
-    updateMedication,
-    addMedication: addMedicationToForm,
-    removeMedication: removeMedicationFromForm,
-    validateForm,
-    resetForm
-  } = usePrescriptionForm(initialFormData);
-
-  // Update form data when patient data is loaded or user changes
-  useEffect(() => {
-    if (patient && user && appointmentId) {
-      updateFormData('appointmentId', appointmentId);
-      updateFormData('patientDetails', {
-        patientId: patient.patientProfile?.patientId || patientId,
-        name: `${patient.firstName} ${patient.lastName}`,
-        profileImage: patient.profileImageUrl || ''
-      });
-      updateFormData('doctorDetails', {
-        doctorId: user.doctorProfile?.doctorId || user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        profileImage: user.profileImageUrl || ''
-      });
-    }
-  }, [patient, user, appointmentId, patientId, updateFormData]);
-
-  // Search medications using OpenFDA API
-  const searchMedications = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const response = await fetch(
-        `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${query}"&limit=10`
-      );
-      const data = await response.json();
-      
-      if (data.results) {
-        const medications = data.results.map((drug, index) => ({
-          id: index,
-          name: drug.openfda?.brand_name?.[0] || drug.openfda?.generic_name?.[0] || 'Unknown',
-          generic: drug.openfda?.generic_name?.[0] || '',
-          manufacturer: drug.openfda?.manufacturer_name?.[0] || '',
-          dosage_forms: drug.dosage_form || ['Tablet']
-        }));
-        setSearchResults(medications);
-      } else {
-        setSearchResults([]);
-      }
-    } catch (error) {
-      console.error('Error searching medications:', error);
-      // Fallback to mock data if API fails
-      const mockResults = [
-        { id: 1, name: 'Amoxicillin', generic: 'Amoxicillin', manufacturer: 'Generic Pharma', dosage_forms: ['Capsule', 'Tablet'] },
-        { id: 2, name: 'Paracetamol', generic: 'Acetaminophen', manufacturer: 'Pain Relief Co', dosage_forms: ['Tablet'] },
-        { id: 3, name: 'Ibuprofen', generic: 'Ibuprofen', manufacturer: 'Anti-Inflammatory Inc', dosage_forms: ['Tablet', 'Capsule'] }
-      ].filter(med => med.name.toLowerCase().includes(query.toLowerCase()));
-      setSearchResults(mockResults);
-    }
-    setIsSearching(false);
-  };
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm) {
-        searchMedications(searchTerm);
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const addMedication = (medication) => {
-    const newMedication = {
-      drugName: medication.name,
-      dosage: '500mg',
-      route: 'Oral',
-      frequency: 'Once daily',
-      duration: '7 days',
-      instructions: 'Take with food. Complete the full course as prescribed.'
-    };
-    
-    addMedicationToForm();
-    const newIndex = formData.medications.length;
-    
-    // Update each field of the newly added medication
-    Object.keys(newMedication).forEach(key => {
-      updateMedication(newIndex, key, newMedication[key]);
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
-    
-    setSearchTerm('');
-    setSearchResults([]);
   };
 
-  const handleSign = () => {
-    if (!validateForm()) {
-      return;
-    }
-    setShowSignatureModal(true);
-  };
-
-  const confirmSignature = () => {
-    if (signatureData.trim()) {
-      setIsSigned(true);
-      setShowSignatureModal(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!isSigned || !validateForm()) {
-      return;
-    }
-
-    try {
-      const prescriptionData = {
-        ...formData,
-        signature: signatureData,
-        status: 'active'
-      };
-      
-      await createPrescription(prescriptionData);
-      
-      // Set submitted state on success
-      if (submitSuccess) {
-        setIsSubmitted(true);
-      }
-    } catch (error) {
-      console.error('Error submitting prescription:', error);
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "success":
+      case "completed":
+      case "approved":
+      case "processed":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      case "pending":
+      case "requested":
+        return "bg-amber-100 text-amber-800 border-amber-200";
+      case "failed":
+      case "cancelled":
+      case "rejected":
+        return "bg-red-100 text-red-800 border-red-200";
+      default:
+        return "bg-slate-100 text-slate-800 border-slate-200";
     }
   };
 
-  const handleClose = () => {
-    resetForm();
-    setIsSigned(false);
-    setSignatureData('');
-    setSearchTerm('');
-    setSearchResults([]);
-    setIsSubmitted(false);
-    onClose();
-  };
-
-  const handleSignatureModalClose = () => {
-    setShowSignatureModal(false);
-    setSignatureData('');
-  };
-
-  const SignatureModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-sm sm:max-w-md w-full p-4 sm:p-6 shadow-2xl border border-gray-100">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="text-white" size={32} />
+  const StatCard = ({
+    title,
+    value,
+    icon: Icon,
+    trend,
+    trendDirection,
+    color = "bg-white",
+  }) => (
+    <div
+      className={`${color} rounded-2xl shadow-lg border border-slate-200 p-6 hover:shadow-xl transition-all duration-300 group`}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="p-3 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-white">
+            <Icon className="h-6 w-6" />
           </div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Digital Signature</h3>
-          <p className="text-gray-600 text-sm">Please enter your full name to sign this prescription</p>
+          <div>
+            <p className="text-sm font-medium text-slate-600">{title}</p>
+          </div>
         </div>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">Enter your signature:</label>
-          <input
-            type="text"
-            value={signatureData}
-            onChange={(e) => setSignatureData(e.target.value)}
-            placeholder="Type your full name (e.g., Dr. John Smith)"
-            className="w-full p-3 sm:p-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-center font-medium text-sm sm:text-base"
-            autoFocus
+        {trendDirection && (
+          <div
+            className={`flex items-center space-x-1 ${
+              trendDirection === "up" ? "text-emerald-600" : "text-red-600"
+            }`}
+          >
+            {trendDirection === "up" ? (
+              <ArrowUpRight className="h-4 w-4" />
+            ) : (
+              <ArrowDownRight className="h-4 w-4" />
+            )}
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        <p className="text-3xl font-bold text-[#28161c] group-hover:text-primary transition-colors duration-300">
+          {value}
+        </p>
+        {trend && (
+          <p className="text-sm text-slate-500 flex items-center space-x-1">
+            <TrendingUp className="h-3 w-3 mr-1" />
+            <span>{trend}</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  const TabButton = ({ id, label, icon: Icon, active, onClick, count }) => (
+    <button
+      onClick={onClick}
+      className={`flex items-center space-x-3 px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
+        active
+          ? "bg-gradient-to-r from-primary to-primary/80 text-white shadow-lg"
+          : "text-slate-600 hover:text-primary hover:bg-primary/10"
+      }`}
+    >
+      <Icon className="h-5 w-5" />
+      <span>{label}</span>
+      {count && (
+        <span
+          className={`px-2 py-1 text-xs rounded-full ${
+            active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+          }`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+
+  const Table = ({ headers, children, loading }) => (
+    <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200">
+          <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
+            <tr>
+              {headers.map((header, index) => (
+                <th
+                  key={index}
+                  className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider"
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-100">
+            {loading ? (
+              <tr>
+                <td colSpan={headers.length} className="px-6 py-8 text-center">
+                  <div className="flex justify-center">
+                    <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              children
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const LoadingSpinner = () => (
+    <div className="flex justify-center items-center p-12">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-slate-200 rounded-full animate-spin"></div>
+        <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    </div>
+  );
+
+  const renderOverview = () => {
+    if (overviewLoading) return <LoadingSpinner />;
+    if (overviewError)
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5" />
+            <span>Error loading overview: {overviewError.message}</span>
+          </div>
+        </div>
+      );
+
+    const stats = overviewData?.allTransactionStats;
+    const refundStats = overviewData?.allRefundStats;
+    const appointmentStats = overviewData?.appointmentStats;
+
+    return (
+      <div className="space-y-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Revenue"
+            value={formatCurrency(stats?.totalAmount || 0)}
+            icon={DollarSign}
+            trend={`${stats?.total || 0} transactions`}
+            trendDirection="up"
+          />
+          <StatCard
+            title="Success Rate"
+            value={
+              stats?.total
+                ? `${Math.round((stats?.success / stats?.total) * 100)}%`
+                : "0%"
+            }
+            icon={CheckCircle}
+            trend={`${stats?.success || 0} successful`}
+            trendDirection="up"
+          />
+          <StatCard
+            title="Appointments"
+            value={appointmentStats?.total || 0}
+            icon={Calendar}
+            trend={`${appointmentStats?.completed || 0} completed`}
+            trendDirection="up"
+          />
+          <StatCard
+            title="Pending Refunds"
+            value={refundStats?.requested || 0}
+            icon={AlertCircle}
+            trend={formatCurrency(refundStats?.totalAmount || 0)}
+            trendDirection="down"
           />
         </div>
-        
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="text-amber-600 mt-0.5 flex-shrink-0" size={18} />
-            <div className="text-sm text-amber-800">
-              <p className="font-medium mb-1">Legal Notice</p>
-              <p>By signing, you confirm the accuracy of this prescription and authorize its dispensing according to medical regulations.</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={handleSignatureModalClose}
-            className="flex-1 px-4 sm:px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmSignature}
-            disabled={!signatureData.trim()}
-            className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg hover:from-primary/90 hover:to-primary/80 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg"
-          >
-            Sign Prescription
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
-  // Success Modal
-  const SuccessModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-sm sm:max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Check className="text-white" size={40} />
-        </div>
-        
-        <div className="mb-6">
-          <h3 className="text-2xl font-bold text-gray-800 mb-3">Prescription Sent!</h3>
-          <p className="text-gray-600">Your prescription has been successfully created and sent to the patient.</p>
-        </div>
-        
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-center gap-2 text-green-700">
-            <Sparkles size={18} />
-            <span className="font-medium">Treatment plan is now active</span>
-          </div>
-        </div>
-        
-        <button
-          onClick={handleClose}
-          className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 font-medium shadow-lg"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  );
-
-  if (!isOpen) return null;
-
-  // Show success modal if submitted
-  if (isSubmitted || submitSuccess) {
-    return <SuccessModal />;
-  }
-
-  // Show loading state while fetching patient data
-  if (patientLoading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div className="bg-white rounded-2xl p-6 sm:p-8 text-center shadow-2xl max-w-xs sm:max-w-sm w-full">
-          <Loader2 size={48} className="animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-gray-600 font-medium">Loading patient information...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state if patient data fetch fails
-  if (patientError) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-xs sm:max-w-md w-full shadow-2xl">
-          <AlertCircle size={48} className="mx-auto mb-4 text-red-500" />
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Error Loading Patient</h3>
-          <p className="text-gray-600 mb-6">Failed to load patient information. Please try again.</p>
-          <button
-            onClick={handleClose}
-            className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200 font-medium"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render if required data is missing
-  if (!patient || !user) {
-    return null;
-  }
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-2 sm:p-4">
-        <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden shadow-2xl border border-gray-100 flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-primary/10 to-primary/5 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-                <FileText className="text-white" size={20} />
-              </div>
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-800">Write Prescription</h2>
-                <p className="text-xs sm:text-sm text-gray-600 hidden sm:block">Create a new prescription for your patient</p>
-              </div>
-            </div>
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-white hover:bg-opacity-70 rounded-lg transition-all duration-200"
-            >
-              <X size={20} className="text-gray-600" />
+        {/* Quick Actions */}
+        <div className="bg-gradient-to-r from-primary to-primary/80 rounded-2xl p-6 text-white">
+          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button className="bg-white/20 hover:bg-white/30 rounded-xl p-4 text-left transition-all duration-200">
+              <Plus className="h-5 w-5 mb-2" />
+              <div className="text-sm font-medium">Add New Doctor</div>
+            </button>
+            <button className="bg-white/20 hover:bg-white/30 rounded-xl p-4 text-left transition-all duration-200">
+              <Settings className="h-5 w-5 mb-2" />
+              <div className="text-sm font-medium">System Settings</div>
+            </button>
+            <button className="bg-white/20 hover:bg-white/30 rounded-xl p-4 text-left transition-all duration-200">
+              <Download className="h-5 w-5 mb-2" />
+              <div className="text-sm font-medium">Export Reports</div>
             </button>
           </div>
+        </div>
 
-          {/* Patient Info */}
-          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-primary to-primary/80 relative overflow-hidden border-2 border-white shadow-lg flex-shrink-0">
-                  {patient.profileImageUrl ? (
-                    <Image
-                      src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + patient.profileImageUrl}
-                      alt="Patient" 
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white font-bold text-sm sm:text-lg">
-                      {patient.firstName?.charAt(0)}{patient.lastName?.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-base sm:text-lg text-gray-800 truncate">{`${patient.firstName} ${patient.lastName}`}</h3>
-                  <p className="text-xs sm:text-sm text-gray-600 mb-1">ID: {patient.patientProfile?.patientId || patient.id}</p>
-                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <User size={12} />
-                      {patient.gender}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      {new Date(patient.dob).toLocaleDateString()}
-                    </span>
-                    {patient.patientProfile?.bloodType && (
-                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium">
-                        {patient.patientProfile.bloodType}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="sm:text-right">
-                <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
-                  <p className="text-xs text-gray-500 font-medium">Appointment ID</p>
-                  <p className="font-bold text-gray-800 text-sm">{appointmentId}</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Dr. {user.firstName} {user.lastName}
-                  </p>
-                </div>
-              </div>
+        {/* Recent Transactions */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-[#28161c]">
+                Recent Transactions
+              </h3>
+              <button
+                onClick={() => setActiveTab("transactions")}
+                className="text-primary hover:text-primary/80 text-sm font-medium flex items-center space-x-1"
+              >
+                <span>View All</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
-
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 sm:p-6">
-              {/* Error Display */}
-              {(createError || submitError) && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center gap-3 text-red-700">
-                    <AlertCircle size={20} />
-                    <div>
-                      <p className="font-semibold">Error occurred</p>
-                      <p className="text-sm">{createError || submitError}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Search Section */}
-              <div className="mb-6 sm:mb-8">
-                <div className="relative">
-                  <Search className="absolute left-3 sm:left-4 top-3 sm:top-4 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    placeholder="Search medications..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-gray-700 placeholder-gray-500 text-sm sm:text-base"
-                  />
-                </div>
-
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="mt-3 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-48 sm:max-h-64 overflow-y-auto">
-                    {searchResults.map((medication) => (
-                      <div
-                        key={medication.id}
-                        onClick={() => addMedication(medication)}
-                        className="p-3 sm:p-4 hover:bg-primary/5 cursor-pointer border-b border-gray-100 last:border-b-0 transition-all duration-200"
-                      >
-                        <div className="font-semibold text-gray-800 text-sm sm:text-base">{medication.name}</div>
-                        <div className="text-xs sm:text-sm text-gray-600 mt-1">
-                          {medication.generic && `Generic: ${medication.generic}`}
-                          {medication.manufacturer && ` | Manufacturer: ${medication.manufacturer}`}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Patient
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {overviewData?.searchTransactions?.transactions?.map(
+                  (transaction) => (
+                    <tr
+                      key={transaction.transactionId}
+                      className="hover:bg-slate-50 transition-colors duration-200"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                            {transaction.patient?.firstName?.[0] || "U"}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {transaction.patient?.firstName}{" "}
+                              {transaction.patient?.lastName}
+                            </div>
+                            <div className="text-sm text-slate-500">
+                              {transaction.patient?.email}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="bg-slate-100 text-slate-800 px-2 py-1 rounded-lg text-sm font-medium">
+                          {transaction.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                        {formatCurrency(transaction.amount)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
+                            transaction.status
+                          )}`}
+                        >
+                          {transaction.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {formatDate(transaction.createdAt)}
+                      </td>
+                    </tr>
+                  )
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-                {isSearching && (
-                  <div className="mt-3 p-4 text-center text-gray-500 bg-gray-50 rounded-lg">
-                    <Loader2 size={20} className="animate-spin mx-auto mb-2" />
-                    <p className="text-sm">Searching medications...</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Selected Medications */}
-              <div className="space-y-4 sm:space-y-6">
-                {formData.medications.map((medication, index) => (
-                  <div key={index} className="border-2 border-gray-200 rounded-lg p-4 sm:p-6 bg-white shadow-sm">
-                    <div className="flex items-start justify-between mb-4">
-                      <h4 className="font-bold text-base sm:text-lg text-gray-800 flex items-center gap-2 flex-1 pr-2">
-                        <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/80 rounded text-white text-xs flex items-center justify-center flex-shrink-0">
-                          {index + 1}
+        {/* Recent Appointments */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200">
+          <div className="p-6 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-[#28161c]">
+                Recent Appointments
+              </h3>
+              <button
+                onClick={() => setActiveTab("appointments")}
+                className="text-primary hover:text-primary/80 text-sm font-medium flex items-center space-x-1"
+              >
+                <span>View All</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-100">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Patient
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Doctor
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    Scheduled
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {overviewData?.searchAppointments?.appointments?.map(
+                  (appointment) => (
+                    <tr
+                      key={appointment.appointmentId}
+                      className="hover:bg-slate-50 transition-colors duration-200"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                            {appointment.patientName?.[0] || "P"}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">
+                              {appointment.patientName}
+                            </div>
+                            <div className="text-sm text-slate-500">
+                              {appointment.patient?.email}
+                            </div>
+                          </div>
                         </div>
-                        <span className="truncate">{medication.drugName}</span>
-                      </h4>
-                      <button
-                        onClick={() => removeMedicationFromForm(index)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-all duration-200 flex-shrink-0"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Dosage *
-                        </label>
-                        <input
-                          type="text"
-                          value={medication.dosage}
-                          onChange={(e) => updateMedication(index, 'dosage', e.target.value)}
-                          className={`w-full p-3 border-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-sm sm:text-base ${
-                            errors[`medications.${index}.dosage`] ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                          placeholder="e.g., 500mg, 2 tablets"
-                        />
-                        {errors[`medications.${index}.dosage`] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                            <AlertCircle size={14} />
-                            {errors[`medications.${index}.dosage`]}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Route *
-                        </label>
-                        <select
-                          value={medication.route}
-                          onChange={(e) => updateMedication(index, 'route', e.target.value)}
-                          className={`w-full p-3 border-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-sm sm:text-base ${
-                            errors[`medications.${index}.route`] ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-900 font-medium">
+                        {appointment.doctorName}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
+                            appointment.status
+                          )}`}
                         >
-                          <option value="">Select Route</option>
-                          <option value="Oral">Oral</option>
-                          <option value="Topical">Topical</option>
-                          <option value="Injection">Injection</option>
-                          <option value="Inhalation">Inhalation</option>
-                        </select>
-                        {errors[`medications.${index}.route`] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                            <AlertCircle size={14} />
-                            {errors[`medications.${index}.route`]}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Frequency *
-                        </label>
-                        <select
-                          value={medication.frequency}
-                          onChange={(e) => updateMedication(index, 'frequency', e.target.value)}
-                          className={`w-full p-3 border-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-sm sm:text-base ${
-                            errors[`medications.${index}.frequency`] ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <option value="">Select Frequency</option>
-                          <option value="Once daily">Once daily</option>
-                          <option value="Twice daily">Twice daily</option>
-                          <option value="3 times daily">3 times daily</option>
-                          <option value="4 times daily">4 times daily</option>
-                          <option value="As needed">As needed</option>
-                        </select>
-                        {errors[`medications.${index}.frequency`] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                            <AlertCircle size={14} />
-                            {errors[`medications.${index}.frequency`]}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Duration *
-                        </label>
-                        <input
-                          type="text"
-                          value={medication.duration}
-                          onChange={(e) => updateMedication(index, 'duration', e.target.value)}
-                          placeholder="e.g., 7 days, 2 weeks"
-                          className={`w-full p-3 border-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-sm sm:text-base ${
-                            errors[`medications.${index}.duration`] ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        />
-                        {errors[`medications.${index}.duration`] && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                            <AlertCircle size={14} />
-                            {errors[`medications.${index}.duration`]}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                          {appointment.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                        {formatCurrency(appointment.price)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {formatDate(appointment.scheduledStartTime)}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Instructions *
-                      </label>
-                      <textarea
-                        value={medication.instructions}
-                        onChange={(e) => updateMedication(index, 'instructions', e.target.value)}
-                        rows={3}
-                        className={`w-full p-3 border-2 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 resize-none text-sm sm:text-base ${
-                          errors[`medications.${index}.instructions`] ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        placeholder="Special instructions for the patient..."
-                      />
-                      {errors[`medications.${index}.instructions`] && (
-                        <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                          <AlertCircle size={14} />
-                          {errors[`medications.${index}.instructions`]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+  const renderTransactions = () => {
+    if (transactionsLoading) return <LoadingSpinner />;
 
-              {formData.medications.length === 0 && (
-                <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle size={24} className="text-gray-400 sm:w-8 sm:h-8" />
-                  </div>
-                 <p className="text-gray-500 font-medium text-sm sm:text-base">No medications selected</p>
-                  <p className="text-gray-400 text-xs sm:text-sm mt-1 max-w-md mx-auto">Search and add medications above to create your prescription</p>
-                </div>
-              )}
-
-              {/* Recommendations */}
-              <div className="mt-6 sm:mt-8">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Additional Recommendations
-                </label>
-                <textarea
-                  value={formData.recommendations}
-                  onChange={(e) => updateFormData('recommendations', e.target.value)}
-                  rows={4}
-                  className="w-full p-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 resize-none hover:border-gray-300 text-sm sm:text-base"
-                  placeholder="Additional recommendations, lifestyle changes, follow-up instructions..."
+    return (
+      <div className="space-y-6">
+        {/* Enhanced Filters */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search transactions..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                 />
               </div>
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="border border-slate-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center px-4 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors duration-200"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
+              </button>
+            </div>
+            <button
+              onClick={refetchTransactions}
+              className="flex items-center px-6 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+          </div>
+        </div>
 
-              {/* Signature Status */}
-              {isSigned && (
-                <div className="mt-6 sm:mt-8 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-3 text-green-700">
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                      <Check size={16} className="text-white" />
+        {/* Enhanced Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Transactions"
+            value={transactionsData?.searchTransactions?.totalCount || 0}
+            icon={CreditCard}
+            trend={formatCurrency(
+              transactionsData?.allTransactionStats?.totalAmount || 0
+            )}
+          />
+          <StatCard
+            title="Successful"
+            value={transactionsData?.allTransactionStats?.success || 0}
+            icon={CheckCircle}
+            trend={`${Math.round(
+              ((transactionsData?.allTransactionStats?.success || 0) /
+                Math.max(
+                  transactionsData?.allTransactionStats?.total || 1,
+                  1
+                )) *
+                100
+            )}%`}
+          />
+          <StatCard
+            title="Pending"
+            value={transactionsData?.allTransactionStats?.pending || 0}
+            icon={Clock}
+            trend={formatCurrency(
+              transactionsData?.allTransactionStats?.pendingAmount || 0
+            )}
+          />
+          <StatCard
+            title="Failed"
+            value={transactionsData?.allTransactionStats?.failed || 0}
+            icon={XCircle}
+            trend="Needs attention"
+          />
+        </div>
+
+        {/* Enhanced Transactions Table */}
+        <Table
+          headers={["Patient", "Type", "Amount", "Status", "Date", "Actions"]}
+          loading={transactionsLoading}
+        >
+          {transactionsData?.searchTransactions?.transactions?.map(
+            (transaction) => (
+              <tr
+                key={transaction.transactionId}
+                className="hover:bg-slate-50 transition-colors duration-200"
+              >
+                <td className="px-6 py-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                      {transaction.patient?.firstName?.[0] || "U"}
                     </div>
                     <div>
-                      <p className="font-semibold">Digitally Signed</p>
-                      <p className="text-sm text-green-600">Dr. {user.firstName} {user.lastName}</p>
+                      <div className="text-sm font-medium text-slate-900">
+                        {transaction.patient?.firstName}{" "}
+                        {transaction.patient?.lastName}
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        {transaction.patient?.email}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="bg-slate-100 text-slate-800 px-3 py-1 rounded-lg text-sm font-medium">
+                    {transaction.type}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                  {formatCurrency(transaction.amount)}
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
+                      transaction.status
+                    )}`}
+                  >
+                    {transaction.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm text-slate-500">
+                  {formatDate(transaction.createdAt)}
+                </td>
+                <td className="px-6 py-4">
+                  <button className="text-primary hover:text-primary/80 p-2 hover:bg-primary/10 rounded-lg transition-all duration-200">
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
+        </Table>
+      </div>
+    );
+  };
+
+  const renderAppointments = () => {
+    if (appointmentsLoading) return <LoadingSpinner />;
+
+    return (
+      <div className="space-y-6">
+        {/* Filters */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search appointments..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-slate-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              >
+                <option value="all">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <button
+              onClick={refetchAppointments}
+              className="flex items-center px-6 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Appointments Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Appointments"
+            value={appointmentsData?.searchAppointments?.totalCount || 0}
+            icon={Calendar}
+          />
+          <StatCard
+            title="Completed"
+            value={appointmentsData?.appointmentStats?.completed || 0}
+            icon={CheckCircle}
+          />
+          <StatCard
+            title="Upcoming"
+            value={appointmentsData?.appointmentStats?.upcoming || 0}
+            icon={Clock}
+          />
+          <StatCard
+            title="Cancelled"
+            value={appointmentsData?.appointmentStats?.cancelled || 0}
+            icon={XCircle}
+          />
+        </div>
+
+        {/* Appointments Table */}
+        <Table
+          headers={[
+            "Patient",
+            "Doctor",
+            "Status",
+            "Price",
+            "Scheduled Time",
+            "Actions",
+          ]}
+          loading={appointmentsLoading}
+        >
+          {appointmentsData?.searchAppointments?.appointments?.map(
+            (appointment) => (
+              <tr
+                key={appointment.appointmentId}
+                className="hover:bg-slate-50 transition-colors duration-200"
+              >
+                <td className="px-6 py-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                      {appointment.patientName?.[0] || "P"}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-slate-900">
+                        {appointment.patientName}
+                      </div>
+                      <div className="text-sm text-slate-500">
+                        {appointment.patient?.email}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm font-medium text-slate-900">
+                    {appointment.doctorName}
+                  </div>
+                  <div className="text-sm text-slate-500">
+                    {appointment.doctor?.doctorProfile?.specialization}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
+                      appointment.status
+                    )}`}
+                  >
+                    {appointment.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                  {formatCurrency(appointment.price)}
+                </td>
+                <td className="px-6 py-4 text-sm text-slate-500">
+                  {formatDate(appointment.scheduledStartTime)}
+                </td>
+                <td className="px-6 py-4">
+                  <button className="text-primary hover:text-primary/80 p-2 hover:bg-primary/10 rounded-lg transition-all duration-200">
+                    <Eye className="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            )
+          )}
+        </Table>
+      </div>
+    );
+  };
+
+  const renderDoctors = () => {
+    if (doctorsLoading) return <LoadingSpinner />;
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex items-center">
+              <h3 className="text-lg font-semibold text-[#28161c]">
+                Doctors Management
+              </h3>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search doctors..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
+              </div>
+              <button
+                onClick={refetchDoctors}
+                className="flex items-center px-6 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Doctors Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard
+            title="Total Doctors"
+            value={doctorsData?.allDoctors?.length || 0}
+            icon={UserCheck}
+          />
+          <StatCard
+            title="Approved Doctors"
+            value={
+              doctorsData?.allDoctors?.filter((d) => d.isApproved)?.length || 0
+            }
+            icon={CheckCircle}
+          />
+          <StatCard
+            title="Pending Approvals"
+            value={
+              doctorsData?.allDoctors?.filter((d) => !d.isApproved)?.length || 0
+            }
+            icon={Clock}
+          />
+        </div>
+
+        {/* Doctors Table */}
+        <Table
+          headers={[
+            "Doctor",
+            "Specialization",
+            "Experience",
+            "Rating",
+            "Price/Session",
+            "Status",
+            "Actions",
+          ]}
+          loading={doctorsLoading}
+        >
+          {doctorsData?.allDoctors?.map((doctor) => (
+            <tr
+              key={doctor.doctorId}
+              className="hover:bg-slate-50 transition-colors duration-200"
+            >
+              <td className="px-6 py-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                    {doctor.user?.firstName?.[0] || "D"}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">
+                      {doctor.user?.firstName} {doctor.user?.lastName}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {doctor.user?.email}
                     </div>
                   </div>
                 </div>
-              )}
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-900">
+                {doctor.specialization}
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-900">
+                {doctor.experienceYears} years
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-900">
+                {doctor.averageRating ? (
+                  <div className="flex items-center">
+                    <span className="font-semibold mr-1">
+                      {doctor.averageRating}
+                    </span>
+                    <span className="text-amber-500">★</span>
+                    <span className="text-slate-500 text-xs ml-1">
+                      ({doctor.ratingCount})
+                    </span>
+                  </div>
+                ) : (
+                  "No ratings"
+                )}
+              </td>
+              <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                {formatCurrency(doctor.pricePerSession)}
+              </td>
+              <td className="px-6 py-4">
+                <span
+                  className={`px-3 py-1 text-xs font-medium rounded-full border ${
+                    doctor.isApproved
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                      : "bg-amber-100 text-amber-800 border-amber-200"
+                  }`}
+                >
+                  {doctor.isApproved ? "Approved" : "Pending"}
+                </span>
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex items-center space-x-2">
+                  <button className="text-primary hover:text-primary/80 p-2 hover:bg-primary/10 rounded-lg transition-all duration-200">
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  {!doctor.isApproved && (
+                    <button className="text-emerald-600 hover:text-emerald-700 p-2 hover:bg-emerald-50 rounded-lg transition-all duration-200">
+                      <CheckCircle className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      </div>
+    );
+  };
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8 pt-6 border-t-2 border-gray-200">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 px-4 sm:px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 font-semibold transition-all duration-200 text-sm sm:text-base"
-                  disabled={createLoading}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSign}
-                  disabled={formData.medications.length === 0 || isSigned || createLoading}
-                  className="flex-1 px-4 sm:px-6 py-3 border-2 border-primary text-primary rounded-lg hover:bg-primary/5 hover:border-primary font-semibold disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-all duration-200 text-sm sm:text-base"
-                >
-                  {isSigned ? '✓ Signed' : 'Sign Prescription'}
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!isSigned || formData.medications.length === 0 || createLoading}
-                  className="flex-1 px-4 sm:px-6 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg hover:from-primary/90 hover:to-primary/80 font-semibold disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-200 shadow-lg text-sm sm:text-base"
-                >
-                  {createLoading && <Loader2 size={18} className="animate-spin" />}
-                  {createLoading ? 'Submitting...' : 'Submit Prescription'}
-                </button>
+  const renderPatients = () => {
+    if (patientsLoading) return <LoadingSpinner />;
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex items-center">
+              <h3 className="text-lg font-semibold text-[#28161c]">
+                Patients Management
+              </h3>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search patients..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                />
               </div>
+              <button
+                onClick={refetchPatients}
+                className="flex items-center px-6 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Patient Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard
+            title="Total Patients"
+            value={patientsData?.allPatients?.length || 0}
+            icon={Users}
+          />
+          <StatCard
+            title="Active Today"
+            value={Math.floor(
+              Math.random() * (patientsData?.allPatients?.length || 0)
+            )} // Placeholder - replace with actual data
+            icon={Activity}
+          />
+          <StatCard
+            title="Total Wallet Balance"
+            value={formatCurrency(
+              patientsData?.allPatients?.reduce(
+                (sum, p) => sum + (p.telehealthWalletBalance || 0),
+                0
+              ) || 0
+            )}
+            icon={DollarSign}
+          />
+        </div>
+
+        {/* Patients Table */}
+        <Table
+          headers={[
+            "Patient",
+            "Contact",
+            "Wallet Balance",
+            "Blood Type",
+            "Joined",
+            "Actions",
+          ]}
+          loading={patientsLoading}
+        >
+          {patientsData?.allPatients?.map((patient) => (
+            <tr
+              key={patient.patientId}
+              className="hover:bg-slate-50 transition-colors duration-200"
+            >
+              <td className="px-6 py-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                    {patient.user?.firstName?.[0] || "P"}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">
+                      {patient.user?.firstName} {patient.user?.lastName}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {patient.user?.email}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-900">
+                {patient.user?.phoneNumber || "N/A"}
+              </td>
+              <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                {formatCurrency(patient.telehealthWalletBalance)}
+              </td>
+              <td className="px-6 py-4">
+                {patient.bloodType ? (
+                  <span className="px-3 py-1 text-xs font-medium rounded-full bg-red-50 text-red-700 border border-red-100">
+                    {patient.bloodType}
+                  </span>
+                ) : (
+                  "N/A"
+                )}
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-500">
+                {formatDate(patient.createdAt)}
+              </td>
+              <td className="px-6 py-4">
+                <button className="text-primary hover:text-primary/80 p-2 hover:bg-primary/10 rounded-lg transition-all duration-200">
+                  <Eye className="h-4 w-4" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      </div>
+    );
+  };
+
+  const renderRefunds = () => {
+    if (refundsLoading) return <LoadingSpinner />;
+
+    return (
+      <div className="space-y-6">
+        {/* Filters */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-slate-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              >
+                <option value="all">All Status</option>
+                <option value="requested">Requested</option>
+                <option value="approved">Approved</option>
+                <option value="processed">Processed</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <button
+              onClick={refetchRefunds}
+              className="flex items-center px-6 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Refund Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Refunds"
+            value={refundsData?.allRefundStats?.total || 0}
+            icon={DollarSign}
+            trend={formatCurrency(
+              refundsData?.allRefundStats?.totalAmount || 0
+            )}
+          />
+          <StatCard
+            title="Pending"
+            value={refundsData?.allRefundStats?.requested || 0}
+            icon={Clock}
+            trend={formatCurrency(
+              refundsData?.allRefundStats?.totalAmount || 0
+            )}
+          />
+          <StatCard
+            title="Processed"
+            value={refundsData?.allRefundStats?.processed || 0}
+            icon={CheckCircle}
+            trend={formatCurrency(
+              refundsData?.allRefundStats?.processedAmount || 0
+            )}
+          />
+          <StatCard
+            title="Rejected"
+            value={refundsData?.allRefundStats?.rejected || 0}
+            icon={XCircle}
+          />
+        </div>
+
+        {/* Refunds Table */}
+        <Table
+          headers={[
+            "Patient",
+            "Amount",
+            "Status",
+            "Reason",
+            "Requested",
+            "Actions",
+          ]}
+          loading={refundsLoading}
+        >
+          {refundsData?.searchRefunds?.refunds?.map((refund) => (
+            <tr
+              key={refund.refundId}
+              className="hover:bg-slate-50 transition-colors duration-200"
+            >
+              <td className="px-6 py-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-primary to-primary/80 rounded-full flex items-center justify-center text-white font-medium">
+                    {refund.patient?.firstName?.[0] || "P"}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-slate-900">
+                      {refund.patient?.firstName} {refund.patient?.lastName}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {refund.patient?.email}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                {formatCurrency(refund.amount)}
+              </td>
+              <td className="px-6 py-4">
+                <span
+                  className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(
+                    refund.status
+                  )}`}
+                >
+                  {refund.status}
+                </span>
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-900">
+                {refund.reason || "N/A"}
+              </td>
+              <td className="px-6 py-4 text-sm text-slate-500">
+                {formatDate(refund.requestedAt)}
+              </td>
+              <td className="px-6 py-4">
+                <div className="flex items-center space-x-2">
+                  <button className="text-primary hover:text-primary/80 p-2 hover:bg-primary/10 rounded-lg transition-all duration-200">
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  {refund.status === "REQUESTED" && (
+                    <>
+                      <button className="text-emerald-600 hover:text-emerald-700 p-2 hover:bg-emerald-50 rounded-lg transition-all duration-200">
+                        <CheckCircle className="h-4 w-4" />
+                      </button>
+                      <button className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-all duration-200">
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      </div>
+    );
+  };
+
+  const renderAnalytics = () => {
+    if (analyticsLoading) return <LoadingSpinner />;
+    
+    return (
+      <div className="space-y-6">
+        {/* Filters */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex flex-wrap gap-4 items-center">
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="border border-slate-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
+              <button
+                onClick={() => {}}
+                className="flex items-center px-4 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors duration-200"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </button>
+            </div>
+            <button
+              onClick={refetchAnalytics}
+              className="flex items-center px-6 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Analytics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Revenue"
+            value={formatCurrency(
+              analyticsData?.allTransactionStats?.totalAmount || 0
+            )}
+            icon={DollarSign}
+            trend={`${
+              analyticsData?.allTransactionStats?.total || 0
+            } transactions`}
+            trendDirection="up"
+          />
+          <StatCard
+            title="Refunds"
+            value={formatCurrency(
+              analyticsData?.allRefundStats?.totalAmount || 0
+            )}
+            icon={TrendingDown}
+            trend={`${analyticsData?.allRefundStats?.total || 0} refunds`}
+            trendDirection="down"
+          />
+          <StatCard
+            title="Net Revenue"
+            value={formatCurrency(
+              (analyticsData?.allTransactionStats?.totalAmount || 0) -
+                (analyticsData?.allRefundStats?.totalAmount || 0)
+            )}
+            icon={TrendingUp}
+            trendDirection="up"
+          />
+          <StatCard
+            title="Average Transaction"
+            value={formatCurrency(
+              analyticsData?.allTransactionStats?.totalAmount &&
+                analyticsData?.allTransactionStats?.total
+                ? analyticsData.allTransactionStats.totalAmount /
+                    analyticsData.allTransactionStats.total
+                : 0
+            )}
+            icon={Activity}
+          />
+        </div>
+
+        {/* Analytics Chart Placeholder */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                    <h3 className="text-lg font-semibold text-[#28161c] mb-4">
+                        Revenue Trends
+                    </h3>
+                    <div className="h-80">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={revenueTrendData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                                <Tooltip formatter={(value) => formatCurrency(value)} />
+                                <Legend />
+                                <Line type="monotone" dataKey="Revenue" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Transaction Distribution Charts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Transaction Types Chart */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                        <h3 className="text-lg font-semibold text-[#28161c] mb-4">
+                            Transaction Types
+                        </h3>
+                        <div className="h-64">
+                           <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={transactionTypeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
+                                        {transactionTypeData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value, name) => [`${value} transactions`, name]} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    {/* Payment Status Chart */}
+                    <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                        <h3 className="text-lg font-semibold text-[#28161c] mb-4">
+                            Payment Status
+                        </h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={paymentStatusData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis type="number" hide />
+                                    <YAxis type="category" dataKey="name" width={60} tickLine={false} axisLine={false}/>
+                                    <Tooltip cursor={{fill: 'rgba(241, 245, 249, 0.6)'}} formatter={(value) => [value, 'Count']} />
+                                    <Bar dataKey="count" barSize={30} radius={[0, 10, 10, 0]}>
+                                       {paymentStatusData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return renderOverview();
+      case "transactions":
+        return renderTransactions();
+      case "appointments":
+        return renderAppointments();
+      case "doctors":
+        return renderDoctors();
+      case "patients":
+        return renderPatients();
+      case "refunds":
+        return renderRefunds();
+      case "analytics":
+        return renderAnalytics();
+      default:
+        return renderOverview();
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+              <h1 className="text-xl font-bold text-[#28161c]">
+                TeleHealth Admin
+              </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <button className="p-2 rounded-full text-slate-500 hover:bg-slate-100">
+                <Bell className="h-5 w-5" />
+              </button>
+              <button
+                onClick={refetchOverview}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl hover:shadow-lg transition-all duration-200"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {showSignatureModal && <SignatureModal />}
-    </>
+      {/* Main content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap gap-2 bg-white rounded-2xl shadow-sm border p-2 mb-6">
+          <TabButton
+            id="overview"
+            label="Overview"
+            icon={BarChart3}
+            active={activeTab === "overview"}
+            onClick={() => setActiveTab("overview")}
+          />
+          <TabButton
+            id="transactions"
+            label="Transactions"
+            icon={CreditCard}
+            active={activeTab === "transactions"}
+            onClick={() => setActiveTab("transactions")}
+          />
+          <TabButton
+            id="appointments"
+            label="Appointments"
+            icon={Calendar}
+            active={activeTab === "appointments"}
+            onClick={() => setActiveTab("appointments")}
+          />
+          <TabButton
+            id="doctors"
+            label="Doctors"
+            icon={UserCheck}
+            active={activeTab === "doctors"}
+            onClick={() => setActiveTab("doctors")}
+          />
+          <TabButton
+            id="patients"
+            label="Patients"
+            icon={Users}
+            active={activeTab === "patients"}
+            onClick={() => setActiveTab("patients")}
+          />
+          <TabButton
+            id="refunds"
+            label="Refunds"
+            icon={TrendingDown}
+            active={activeTab === "refunds"}
+            onClick={() => setActiveTab("refunds")}
+            count={overviewData?.allRefundStats?.requested || null}
+          />
+          <TabButton
+            id="analytics"
+            label="Analytics"
+            icon={Activity}
+            active={activeTab === "analytics"}
+            onClick={() => setActiveTab("analytics")}
+          />
+        </div>
+
+        {/* Dynamic Content */}
+        {renderContent()}
+      </div>
+    </div>
   );
 };
-
-export default PrescriptionModal;
+export default AdminDashboard;

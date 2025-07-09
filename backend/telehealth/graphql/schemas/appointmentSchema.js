@@ -134,7 +134,7 @@ const appointmentTypeDefs = gql`
 
     # Search appointments with filters
     searchAppointments(
-      filter: AppointmentFilterInput!
+      filter: AppointmentFilterInput
       limit: Int
       offset: Int
     ): AppointmentSearchResult
@@ -187,3 +187,4 @@ const appointmentTypeDefs = gql`
 `;
 
 module.exports = appointmentTypeDefs;
+

@@ -230,14 +230,13 @@ const appointmentResolvers = {
       const user = isAuthenticated(context);
       const userDoc = await UserModel.getById(user.uid);
 
-      if (userDoc.role === "patient" || userDoc.role === "doctor") {
+      // if (userDoc.role === "patient" || userDoc.role === "doctor") {
         return await AppointmentModel.getAppointmentStats(
           user.uid,
           userDoc.role
         );
-      }
+      // }
 
-      throw new ForbiddenError("Invalid user role for appointment stats");
     },
 
     appointmentFinancialSummary: async (_, { appointmentId }, context) => {

@@ -47,7 +47,7 @@ export default function AdminLayout({ children }) {
   return (
     <div className="min-h-screen ">
       <SharedLayout allowedRoles={["ADMIN", "admin"]}>
-        <main className="container mx-auto px-4">{children}</main>
+        <main className=" px-4">{children}</main>
       </SharedLayout>
     </div>
   );

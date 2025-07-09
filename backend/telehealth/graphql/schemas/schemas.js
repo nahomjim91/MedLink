@@ -63,6 +63,8 @@ const typeDefs = gql`
     bloodType: String
     telehealthWalletBalance: Float
     user: THUser
+    createdAt: Date
+    updatedAt: Date
   }
 
   input THUserInput {
@@ -173,6 +175,11 @@ const typeDefs = gql`
       offset: Int
     ): DoctorSearchResult
     getDoctorSpecializations: [String]
+
+    # Patient queries
+    patientById(id: ID!): THUser
+    # Admin queries
+    allPatients(limit: Int, offset: Int): [PatientProfile]
 
     # Availability queries
     doctorAvailableSlots(doctorId: ID!, date: String): [DoctorAvailabilitySlot]

@@ -331,7 +331,7 @@ const AdminDashboard = () => {
 
     const headers = [
       "Order ID",
-      "Order Number",
+      "Order Number", 
       "Buyer Name",
       "Buyer Company",
       "Seller Name",

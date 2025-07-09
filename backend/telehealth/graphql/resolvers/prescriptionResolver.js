@@ -109,6 +109,11 @@ const prescriptionResolvers = {
     myPatientsPrescriptions: async (_, __, context) => {
       const user = await isDoctor(context);
       return await PrescriptionModel.getByDoctorId(user.uid);
+    },
+    // Admin
+    allPrescriptions: async (_, __, context) => {
+      const user = await isAdmin(context);
+      return await PrescriptionModel.getAll();
     }
   },
 

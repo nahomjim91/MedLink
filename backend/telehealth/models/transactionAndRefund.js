@@ -396,6 +396,82 @@ const TransactionModel = {
       throw error;
     }
   }
+,
+  async getTransactionStatsAdmin(filter = {}) {
+  try {
+    let query = transactionsRef;
+
+    // --- Build the dynamic query from the filter object ---
+    if (filter.userId) {
+      query = query.where('userId', '==', filter.userId);
+    }
+    if (filter.startDate) {
+      // NOTE: `createdAt` must be a Firestore Timestamp or JS Date object
+      query = query.where('createdAt', '>=', new Date(filter.startDate));
+    }
+    if (filter.endDate) {
+      query = query.where('createdAt', '<=', new Date(filter.endDate));
+    }
+    if (filter.type && filter.type.length > 0) {
+      // Assumes filter.type is an array of strings like ['DEPOSIT', 'PAYMENT']
+      query = query.where('type', 'in', filter.type);
+    }
+    if (filter.status && filter.status.length > 0) {
+      query = query.where('status', 'in', filter.status);
+    }
+
+    // --- Execute the single query ---
+    const snapshot = await query.get();
+
+    // --- Process the results in memory ---
+    const stats = {
+      total: snapshot.size,
+      success: 0,
+      pending: 0,
+      failed: 0,
+      totalAmount: 0, // Represents the total value of all transactions in the filter
+      successAmount: 0,
+      pendingAmount: 0,
+    };
+
+    if (snapshot.empty) {
+      return stats; // Return zeroed-out stats if no documents found
+    }
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const amount = data.amount || 0;
+
+      // Increment the total amount for every document found
+      stats.totalAmount += amount;
+
+      // Increment counters based on status
+      switch (data.status) {
+        case 'SUCCESS':
+          stats.success++;
+          stats.successAmount += amount;
+          break;
+        case 'PENDING':
+          stats.pending++;
+          stats.pendingAmount += amount;
+          break;
+        case 'FAILED':
+          stats.failed++;
+          break;
+        default:
+          break;
+      }
+    });
+
+    return stats;
+
+  } catch (error) {
+    console.error('Error getting filtered transaction stats:', error);
+    // You might need to create Firestore indexes if you get an error here.
+    // The error message from Firestore is usually very helpful.
+    throw new Error('Failed to retrieve transaction statistics.');
+  }
+}
 };
 
 /**
@@ -745,6 +821,76 @@ const RefundModel = {
       throw error;
     }
   }
+  ,  async getRefundStatsAdmin(filter = {}) {
+  try {
+    let query = refundsRef;
+
+    // --- Build the dynamic query from the filter object ---
+    if (filter.userId) {
+      query = query.where('userId', '==', filter.userId);
+    }
+    if (filter.startDate) {
+      // NOTE: `requestedAt` must be a Firestore Timestamp or JS Date object
+      query = query.where('requestedAt', '>=', new Date(filter.startDate));
+    }
+    if (filter.endDate) {
+      query = query.where('requestedAt', '<=', new Date(filter.endDate));
+    }
+    if (filter.status && filter.status.length > 0) {
+      query = query.where('status', 'in', filter.status);
+    }
+    
+    // --- Execute the single query ---
+    const snapshot = await query.get();
+
+    // --- Process the results in memory ---
+    const stats = {
+      total: snapshot.size,
+      requested: 0,
+      approved: 0,
+      processed: 0,
+      rejected: 0,
+      totalAmount: 0, // Total value of all refunds in the filter
+      processedAmount: 0,
+    };
+
+    if (snapshot.empty) {
+      return stats;
+    }
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const amount = data.amount || 0;
+
+      stats.totalAmount += amount;
+
+      switch (data.status) {
+        case 'REQUESTED':
+          stats.requested++;
+          break;
+        case 'APPROVED':
+          stats.approved++;
+          break;
+        case 'PROCESSED':
+          stats.processed++;
+          stats.processedAmount += amount;
+          break;
+        case 'REJECTED':
+          stats.rejected++;
+          break;
+        default:
+          break;
+      }
+    });
+
+    return stats;
+
+  } catch (error) {
+    console.error('Error getting filtered refund stats:', error);
+    // You might need to create Firestore indexes for this query.
+    throw new Error('Failed to retrieve refund statistics.');
+  }
+}
 };
 
 module.exports = { TransactionModel, RefundModel };

@@ -26,6 +26,17 @@ const PatientProfileModel = {
     }
   },
 
+  async getAll() {
+    try {
+      const snapshot = await patientsRef.get();
+      const docs = snapshot.docs.map((doc) => formatDoc(doc));
+      return docs;
+    } catch (error) {
+      console.error('Error getting all patient profiles:', error);
+      throw error;
+    }
+  },
+
   /**
    * Create patient profile
    * @param {String} patientId - Patient ID

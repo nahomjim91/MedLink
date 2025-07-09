@@ -26,7 +26,7 @@ export default function PatientLayout({ children }) {
     // Verify that the user is an admin
     if (user.role !== "doctor") {
       console.log(
-        `        User with role ${user.role} attempted to access admin route - redirecting`
+        `        User with role ${user.role} attempted to access doctor route - redirecting`
       );
 
       // Redirect to their correct role path
