@@ -11,12 +11,12 @@ import {
   Download,
   Eye,
 } from "lucide-react";
-import { Button } from "../../components/ui/Button";
-import ProfileImage from "../../components/ui/ProfileImage";
-import { useAuth } from "../../hooks/useAuth";
+import { Button } from "../../../components/ui/Button";
+import ProfileImage from "../../../components/ui/ProfileImage";
+import { useAuth } from "../../../hooks/useAuth";
 import EditProfileModal from "./EditProfileModal";
-import { usePrescriptionsByPatientId } from "../../hooks/usePrescription";
-import {PrescriptionViewModal} from "../../components/ui/modal/PrescriptionModal"
+import { usePrescriptionsByPatientId } from "../../../hooks/usePrescription";
+import {PrescriptionViewModal} from "../../../components/ui/modal/PrescriptionModal"
 
 export default function PatientProfile() {
   const { user, refetchUser } = useAuth();

@@ -17,14 +17,14 @@ import {
   Loader2,
 } from "lucide-react";
 import { useQuery } from "@apollo/client";
-import { Button, IconButton } from "../../components/ui/Button";
+import { Button, IconButton } from "../../../components/ui/Button";
 import {
   GET_DOCTORS_BY_SPECIALIZATION,
   GET_ALL_DOCTORS,
   SEARCH_DOCTORS,
   FILTER_DOCTORS,
   GET_DOCTOR_SPECIALIZATIONS,
-} from "../../api/graphql/queries";
+} from "../../../api/graphql/queries";
 import Link from "next/link";
 
 // Updated DoctorCard component to work with user field instead of displayName

@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { X, Save, Loader2 } from "lucide-react";
-import { useProfileUpdate } from "../../hooks/useProfileUpdate";
-import { NumberInput, SelectInput, TextInput } from "../../components/ui/Input";
-import { Button } from "../../components/ui/Button";
-import ProfileImage from "../../components/ui/ProfileImage";
+import { useProfileUpdate } from "../../../hooks/useProfileUpdate";
+import { NumberInput, SelectInput, TextInput } from "../../../components/ui/Input";
+import { Button } from "../../../components/ui/Button";
+import ProfileImage from "../../../components/ui/ProfileImage";
 import { tr } from "date-fns/locale";
 
 export default function EditProfileModal({ isOpen, onClose, user, onSuccess }) {

@@ -1,0 +1,8 @@
+{
+   "Patient": {
+    "welcome": "Welcome to Patient Portal",
+    "appointments": "My Appointments",
+    "profile": "My Profile",
+    "about": "About"
+  }
+}

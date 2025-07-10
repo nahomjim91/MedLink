@@ -24,8 +24,9 @@ import {
 import { SearchBar } from "../ui/Input";
 import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaMoneyBill, FaQuestion } from "react-icons/fa";
+import LanguageSelector from "../ui/LanguageSelector";
 
-export default function SharedLayout({ children, allowedRoles = [] }) {
+export default function SharedLayout({ children, allowedRoles = []  , locale}) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -110,37 +111,37 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
       },
     ],
     patient: [
-      { name: "Home", path: "/telehealth/patient", icon: <Home /> },
+      { name :"Home", path: `/telehealth/patient/${locale}`, icon: <Home /> ,},
 
       {
         name: "Doctors",
-        path: "/telehealth/patient/doctors",
+        path: `/telehealth/patient/${locale}/doctors`,
         icon: <Users />,
       },
 
       {
         name: "Appointments",
-        path: "/telehealth/patient/appointments",
+        path: `/telehealth/patient/${locale}/appointments`,
         icon: <ClipboardListIcon />,
       },
       {
         name: "Chats",
-        path: "/telehealth/patient/chats",
+        path: `/telehealth/patient/${locale}/chats`,
         icon: <MessageCircle />,
       },
       {
         name: "Transaction",
-        path: "/telehealth/patient/transactions",
+        path: `/telehealth/patient/${locale}/transactions`,
         icon: <FaMoneyBill />,
       },
       {
         name: "Settings",
-        path: "/telehealth/patient/settings",
+        path: `/telehealth/patient/${locale}/settings`,
         icon: <Settings />,
       },
       {
         name: "Helps",
-        path: "/telehealth/patient/helps",
+        path: `/telehealth/patient/${locale}/helps`,
         icon: <FaQuestion />,
       },
     ],
@@ -306,7 +307,7 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
             <div className="flex items-center gap-4">
               {/* Search Bar */}
               <div className="hidden md:block ">
-                <SearchBar />
+                {user.role === "patient" ? <LanguageSelector /> : <SearchBar />}
               </div>
 
               {/* Icons Section */}
@@ -411,7 +412,11 @@ export default function SharedLayout({ children, allowedRoles = [] }) {
 
                 {/* Mobile Search */}
                 <div className="p-4 ">
-                  <SearchBar />
+                  {user.role === "patient" ? (
+                    <LanguageSelector />
+                  ) : (
+                    <SearchBar />
+                  )}{" "}
                 </div>
 
                 {/* Mobile Navigation */}

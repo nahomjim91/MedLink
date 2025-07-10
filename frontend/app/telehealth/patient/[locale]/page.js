@@ -1,19 +1,19 @@
 "use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Star } from "lucide-react";
-import { Button } from "../components/ui/Button";
-import { UpcomingAppointmentCard } from "../components/ui/Card";
-import { CalendarAppointments } from "../components/ui/CalendarAppointments";
-import TelehealthAddFunds from "../components/ui/AddFound";
-import { useAuth } from "../hooks/useAuth";
+import { Button } from "../../components/ui/Button";
+import { UpcomingAppointmentCard } from "../../components/ui/Card";
+import { CalendarAppointments } from "../../components/ui/CalendarAppointments";
+import TelehealthAddFunds from "../../components/ui/AddFound";
+import { useAuth } from "../../hooks/useAuth";
 import {
   GET_DOCTOR_SPECIALIZATIONS,
   GET_DOCTORS_BY_SPECIALIZATION,
-} from "../api/graphql/queries";
+} from "../../api/graphql/queries";
 import { useQuery } from "@apollo/client";
-import { useAppointment } from "../hooks/useAppointment ";
+import { useAppointment } from "../../hooks/useAppointment ";
 import Link from "next/link";
-import { AppointmentDetailModal } from "../components/ui/modal/AppointmentModal ";
+import { AppointmentDetailModal } from "../../components/ui/modal/AppointmentModal ";
 
 export default function TelehealthPatientPage() {
   const [currentDate, setCurrentDate] = useState(new Date());

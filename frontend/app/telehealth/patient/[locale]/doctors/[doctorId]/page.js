@@ -14,15 +14,15 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
-import ProfileImage from "../../../components/ui/ProfileImage";
+import ProfileImage from "../../../../components/ui/ProfileImage";
 import { useParams } from "next/navigation";
-import { GET_DOCTOR_BY_ID } from "../../../api/graphql/queries";
-import { GET_DOCTOR_AVAILABLE_SLOTS } from "../../../api/graphql/doctor/availabilitySlotQueries";
-import { AboutMeCard, InfoCard ,CertificatesList} from "../../../components/ui/Card";
-import {AppointmentModal} from "../../../components/ui/modal/AppointmentModal ";
-import { useAppointment } from "../../../hooks/useAppointment ";
-import { useAuth } from "../../../hooks/useAuth";
-import TelehealthAddFunds from "../../../components/ui/AddFound";
+import { GET_DOCTOR_BY_ID } from "../../../../api/graphql/queries";
+import { GET_DOCTOR_AVAILABLE_SLOTS } from "../../../../api/graphql/doctor/availabilitySlotQueries";
+import { AboutMeCard, InfoCard ,CertificatesList} from "../../../../components/ui/Card";
+import {AppointmentModal} from "../../../../components/ui/modal/AppointmentModal ";
+import { useAppointment } from "../../../../hooks/useAppointment ";
+import { useAuth } from "../../../../hooks/useAuth";
+import TelehealthAddFunds from "../../../../components/ui/AddFound";
 
 export default function DoctorProfileResponsive() {
   const params = useParams();

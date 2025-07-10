@@ -1,0 +1,38 @@
+{
+  "Patient": {
+    "welcome": "ወደ ታካሚ ፖርታል እንኳን በደህና መጡ",
+    "appointments": "የእኔ ቀጠሮዎች",
+    "profile": "የእኔ መገለጫ",
+    "about": "ስለ"
+  },
+  "TelehealthPatientPage": {
+    "greeting": "ሰላም, {name}",
+    "newAppointment": "አዲስ ቀጠሮ",
+    "upcomingAppointment": "የሚመጣ ቀጠሮ",
+    "noUpcomingAppointments": "የሚመጡ ቀጠሮዎች የሉም",
+    "history": "ታሪክ",
+    "seeAll": "ሁሉንም ይመልከቱ",
+    "doctor": "ዶክተር",
+    "speciality": "የሙያ ዘርፍ",
+    "dateOfVisit": "የጉብኝት ቀን",
+    "statusDiagnosis": "ሁኔታ/ምርመራ",
+    "noHistory": "የቀጠሮ ታሪክ አልተገኘም",
+    "specialtyDoctors": "የሙያ ዘርፍ ዶክተሮች",
+    "errorLoadingDoctors": "ዶክተሮችን በመጫን ላይ ስህተት ተፈጥሯል",
+    "retry": "እንደገና ሞክር",
+    "noDoctorsFound": "ለ {specialty} ምንም ዶክተሮች አልተገኙም",
+    "selectSpecialtyPrompt": "ዶክተሮችን ለማየት የሙያ ዘርፍ ይምረጡ",
+    "yearsExperience": "{count, plural, one {# አመት ልምድ} other {# አመታት ልምድ}}",
+    "priceInBirr": "{price} ብር",
+    "pending": "በመጠባበቅ ላይ",
+    "myWallet": "የእኔ ዋሌት",
+    "addFunds": "ገንዘብ ጨምር",
+    "currentBalance": "ያለዎት ቀሪ ሂሳብ",
+    "status": {
+      "cancelledByDoctor": "በዶክተሩ ተሰርዟል",
+      "cancelled": "ተሰርዟል",
+      "completed": "ተጠናቋል",
+      "noDiagnosis": "ምርመራ የለም"
+    }
+  }
+}
