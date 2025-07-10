@@ -26,7 +26,7 @@ import { IconButton, ImageIconButton } from "../ui/Button";
 import { FaMoneyBill, FaQuestion } from "react-icons/fa";
 import LanguageSelector from "../ui/LanguageSelector";
 
-export default function SharedLayout({ children, allowedRoles = []  , locale}) {
+export default function SharedLayout({ children, allowedRoles = [], locale = null }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -111,7 +111,7 @@ export default function SharedLayout({ children, allowedRoles = []  , locale}) {
       },
     ],
     patient: [
-      { name :"Home", path: `/telehealth/patient/${locale}`, icon: <Home /> ,},
+      { name: "Home", path: `/telehealth/patient/`, icon: <Home /> },
 
       {
         name: "Doctors",
@@ -175,20 +175,39 @@ export default function SharedLayout({ children, allowedRoles = []  , locale}) {
   const currentNavItems = navigationItems[userType] || navigationItems.patient;
 
   // Check if a path is active
-  const isActive = (path) => {
-    const normalizedPath = path.endsWith("/") ? path : path + "/";
-    const normalizedCurrent = pathname.endsWith("/")
-      ? pathname
-      : pathname + "/";
-
+const isActive = (path, ) => {
+  const normalizedPath = path.endsWith("/") ? path : path + "/";
+  const normalizedCurrent = pathname.endsWith("/")
+    ? pathname
+    : pathname + "/";
+  
+  // If locale is null, use the original logic
+  if (!locale) {
     // Home route — must match exactly
     if (normalizedPath === `/telehealth/${user.role}/`) {
       return normalizedCurrent === normalizedPath;
     }
-
     // Other routes — must start with path and have something after
     return normalizedCurrent.startsWith(normalizedPath);
-  };
+  }
+  
+  // If locale exists, handle localized routes
+  const localizedBasePath = `/telehealth/${user.role}/${locale}/`;
+  
+  // For home route with locale
+  if (normalizedPath === `/telehealth/${user.role}/`) {
+    return normalizedCurrent === localizedBasePath;
+  }
+  
+  // For other routes with locale
+  // Convert the path to include locale
+  const localizedPath = normalizedPath.replace(
+    `/telehealth/${user.role}/`,
+    localizedBasePath
+  );
+  
+  return normalizedCurrent.startsWith(localizedPath);
+};
 
   // Role protection check
   const isAuthorized = () => {
@@ -271,7 +290,11 @@ export default function SharedLayout({ children, allowedRoles = []  , locale}) {
               <LogOut />
             </div>
             <Link
-              href={`/telehealth/${userType}/profile`}
+              href={
+                !locale
+                  ? `/telehealth/${userType}/profile`
+                  : ` /telehealth/${userType}/${locale}/profile`
+              }
               className="flex items-center px-4 py-3 text-lg text-secondary rounded-lg hover:bg-gray-100 transition-colors"
             >
               <ImageIconButton
@@ -454,7 +477,11 @@ export default function SharedLayout({ children, allowedRoles = []  , locale}) {
                     <LogOut size={24} className="hover:text-white" />
                   </div>
                   <Link
-                    href={`/telehealth/${userType}/profile`}
+                    href={
+                      !locale
+                        ? `/telehealth/${userType}/profile`
+                        : ` /telehealth/${userType}/${locale}/profile`
+                    }
                     className="block"
                   >
                     <ImageIconButton

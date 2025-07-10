@@ -17,7 +17,7 @@ export default async function PatientLocaleLayout({ children, params }) {
   let messages = {};
   try {
     messages = await getMessages({ locale });
-    console.log("Loaded messages:", messages);
+    // console.log("Loaded messages:", messages);
   } catch (error) {
     console.error("Error loading messages:", error);
   }

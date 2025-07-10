@@ -30,7 +30,7 @@ export default function PatientLocaleLayoutClient({ children, locale, messages, 
         `User with role ${user.role} attempted to access patient route - redirecting`
       );
 
-      // Redirect to their correct role path
+      // Redirect to their correct role path with locale
       const correctRolePath = `/telehealth/${user.role}`;
       router.push(correctRolePath);
     }
