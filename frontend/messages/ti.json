@@ -1,8 +1,36 @@
 {
   "Patient": {
     "welcome": "ናብ ሕሙማን ፖርታል እንቋዕ ብደሓን መጻእኩም",
-    "appointments": "ናተይ ዓገባት",
+    "appointments": "ናተይ ቀጠሮታት",
     "profile": "ናተይ መገለጺ",
-    "about": "ብዛዕባ"
+    "about": "ብዛዕባ",
+    "greeting": "ሰላም, {name}",
+    "newAppointment": "ሓድሽ ቀጠሮ",
+    "upcomingAppointment": "ዝመጽእ ቀጠሮ",
+    "noUpcomingAppointments": "ዝመጽእ ቀጠሮ የለን",
+    "history": "ታሪኽ",
+    "seeAll": "ኩሉ ርአ",
+    "doctor": "ሓኪም",
+    "speciality": "ክኢላዊ ዓውዲ",
+    "dateOfVisit": "ናይ ምብጻሕ ዕለት",
+    "statusDiagnosis": "ኩነታት/ምርመራ",
+    "noHistory": "ናይ ቀጠሮ ታሪኽ ኣይተረኽበን",
+    "specialtyDoctors": "ክኢላ ዶክተራት",
+    "errorLoadingDoctors": "ሓካይም ኣብ ምጽዓን ጌጋ ኣጋጢሙ",
+    "retry": "ደጊምካ ፈትን",
+    "noDoctorsFound": "ን {specialty} ዝኾኑ ሓካይም ኣይተረኽቡን",
+    "selectSpecialtyPrompt": "ሓካይም ንምርኣይ ክኢላዊ ዓውዲ ምረጽ",
+    "yearsExperience": "{count, plural, one {# ዓመት ልምዲ} other {# ዓመታት ልምዲ}}",
+    "priceInBirr": "{price} ብር",
+    "pending": "ይጽበ",
+    "myWallet": "ናተይ ዋሌት",
+    "addFunds": "ገንዘብ ወስኽ",
+    "currentBalance": "ዘሎካ/ኪ ተረፍ ገንዘብ",
+    "status": {
+      "cancelledByDoctor": "ብሓኪም ተሰሪዙ",
+      "cancelled": "ተሰሪዙ",
+      "completed": "ተዛዚሙ",
+      "noDiagnosis": "ምርመራ የለን"
+    }
   }
 }

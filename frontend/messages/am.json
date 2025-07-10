@@ -3,9 +3,7 @@
     "welcome": "ወደ ታካሚ ፖርታል እንኳን በደህና መጡ",
     "appointments": "የእኔ ቀጠሮዎች",
     "profile": "የእኔ መገለጫ",
-    "about": "ስለ"
-  },
-  "TelehealthPatientPage": {
+    "about": "ስለ",
     "greeting": "ሰላም, {name}",
     "newAppointment": "አዲስ ቀጠሮ",
     "upcomingAppointment": "የሚመጣ ቀጠሮ",

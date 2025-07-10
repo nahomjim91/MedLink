@@ -1,8 +1,36 @@
 {
-   "Patient": {
-    "welcome": "Welcome to Patient Portal",
+  "Patient": {
+    "welcome": "Welcome to the Patient Portal",
     "appointments": "My Appointments",
     "profile": "My Profile",
-    "about": "About"
+    "about": "About",
+    "greeting": "Hello, {name}",
+    "newAppointment": "New Appointment",
+    "upcomingAppointment": "Upcoming Appointment",
+    "noUpcomingAppointments": "No upcoming appointments",
+    "history": "History",
+    "seeAll": "See All",
+    "doctor": "Doctor",
+    "speciality": "Speciality",
+    "dateOfVisit": "Date of Visit",
+    "statusDiagnosis": "Status/Diagnosis",
+    "noHistory": "No appointment history found",
+    "specialtyDoctors": "Specialty Doctors",
+    "errorLoadingDoctors": "Error loading doctors",
+    "retry": "Retry",
+    "noDoctorsFound": "No doctors found for {specialty}",
+    "selectSpecialtyPrompt": "Select a specialty to view doctors",
+    "yearsExperience": "{count, plural, one {# year experience} other {# years experience}}",
+    "priceInBirr": "{price} Birr",
+    "pending": "Pending",
+    "myWallet": "My Wallet",
+    "addFunds": "Add Funds",
+    "currentBalance": "Current Balance",
+    "status": {
+      "cancelledByDoctor": "Cancelled by Doctor",
+      "cancelled": "Cancelled",
+      "completed": "Completed",
+      "noDiagnosis": "No diagnosis available"
+    }
   }
 }

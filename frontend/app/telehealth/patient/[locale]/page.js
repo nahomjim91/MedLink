@@ -13,9 +13,16 @@ import {
 import { useQuery } from "@apollo/client";
 import { useAppointment } from "../../hooks/useAppointment ";
 import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
 import { AppointmentDetailModal } from "../../components/ui/modal/AppointmentModal ";
 
 export default function TelehealthPatientPage() {
+  const t = useTranslations("Patient");
+  const locale = useLocale(); // e.g., 'en' or 'am'
+  console.log('Current locale:', locale);
+console.log('Translation test:', t('welcome'));
+console.log('Has translations:', t.has('welcome'));
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [appointments, setAppointments] = useState([]);
@@ -281,19 +288,19 @@ export default function TelehealthPatientPage() {
         id: closest.appointmentId,
         doctorName: getDoctorName(closest),
         specialty: getSpecialty(closest),
-        date: new Date(closest.scheduledStartTime).toLocaleDateString("en-US", {
+        date: new Date(closest.scheduledStartTime).toLocaleDateString(locale, {
           day: "numeric",
           month: "short",
           weekday: "long",
         }),
         time: `${new Date(closest.scheduledStartTime).toLocaleTimeString(
-          "en-US",
+          locale,
           {
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
           }
-        )} - ${new Date(closest.scheduledEndTime).toLocaleTimeString("en-US", {
+        )} - ${new Date(closest.scheduledEndTime).toLocaleTimeString(locale, {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
@@ -308,7 +315,7 @@ export default function TelehealthPatientPage() {
       console.error("Error getting upcoming appointment:", error);
       return null;
     }
-  }, [appointments]);
+  }, [appointments, locale]);
 
   // Enhanced calendar appointments transformation
   const getCalendarAppointments = useMemo(() => {
@@ -345,19 +352,11 @@ export default function TelehealthPatientPage() {
           specialty: getSpecialty(appointment),
           date: new Date(appointment.scheduledStartTime),
           time: `${new Date(appointment.scheduledStartTime).toLocaleTimeString(
-            "en-US",
-            {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            }
+            locale,
+            { hour: "numeric", minute: "2-digit", hour12: true }
           )} - ${new Date(appointment.scheduledEndTime).toLocaleTimeString(
-            "en-US",
-            {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            }
+            locale,
+            { hour: "numeric", minute: "2-digit", hour12: true }
           )}`,
           status: appointment.status,
           avatar:
@@ -380,7 +379,7 @@ export default function TelehealthPatientPage() {
         };
       }
     });
-  }, [appointments]);
+  }, [appointments, locale]);
 
   // Enhanced history appointments transformation
   const getHistoryAppointments = useMemo(() => {
@@ -417,13 +416,13 @@ export default function TelehealthPatientPage() {
 
           switch (appt.status) {
             case "CANCELLED_DOCTOR":
-              return "Cancelled by Doctor";
+              return t("status.cancelledByDoctor");
             case "CANCELLED_PATIENT":
-              return "Cancelled";
+              return t("status.cancelled");
             case "COMPLETED":
-              return "Completed";
+              return t("status.completed");
             default:
-              return "No diagnosis available";
+              return t("status.noDiagnosis");
           }
         };
 
@@ -432,7 +431,7 @@ export default function TelehealthPatientPage() {
           doctor: getDoctorName(appointment),
           specialty: getSpecialty(appointment),
           date: new Date(appointment.scheduledStartTime).toLocaleDateString(
-            "en-US",
+            locale,
             {
               day: "numeric",
               month: "short",
@@ -461,7 +460,7 @@ export default function TelehealthPatientPage() {
         };
       }
     });
-  }, [historyAppointments]);
+  }, [historyAppointments, locale, t]);
 
   // Memoize computed values
   const upcomingAppointment = getUpcomingAppointment;
@@ -474,12 +473,14 @@ export default function TelehealthPatientPage() {
       {/* Header with New Appointment button */}
       <div className="flex justify-between md:justify-end items-center mb-6 md:mb-2">
         <div className="md:hidden">
-          <h1 className="text-2xl font-bold text-secondary">Hello, Ms X</h1>
+          <h1 className="text-2xl font-bold text-secondary">
+            {t("greeting", { name: user?.firstName || "User" })}
+          </h1>
         </div>
-        <Link href={`/telehealth/patient/doctors`}>
+        <Link href={`/telehealth/patient/${locale}/doctors`}>
           <Button className="flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            New Appointment
+            {t("newAppointment")}
           </Button>
         </Link>
       </div>
@@ -514,10 +515,10 @@ export default function TelehealthPatientPage() {
         ) : (
           <div className="bg-white p-6 rounded-xl shadow-sm">
             <h2 className="text-lg font-semibold text-secondary mb-4">
-              Upcoming Appointment
+              {t("upcomingAppointment")}
             </h2>
             <p className="text-gray-500 text-center">
-              No upcoming appointments
+              {t("noUpcomingAppointments")}
             </p>
           </div>
         )}
@@ -543,21 +544,20 @@ export default function TelehealthPatientPage() {
         {/* History Table */}
         <div className="lg:col-span-2 bg-white p-3 rounded-xl shadow-sm">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-semibold text-secondary">History</h2>
-            <Link
+<h2 className="text-lg font-semibold text-secondary">{t('history')}</h2>            <Link
               href="/telehealth/patient/appointments"
               className="text-primary/70 text-sm font-medium hover:text-primary"
             >
-              See All
+             {t('seeAll')}
             </Link>
           </div>
 
           <div className="overflow-x-auto">
             <div className="grid grid-cols-4 gap-4 text-sm font-medium text-secondary/80 pb-2 border-b">
-              <div>Doctor</div>
-              <div>Speciality</div>
-              <div>Date of Visit</div>
-              <div>Status/Diagnosis</div>
+             <div>{t('doctor')}</div>
+              <div>{t('speciality')}</div>
+              <div>{t('dateOfVisit')}</div>
+              <div>{t('statusDiagnosis')}</div>
             </div>
 
             {appointmentsLoading ? (
@@ -626,8 +626,7 @@ export default function TelehealthPatientPage() {
               ))
             ) : (
               <div className="py-8 text-center text-gray-500">
-                No appointment history found
-              </div>
+ {t('noHistory')}              </div>
             )}
           </div>
         </div>
@@ -637,14 +636,12 @@ export default function TelehealthPatientPage() {
           {/* Specialty Doctors */}
           <div className="bg-white p-3 rounded-xl shadow-sm">
             <div className="flex justify-between items-center mb-4 md:mb-2">
-              <h2 className="text-lg font-semibold text-secondary">
-                Specialty Doctors
-              </h2>
+              <h2 className="text-lg font-semibold text-secondary">{t('specialtyDoctors')}</h2>
               <Link
                 href="/telehealth/patient/doctors"
                 className="text-teal-500 text-sm font-medium hover:text-teal-600"
               >
-                See All
+               {t('seeAll')}
               </Link>
             </div>
 
@@ -699,20 +696,20 @@ export default function TelehealthPatientPage() {
                 </div>
               ) : doctorsError ? (
                 <div className="text-center py-4 text-red-500">
-                  Error loading doctors: {doctorsError.message}
+                  {t('errorLoadingDoctors')}
                   <br />
                   <button
                     onClick={() => refetchDoctors()}
                     className="text-sm text-blue-500 underline mt-2"
                   >
-                    Retry
+                   {t('retry')}
                   </button>
                 </div>
               ) : displayDoctors.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">
-                  {selectedSpecialty
-                    ? `No doctors found for ${selectedSpecialty}`
-                    : "Select a specialty to view doctors"}
+                   {selectedSpecialty
+                    ? t('noDoctorsFound', { specialty: selectedSpecialty })
+                    : t('selectSpecialtyPrompt')}
                 </div>
               ) : (
                 <>
@@ -744,7 +741,7 @@ export default function TelehealthPatientPage() {
                                 {doctor.specialty}
                               </p>
                               <p className="text-gray-500 text-xs mt-1">
-                                {doctor.experience} years experience
+                                {t('yearsExperience', { count: doctor.experience })}
                               </p>
                             </div>
                             <div className="flex flex-col items-end gap-2">
@@ -758,7 +755,7 @@ export default function TelehealthPatientPage() {
                                 </span>
                               </div>
                               <span className="font-bold text-teal-400 text-lg">
-                                {doctor.price} Birr
+                                {t('priceInBirr', { price: doctor.price })}
                               </span>
                             </div>
                           </div>
@@ -796,7 +793,7 @@ export default function TelehealthPatientPage() {
                                 {doctor.name}
                               </h3>
                               <p className="text-secondary/80 text-sm">
-                                {doctor.experience}+ years experience
+                                {t('yearsExperience', { count: doctor.experience })}
                               </p>
                               <div className="flex items-center gap-2 mt-1">
                                 <div className="flex items-center gap-1">
@@ -812,7 +809,7 @@ export default function TelehealthPatientPage() {
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               <span className="font-bold text-teal-400">
-                                {doctor.price} Birr
+                                 {t('priceInBirr', { price: doctor.price })}
                               </span>
                               {!doctor.isApproved && (
                                 <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded-full">
@@ -845,23 +842,23 @@ export default function TelehealthPatientPage() {
           <div className="bg-white p-3 rounded-xl shadow-sm">
             <div className="flex justify-between items-center mb-4 md:mb-2">
               <h2 className="text-lg font-semibold text-secondary">
-                My Wallet
+                {t('myWallet')}
               </h2>
               <button
                 className="text-teal-500 text-sm font-medium hover:text-teal-600"
                 onClick={() => setShowAddFunds(true)}
               >
-                Add Funds
+                  {t('addFunds')}
               </button>
             </div>
 
             <div className="text-center flex justify-between items-center">
               <p className="text-sm text-secondary/80 mb-2 md:mb-1">
-                Current Balance
+                {t('currentBalance')}
               </p>
               <div className="bg-teal-500 text-white px-6 py-1 rounded-full inline-block">
                 <span className="text-xl font-bold">
-                  {user?.patientProfile?.telehealthWalletBalance || 0} Birr
+                  {t('priceInBirr', { price: user?.patientProfile?.telehealthWalletBalance || 0 })}
                 </span>
               </div>
             </div>
