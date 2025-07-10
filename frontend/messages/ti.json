@@ -31,6 +31,40 @@
       "cancelled": "ተሰሪዙ",
       "completed": "ተዛዚሙ",
       "noDiagnosis": "ምርመራ የለን"
+    },
+    "calendar": {
+      "title": "ዓውደ መዓልቲ",
+      "prev": "← ቅድሚ",
+      "next": "ቀጺሉ →",
+      "today": "ሎሚ {date} {month}",
+      "appointmentsForSelectedDate": "ንተመሪጽዎ መዓልቲ ዝተዳለወ �ውዒ",
+      "upcomingAppointments": "ዝመጽእ �ውዒ",
+      "noAppointmentsForDate": "ኣብዚ መዓልቲ ምንም ምዝገባ የለን",
+      "showAllUpcoming": "ኩሉ ዝመጽእ �ውዒ ኣርእ",
+      "appointmentDetailsTitle": "{count, plural, one {ዝርዝር ምዝገባ} other {# �ውዒ}}",
+      "dateLabel": "መዓልቲ",
+      "timeLabel": "ሰዓት",
+      "cancelButton": "ስርዝ",
+      "detailsButton": "ዝርዝራት",
+      "selectADate": "መዓልቲ ምረጽ",
+      "selectADatePrompt": "ዝርዝር �ውዒ ንምርኣይ ኣብ ዓውደ መዓልቲ መዓልቲ ጠውቕ"
+    },
+    "upcomingAppointmentCard": {
+      "title": "ዝመጽእ ምዝገባ",
+      "seeMore": "ተወሳኺ ርአ",
+      "dateLabel": "መዓልቲ",
+      "timeLabel": "ሰዓት",
+      "cancelButton": "ስርዝ",
+      "detailsButton": "ዝርዝራት",
+      "status": {
+        "CONFIRMED": "እሙን ተገይሩ",
+        "PENDING": "ጸገም ኣሎ",
+        "REQUESTED": "ተሓቲቱ",
+        "SCHEDULED": "ተወሰነ",
+        "CANCELLED": "�ተሰሪዙ",
+        "COMPLETED": "ተፈጺሙ",
+        "UPCOMING": "ዝመጽእ"
+      }
     }
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Calendar,
   Clock,
@@ -17,6 +17,8 @@ export function CalendarAppointments({
   onCancelAppointment,
   loading = false,
   onViewProfile,
+  t,
+  locale,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -24,27 +26,37 @@ export function CalendarAppointments({
 
   const appointments = propAppointments;
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  const monthNames = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        new Date(2000, i, 1).toLocaleString(locale, { month: "long" })
+      ),
+    [locale]
+  );
 
-  const shortDayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const shortDayNames = useMemo(() => {
+  
+    const firstDayOfWeek = new Intl.Locale(locale).weekInfo?.firstDay ?? 1;
+
+    const names = [];
+    const date = new Date('2024-01-01T12:00:00Z');
+
+    const dayOfWeek = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+    date.setUTCDate(date.getUTCDate() - (dayOfWeek - firstDayOfWeek));
+
+    // Now, loop 7 times to get the names in the correct order
+    for (let i = 0; i < 7; i++) {
+      names.push(date.toLocaleString(locale, { weekday: 'short' }));
+      date.setUTCDate(date.getUTCDate() + 1);
+    }
+    return names;
+  }, [locale]);
 
   // Process appointments with formatted dates
   const processedAppointments = appointments.map((apt) => ({
     ...apt,
-    formattedDate: new Date(apt.date).toLocaleDateString("en-US", {
+    formattedDate: new Date(apt.date).toLocaleDateString(locale, {
+      // Use locale here
       day: "numeric",
       month: "short",
       weekday: "long",
@@ -113,7 +125,7 @@ export function CalendarAppointments({
 
   const getTodayDate = () => {
     const today = new Date();
-    return `Today ${today.getDate()} ${monthNames[today.getMonth()]}`;
+    return t('calendar.today', { date: today.getDate(), month: monthNames[today.getMonth()] });
   };
 
   const selectedAppointmentsForDesktop = selectedDate
@@ -189,7 +201,7 @@ export function CalendarAppointments({
               disabled={loading}
               size="sm"
             >
-              Cancel
+              {t("calendar.cancelButton")}{" "}
             </Button>
           )}
 
@@ -223,7 +235,7 @@ export function CalendarAppointments({
           <div className="p-2 md:p-3">
             <div className="flex justify-between items-center mb-4 md:mb-0">
               <h2 className="text-lg md:text-xl font-semibold text-secondary">
-                Calendar
+                {t('calendar.title')}
               </h2>
 
               {/* Desktop Month Navigation */}
@@ -258,7 +270,7 @@ export function CalendarAppointments({
                   onClick={() => setWeekOffset((prev) => Math.max(prev - 1, 0))}
                   className="text-sm text-gray-600 hover:text-teal-500"
                 >
-                  ← Prev
+                  {t('calendar.prev')}
                 </button>
                 <span className="text-sm font-medium text-gray-600">
                   {getCurrentWeekMonthYear()}
@@ -271,7 +283,7 @@ export function CalendarAppointments({
                   }
                   className="text-sm text-gray-600 hover:text-teal-500"
                 >
-                  Next →
+                   {t('calendar.next')}
                 </button>
               </div>
 
@@ -375,8 +387,8 @@ export function CalendarAppointments({
           <div className="md:hidden border-t border-gray-100 p-4">
             <h3 className="font-semibold text-secondary mb-3">
               {selectedDate
-                ? "Appointments for Selected Date"
-                : "Upcoming Appointments"}
+                ? t('calendar.appointmentsForSelectedDate')
+                : t('calendar.upcomingAppointments')}
             </h3>
             <div className="space-y-2">
               {selectedDateAppointments.length > 0 ? (
@@ -423,8 +435,7 @@ export function CalendarAppointments({
                 ))
               ) : (
                 <p className="text-sm text-gray-500 text-center py-4">
-                  No appointments for this date
-                </p>
+{t('calendar.noAppointmentsForDate')}                </p>
               )}
             </div>
             {selectedDate && (
@@ -432,7 +443,7 @@ export function CalendarAppointments({
                 onClick={() => setSelectedDate(null)}
                 className="w-full mt-3 text-sm text-teal-600 hover:text-teal-700"
               >
-                Show all upcoming appointments
+                {t('calendar.showAllUpcoming')}
               </button>
             )}
           </div>
@@ -445,7 +456,7 @@ export function CalendarAppointments({
               <div className="flex justify-between items-center mb-5">
                 <h3 className="text-xl font-semibold text-secondary">
                   {selectedAppointmentsForDesktop.length > 1
-                    ? `${selectedAppointmentsForDesktop.length} Appointments`
+                    ? t('calendar.appointmentDetailsTitle', { count: selectedAppointmentsForDesktop.length })
                     : "Appointment Details"}
                 </h3>
                 <button
@@ -505,7 +516,7 @@ export function CalendarAppointments({
                         <Calendar className="w-4 h-4 text-gray-500" />
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
-                            Date
+                            {t('calendar.dateLabel')}
                           </p>
                           <p className="text-sm font-medium text-secondary">
                             {appointment.formattedDate}
@@ -517,7 +528,7 @@ export function CalendarAppointments({
                         <Clock className="w-4 h-4 text-gray-500" />
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
-                            Time
+                            {t('calendar.timeLabel')}
                           </p>
                           <p className="text-sm font-medium text-secondary">
                             {appointment.time}
@@ -539,10 +550,10 @@ export function CalendarAppointments({
               <div className="text-center py-12">
                 <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-secondary mb-2">
-                  Select a Date
+                  {t('calendar.selectADate')}
                 </h3>
                 <p className="text-gray-500">
-                  Click on a calendar date to view appointment details
+                  {t('calendar.selectADatePrompt')}
                 </p>
               </div>
             </div>
@@ -646,7 +657,9 @@ export function MinimalCalendar({ appointments, userRole, onViewProfile }) {
         <div className=" flex-2/5 bg-white rounded-l-2xl shadow-2xl border border-gray-100 md:h-65 overflow-y-clip  ">
           <div className="p-2 md:p-3">
             <div className="flex justify-between items-center mb-4 md:mb-1">
-              <h2 className="text-lg font-semibold secondary/70">Calendar</h2>
+              <h2 className="text-lg font-semibold secondary/70">
+                {t("calendar.title")}
+              </h2>
 
               {/* Desktop Month Navigation */}
               <div className="hidden md:flex items-center gap-2">
@@ -758,14 +771,7 @@ export function MinimalCalendar({ appointments, userRole, onViewProfile }) {
           {/* Mobile Appointments List */}
           <div className="md:hidden border-t border-gray-100 p-4">
             <h3 className="font-semibold text-secondary mb-3">
-              {selectedDate
-                ? `${new Date(selectedDate).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}`
-                : "Recent Appointments"}
-            </h3>
+              {selectedDate ? t('calendar.appointmentsForSelectedDate') : t('calendar.upcomingAppointments')}</h3>
             <div className="space-y-2">
               {(() => {
                 const appointmentsToShow = selectedDate
@@ -777,7 +783,7 @@ export function MinimalCalendar({ appointments, userRole, onViewProfile }) {
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center text-gray-500">
                         <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                        <p className="text-sm">No appointments for this date</p>
+                        <p className="text-sm">{t('calendar.noAppointmentsForDate')}</p>
                       </div>
                     </div>
                   );

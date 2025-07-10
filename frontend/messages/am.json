@@ -31,6 +31,40 @@
       "cancelled": "ተሰርዟል",
       "completed": "ተጠናቋል",
       "noDiagnosis": "ምርመራ የለም"
+    },
+    "calendar": {
+      "title": "ቀን ቆጠራ",
+      "prev": "← ቀዳሚ",
+      "next": "ቀጣይ →",
+      "today": "ዛሬ {date} {month}",
+      "appointmentsForSelectedDate": "ለተመረጠው ቀን የታሰቡ ስራዎች",
+      "upcomingAppointments": "የሚመጡ ቀጠሮዎች",
+      "noAppointmentsForDate": "ለዚህ ቀን ምንም ቀጠሮዎች የሉም",
+      "showAllUpcoming": "ሁሉንም የሚመጡ ቀጠሮዎች አሳይ",
+      "appointmentDetailsTitle": "{count, plural, one {የቀጠሮ ዝርዝሮች} other {# ቀጠሮዎች}}",
+      "dateLabel": "ቀን",
+      "timeLabel": "ሰዓት",
+      "cancelButton": "ሰርዝ",
+      "detailsButton": "ዝርዝሮች",
+      "selectADate": "ቀን ምረጥ",
+      "selectADatePrompt": "የቀጠሮ ዝርዝሮችን ለማየት በቀን ቆጠራ ላይ ቀን ጠቅ ያድርጉ"
+    },
+    "upcomingAppointmentCard": {
+      "title": "የሚመጣ ቀጠሮ",
+      "seeMore": "ተጨማሪ ይመልከቱ",
+      "dateLabel": "ቀን",
+      "timeLabel": "ሰዓት",
+      "cancelButton": "ሰርዝ",
+      "detailsButton": "ዝርዝሮች",
+      "status": {
+        "CONFIRMED": "ተረጋግጧል",
+        "PENDING": "በጥበቃ ላይ",
+        "REQUESTED": "ተጠይቋል",
+        "SCHEDULED": "ተወስኗል",
+        "CANCELLED": "ተሰርዟል",
+        "COMPLETED": "ተጠናቅቋል",
+        "UPCOMING": "የሚመጣ"
+      }
     }
   }
 }

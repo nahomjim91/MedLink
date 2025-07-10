@@ -511,6 +511,8 @@ console.log('Has translations:', t.has('welcome'));
             }}
             loading={appointmentsLoading}
             userRole={user.role}
+            t={t}
+            locale={locale}
           />
         ) : (
           <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -536,6 +538,8 @@ console.log('Has translations:', t.has('welcome'));
             setSelectedAppointment(id);
             setDetailModalOpen(true);
           }}
+          t ={t}
+          locale={locale}
         />
       </div>
 
@@ -577,7 +581,7 @@ console.log('Has translations:', t.has('welcome'));
                 </div>
               ))
             ) : historyData.length > 0 ? (
-              historyData.map((appointment) => (
+              historyData.slice(0, 4).map((appointment) => (
                 <div
                   key={appointment.id}
                   className="grid grid-cols-4 gap-4 py-3 text-sm border-b border-gray-100 last:border-b-0 text-secondary/60"

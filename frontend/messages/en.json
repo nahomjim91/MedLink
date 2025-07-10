@@ -31,6 +31,41 @@
       "cancelled": "Cancelled",
       "completed": "Completed",
       "noDiagnosis": "No diagnosis available"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "prev": "← Prev",
+      "next": "Next →",
+      "today": "Today {date} {month}",
+      "appointmentsForSelectedDate": "Appointments for Selected Date",
+      "upcomingAppointments": "Upcoming Appointments",
+      "noAppointmentsForDate": "No appointments for this date",
+      "showAllUpcoming": "Show all upcoming appointments",
+      "appointmentDetailsTitle": "{count, plural, one {Appointment Details} other {# Appointments}}",
+      "dateLabel": "Date",
+      "timeLabel": "Time",
+      "cancelButton": "Cancel",
+      "detailsButton": "Details",
+      "selectADate": "Select a Date",
+      "selectADatePrompt": "Click on a calendar date to view appointment details"
+    },
+    "upcomingAppointmentCard": {
+      "title": "Upcoming Appointment",
+      "seeMore": "See More",
+      "dateLabel": "Date",
+      "timeLabel": "Time",
+      "cancelButton": "Cancel",
+      "detailsButton": "Details",
+      "status": {
+        "CONFIRMED": "Confirmed",
+        "PENDING": "Pending",
+        "REQUESTED": "Requested",
+        "SCHEDULED": "Scheduled",
+        "CANCELLED": "Cancelled",
+        "COMPLETED": "Completed",
+        "UPCOMING": "Upcoming"
+        
+      }
     }
   }
 }

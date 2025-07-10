@@ -1,8 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Calendar, Clock, FileText } from "lucide-react";
 import { Button } from "./Button";
-import {  CancelModal } from "./modal/AppointmentModal ";
+import { CancelModal } from "./modal/AppointmentModal ";
 import Link from "next/link";
 
 export default function IconCard({ icon, label, onClick, isSelected }) {
@@ -82,15 +82,34 @@ export function UpcomingAppointmentCard({
   onViewProfile,
   loading = false,
   userRole,
+  t,
+  locale,
 }) {
   const [showCancelModal, setShowCancelModal] = useState(false);
- 
-
 
   // Check if appointment can be cancelled based on status
   const canCancel = ["REQUESTED", "PENDING", "CONFIRMED", "SCHEDULED"].includes(
     upcomingAppointment.status
   );
+
+  const formattedDate = useMemo(() => {
+    if (!upcomingAppointment?.date) return "";
+    return new Date(upcomingAppointment.date).toLocaleDateString(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }, [upcomingAppointment?.date, locale]);
+
+  // A helper to translate status text, reusing the logic from the calendar
+  const getStatusText = (status) => {
+    if (!status) return "";
+    const key = `upcomingAppointmentCard.status.${status}`;
+    // Fallback to the original status if translation is not found
+    return t(key, {}, { defaultValue: status });
+  };
+
 
   const handleCancelConfirm = async (appointmentId, reason) => {
     try {
@@ -115,13 +134,13 @@ export function UpcomingAppointmentCard({
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex justify-between items-center mb-4 sm:mb-6">
             <h2 className="text-lg sm:text-xl font-semibold text-secondary">
-              Upcoming Appointment
+                {t('upcomingAppointmentCard.title')}
             </h2>
             <Link
               href={`/telehealth/${userRole}/appointments`}
               className="text-teal-500 text-sm font-medium hover:text-teal-600 transition-colors"
             >
-              See More
+           {t('upcomingAppointmentCard.seeMore')}
             </Link>
           </div>
 
@@ -129,7 +148,10 @@ export function UpcomingAppointmentCard({
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="w-12 h-12 md:w-16 md:h-16 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
               <img
-                src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + upcomingAppointment.avatar}
+                src={
+                  process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                  upcomingAppointment.avatar
+                }
                 alt={upcomingAppointment.doctorName}
                 className="w-full h-full object-cover"
               />
@@ -155,7 +177,7 @@ export function UpcomingAppointmentCard({
                       : "bg-gray-100 text-gray-700"
                   }`}
                 >
-                  {upcomingAppointment.status}
+                 {getStatusText(upcomingAppointment.status)}
                 </div>
               )}
             </div>
@@ -167,10 +189,10 @@ export function UpcomingAppointmentCard({
               <Calendar className="w-4 h-4 text-gray-500" />
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Date
+                    {t('upcomingAppointmentCard.dateLabel')}
                 </p>
                 <p className="text-sm font-medium text-secondary">
-                  {upcomingAppointment.date}
+                      {upcomingAppointment.date}
                 </p>
               </div>
             </div>
@@ -179,7 +201,7 @@ export function UpcomingAppointmentCard({
               <Clock className="w-4 h-4 text-gray-500" />
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Time
+                   {t('upcomingAppointmentCard.timeLabel')}
                 </p>
                 <p className="text-sm font-medium text-secondary">
                   {upcomingAppointment.time}
@@ -197,7 +219,7 @@ export function UpcomingAppointmentCard({
                 onClick={() => setShowCancelModal(true)}
                 disabled={loading}
               >
-                Cancel
+                 {t('upcomingAppointmentCard.cancelButton')}
               </Button>
             )}
 
@@ -206,7 +228,7 @@ export function UpcomingAppointmentCard({
               onClick={handleViewProfile}
               disabled={loading}
             >
-              Details
+              {t('upcomingAppointmentCard.detailsButton')}
             </Button>
           </div>
         </div>
@@ -221,7 +243,6 @@ export function UpcomingAppointmentCard({
           loading={loading}
         />
       )}
-
     </>
   );
 }

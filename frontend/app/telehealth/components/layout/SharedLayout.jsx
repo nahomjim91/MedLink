@@ -175,38 +175,26 @@ export default function SharedLayout({ children, allowedRoles = [], locale = nul
   const currentNavItems = navigationItems[userType] || navigationItems.patient;
 
   // Check if a path is active
-const isActive = (path, ) => {
+const isActive = (path) => {
   const normalizedPath = path.endsWith("/") ? path : path + "/";
   const normalizedCurrent = pathname.endsWith("/")
     ? pathname
     : pathname + "/";
   
-  // If locale is null, use the original logic
-  if (!locale) {
-    // Home route — must match exactly
-    if (normalizedPath === `/telehealth/${user.role}/`) {
+  // For home route - check if it's the base path without locale
+  if (normalizedPath === `/telehealth/${userType}/`) {
+    if (locale) {
+      // If locale exists, home should match /telehealth/userType/locale/
+      return normalizedCurrent === `/telehealth/${userType}/${locale}/`;
+    } else {
+      // If no locale, match exactly
       return normalizedCurrent === normalizedPath;
     }
-    // Other routes — must start with path and have something after
-    return normalizedCurrent.startsWith(normalizedPath);
   }
   
-  // If locale exists, handle localized routes
-  const localizedBasePath = `/telehealth/${user.role}/${locale}/`;
-  
-  // For home route with locale
-  if (normalizedPath === `/telehealth/${user.role}/`) {
-    return normalizedCurrent === localizedBasePath;
-  }
-  
-  // For other routes with locale
-  // Convert the path to include locale
-  const localizedPath = normalizedPath.replace(
-    `/telehealth/${user.role}/`,
-    localizedBasePath
-  );
-  
-  return normalizedCurrent.startsWith(localizedPath);
+  // For other routes, do a simple startsWith comparison
+  // since the navigation paths are already built with the correct locale
+  return normalizedCurrent.startsWith(normalizedPath);
 };
 
   // Role protection check
