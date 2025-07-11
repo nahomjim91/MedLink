@@ -331,7 +331,7 @@ const AdminDashboard = () => {
 
     const headers = [
       "Order ID",
-      "Order Number", 
+      "Order Number",
       "Buyer Name",
       "Buyer Company",
       "Seller Name",
@@ -1067,10 +1067,12 @@ const AdminDashboard = () => {
                                 <img
                                   className="h-10 w-10 rounded-full"
                                   src={
-                                    process.env
-                                      .NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
-                                      user.profileImageUrl ||
-                                    `https://ui-avatars.com/api/?name=${user.contactName}&background=random`
+                                    user.profileImageUrl.startsWith("http")
+                                      ? user.profileImageUrl
+                                      : process.env
+                                          .NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                                          user.profileImageUrl ||
+                                        `https://ui-avatars.com/api/?name=${user.contactName}&background=random`
                                   }
                                   alt=""
                                 />
@@ -1199,10 +1201,12 @@ const AdminDashboard = () => {
                                 <img
                                   className="h-10 w-10 rounded-lg object-cover"
                                   src={
+                                    product.imageList?.[0].startsWith('http')?
+                                    product.imageList?.[0]:
                                     process.env
                                       .NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
                                       product.imageList?.[0] ||
-                                    "https://via.placeholder.com/40x40?text=No+Image"
+                                   "https://via.placeholder.com/40x40?text=No+Image"
                                   }
                                   alt=""
                                 />
@@ -1210,7 +1214,7 @@ const AdminDashboard = () => {
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-secondary">
                                   {product.name}
-                                </div>
+                                </div> 
                                 <div className="text-sm text-secondary/60">
                                   {product.productId}
                                 </div>

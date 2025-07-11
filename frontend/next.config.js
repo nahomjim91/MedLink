@@ -34,6 +34,8 @@ const nextConfig = {
     ],
   },
   devIndicators: false,
+  
+
 };
 
 module.exports = withNextIntl(nextConfig);

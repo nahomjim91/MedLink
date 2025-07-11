@@ -210,42 +210,43 @@ const RatingModel = {
    * @param {Number} offset - Offset for pagination
    * @returns {Array} Array of ratings
    */
-  async getUserRatings(userId, limit, offset) {
-    try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(
-        limit,
-        offset
-      );
+async getUserRatings(userId, limit, offset) {
+  try {
+    const { limit: limitVal, offset: offsetVal } = paginationParams(
+      limit,
+      offset
+    );
 
-      let query = ratingsRef
+    let query = ratingsRef
+      .where("ratedUserId", "==", userId)
+      .where("type", "==", "user_rating")
+      .orderBy("createdAt", "desc");
+
+    // Apply pagination
+    if (offsetVal > 0) {
+      const prevPageSnapshot = await ratingsRef
         .where("ratedUserId", "==", userId)
         .where("type", "==", "user_rating")
-        .orderBy("createdAt", "desc");
+        .orderBy("createdAt", "desc")
+        .limit(offsetVal)
+        .get();
 
-      // Apply pagination
-      if (offsetVal > 0) {
-        const prevPageSnapshot = await ratingsRef
-          .where("ratedUserId", "==", userId)
-          .where("type", "==", "user_rating")
-          .orderBy("createdAt", "desc")
-          .limit(offsetVal)
-          .get();
-
-        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
-        if (lastDoc) {
-          query = query.startAfter(lastDoc);
-        }
+      const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
       }
-
-      query = query.limit(limitVal);
-      const snapshot = await query.get();
-      console.log(formatDocs(snapshot.docs));
-      return formatDocs(snapshot.docs);
-    } catch (error) {
-      console.error("Error getting user ratings:", error);
-      throw error;
     }
-  },
+
+    query = query.limit(limitVal);
+    const snapshot = await query.get();
+    console.log(formatDocs(snapshot.docs));
+    return formatDocs(snapshot.docs) || []; // FIXED: Always return array
+  } catch (error) {
+    console.error("Error getting user ratings:", error);
+    return []; // FIXED: Return empty array on error
+  }
+},
+
 
   /**
    * Get product ratings
@@ -254,41 +255,42 @@ const RatingModel = {
    * @param {Number} offset - Offset for pagination
    * @returns {Array} Array of ratings
    */
-  async getProductRatings(productId, limit, offset) {
-    try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(
-        limit,
-        offset
-      );
+async getProductRatings(productId, limit, offset) {
+  try {
+    const { limit: limitVal, offset: offsetVal } = paginationParams(
+      limit,
+      offset
+    );
 
-      let query = ratingsRef
+    let query = ratingsRef
+      .where("productId", "==", productId)
+      .where("type", "==", "product_rating")
+      .orderBy("createdAt", "desc");
+
+    // Apply pagination
+    if (offsetVal > 0) {
+      const prevPageSnapshot = await ratingsRef
         .where("productId", "==", productId)
         .where("type", "==", "product_rating")
-        .orderBy("createdAt", "desc");
+        .orderBy("createdAt", "desc")
+        .limit(offsetVal)
+        .get();
 
-      // Apply pagination
-      if (offsetVal > 0) {
-        const prevPageSnapshot = await ratingsRef
-          .where("productId", "==", productId)
-          .where("type", "==", "product_rating")
-          .orderBy("createdAt", "desc")
-          .limit(offsetVal)
-          .get();
-
-        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
-        if (lastDoc) {
-          query = query.startAfter(lastDoc);
-        }
+      const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
       }
-
-      query = query.limit(limitVal);
-      const snapshot = await query.get();
-      return formatDocs(snapshot.docs);
-    } catch (error) {
-      console.error("Error getting product ratings:", error);
-      throw error;
     }
-  },
+
+    query = query.limit(limitVal);
+    const snapshot = await query.get();
+    return formatDocs(snapshot.docs) || []; // FIXED: Always return array
+  } catch (error) {
+    console.error("Error getting product ratings:", error);
+    return []; // FIXED: Return empty array on error
+  }
+},
+
 
   /**
    * Get ratings given by a user
@@ -297,39 +299,40 @@ const RatingModel = {
    * @param {Number} offset - Offset for pagination
    * @returns {Array} Array of ratings
    */
-  async getRatingsByUser(userId, limit, offset) {
-    try {
-      const { limit: limitVal, offset: offsetVal } = paginationParams(
-        limit,
-        offset
-      );
+async getRatingsByUser(userId, limit, offset) {
+  try {
+    const { limit: limitVal, offset: offsetVal } = paginationParams(
+      limit,
+      offset
+    );
 
-      let query = ratingsRef
+    let query = ratingsRef
+      .where("raterId", "==", userId)
+      .orderBy("createdAt", "desc");
+
+    // Apply pagination
+    if (offsetVal > 0) {
+      const prevPageSnapshot = await ratingsRef
         .where("raterId", "==", userId)
-        .orderBy("createdAt", "desc");
+        .orderBy("createdAt", "desc")
+        .limit(offsetVal)
+        .get();
 
-      // Apply pagination
-      if (offsetVal > 0) {
-        const prevPageSnapshot = await ratingsRef
-          .where("raterId", "==", userId)
-          .orderBy("createdAt", "desc")
-          .limit(offsetVal)
-          .get();
-
-        const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
-        if (lastDoc) {
-          query = query.startAfter(lastDoc);
-        }
+      const lastDoc = prevPageSnapshot.docs[prevPageSnapshot.docs.length - 1];
+      if (lastDoc) {
+        query = query.startAfter(lastDoc);
       }
-
-      query = query.limit(limitVal);
-      const snapshot = await query.get();
-      return formatDocs(snapshot.docs);
-    } catch (error) {
-      console.error("Error getting ratings by user:", error);
-      throw error;
     }
-  },
+
+    query = query.limit(limitVal);
+    const snapshot = await query.get();
+    console.log("snapshot", formatDocs(snapshot.docs));
+    return formatDocs(snapshot.docs) || []; // FIXED: Always return array
+  } catch (error) {
+    console.error("Error getting ratings by user:", error);
+    return []; // FIXED: Return empty array on error
+  }
+},
 
   /**
    * Get ratings for a specific order
@@ -534,6 +537,7 @@ const RatingModel = {
   async getUserRatingStats(userId) {
     try {
       const userDoc = await MSUserModel.getById(userId);
+      console.log("User doc found:", !!userDoc);
       return (
         userDoc?.ratingStats || {
           totalRatings: 0,
@@ -578,3 +582,4 @@ const RatingModel = {
 };
 
 module.exports = RatingModel;
+

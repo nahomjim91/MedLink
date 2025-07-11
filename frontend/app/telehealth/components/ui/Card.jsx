@@ -149,6 +149,9 @@ export function UpcomingAppointmentCard({
             <div className="w-12 h-12 md:w-16 md:h-16 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
               <img
                 src={
+                  upcomingAppointment.avatar.startsWith("http")
+                    ? upcomingAppointment.avatar
+                    :
                   process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                   upcomingAppointment.avatar
                 }

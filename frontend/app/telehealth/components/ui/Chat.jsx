@@ -867,6 +867,9 @@ const MedicalChatInterface = ({ appointmentId }) => {
                       {chat.avatar ? (
                         <img
                           src={
+                            chat.avatar.startsWith("http")
+                              ? chat.avatar
+                              :
                             process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                             chat.avatar
                           }
@@ -950,6 +953,9 @@ const MedicalChatInterface = ({ appointmentId }) => {
                       {activeChat.avatar ? (
                         <img
                           src={
+                            activeChat.avatar.startsWith("http")
+                              ? activeChat.avatar
+                              :
                             process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                             activeChat.avatar
                           }

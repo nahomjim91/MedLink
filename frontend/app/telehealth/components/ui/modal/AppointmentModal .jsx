@@ -727,6 +727,8 @@ export const AppointmentDetailModal = ({
                 <div className="flex jusc items-center space-x-4">
                   <img
                     src={
+                      otherPerson?.profileImageUrl.startsWith("http")
+                        ? otherPerson?.profileImageUrl:
                       process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                       otherPerson?.profileImageUrl
                     }

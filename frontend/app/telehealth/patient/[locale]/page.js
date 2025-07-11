@@ -590,6 +590,8 @@ console.log('Has translations:', t.has('welcome'));
                     <div className="hidden md:block w-8 h-8 rounded-full bg-gray-300 overflow-hidden">
                       <img
                         src={
+                          appointment.avatar.startsWith("http")
+                            ? appointment.avatar:
                           process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                           appointment.avatar
                         }
@@ -730,6 +732,8 @@ console.log('Has translations:', t.has('welcome'));
                             <div className="w-16 h-16 rounded-full bg-primary/20 overflow-hidden flex-shrink-0">
                               <img
                                 src={
+                                  doctor.avatar.startsWith('http')
+                                    ? doctor.avatar:
                                   process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                                   doctor.avatar
                                 }
@@ -785,6 +789,7 @@ console.log('Has translations:', t.has('welcome'));
                               )}
                               <img
                                 src={
+                                  doctor.avatar.startsWith('http')?doctor.avatar:
                                   process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                                   doctor.avatar
                                 }

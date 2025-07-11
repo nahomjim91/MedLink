@@ -535,6 +535,9 @@ const handleFilterApply = async (filters) => {
                           <div className="flex items-center space-x-3">
                             <img
                               src={
+                                appt.patient.profileImageUrr.startsWith("http")
+                                  ? appt.patient.profileImageUrr
+                                  :
                                 process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                                 appt.doctor.profileImageUrl
                               }
@@ -647,6 +650,9 @@ const handleFilterApply = async (filters) => {
                       <div className="flex items-center space-x-3">
                         <img
                           src={
+                            appt.doctor.profileImageUrl.startsWith("http")
+                              ? appt.doctor.profileImageUrl
+                              :
                             process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                             appt.doctor.profileImageUrl
                           }

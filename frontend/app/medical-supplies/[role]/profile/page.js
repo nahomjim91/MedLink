@@ -20,6 +20,7 @@ import { useRatings } from "../../hooks/useRatings";
 
 export default function ProfilePage() {
   const { user } = useMSAuth();
+  console.log("user", user);
   const router = useRouter();
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -50,12 +51,6 @@ export default function ProfilePage() {
     businessLicenseUrl: user?.businessLicenseUrl || "",
    
   });
-
-    const { userRatingStats, userRatingStatsLoading } = useRatings({
-      userId: user?.userId,
-      autoFetch: !!user?.userId, 
-    });
-    console.log('userRatingStats', userRatingStats);
 
   useEffect(() => {
     if (!user) {
@@ -318,7 +313,7 @@ export default function ProfilePage() {
           <div>
             {userData.companyName} Drug & Medical Supplies {userData.role}
           </div>
-          <Rating value={userRatingStatsLoading ? 0 : userRatingStats?.averageRating} />
+          <Rating value={!user.ratingStats?.averageRating ? 0 : user.ratingStats?.averageRating} />
         </div>
         <div className="flex-1/4 flex justify-end pr-11">
           {!isEditing ? (

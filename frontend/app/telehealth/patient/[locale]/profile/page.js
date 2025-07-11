@@ -16,7 +16,7 @@ import ProfileImage from "../../../components/ui/ProfileImage";
 import { useAuth } from "../../../hooks/useAuth";
 import EditProfileModal from "./EditProfileModal";
 import { usePrescriptionsByPatientId } from "../../../hooks/usePrescription";
-import {PrescriptionViewModal} from "../../../components/ui/modal/PrescriptionModal"
+import { PrescriptionViewModal } from "../../../components/ui/modal/PrescriptionModal";
 
 export default function PatientProfile() {
   const { user, refetchUser } = useAuth();
@@ -359,7 +359,7 @@ export default function PatientProfile() {
         onSuccess={handleProfileUpdateSuccess}
       />
 
-        {showPrescriptionModalView && (
+      {showPrescriptionModalView && (
         <PrescriptionViewModal
           isOpen={showPrescriptionModalView}
           onClose={handleClosePrescriptionModal}
@@ -494,7 +494,13 @@ export const ResponsivePrescriptionsSection = ({
                   <div className="flex items-center">
                     {prescription.doctorDetails.profileImage ? (
                       <img
-                        src={prescription.doctorDetails.profileImage}
+                        src={
+                          prescription.doctorDetails.profileImage.startsWith(
+                            "http"
+                          )
+                            ? prescription.doctorDetails.profileImage
+                            : prescription.doctorDetails.profileImage
+                        }
                         alt={prescription.doctorDetails.name}
                         className="w-8 h-8 rounded-full mr-3"
                       />
@@ -518,7 +524,7 @@ export const ResponsivePrescriptionsSection = ({
                 <td className="py-3 px-4 text-gray-600 text-sm">
                   {formatDate(prescription.createdAt)}
                 </td>
-                
+
                 <td className="py-3 px-4">
                   <div className="flex justify-center">
                     <button
@@ -548,7 +554,12 @@ export const ResponsivePrescriptionsSection = ({
               <div className="flex items-center mb-3">
                 {prescription.doctorDetails.profileImage ? (
                   <img
-                    src={prescription.doctorDetails.profileImage}
+                    src={
+                      prescription.doctorDetails.profileImage.startsWith("http")
+                        ? prescription.doctorDetails.profileImage
+                        : process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                          prescription.doctorDetails.profileImage
+                    }
                     alt={prescription.doctorDetails.name}
                     className="w-10 h-10 rounded-full mr-3"
                   />

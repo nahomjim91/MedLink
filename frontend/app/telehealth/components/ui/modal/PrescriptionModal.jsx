@@ -15,9 +15,9 @@ import {
   Sparkles,
   Clock,
   Pill,
-  Download, Printer,
+  Download,
+  Printer,
 } from "lucide-react";
-
 
 import { useQuery } from "@apollo/client";
 import Image from "next/image";
@@ -824,14 +824,15 @@ export const PrescriptionModal = ({
   );
 };
 
-export const PrescriptionViewModal = ({ 
-  isOpen, 
-  onClose, 
+export const PrescriptionViewModal = ({
+  isOpen,
+  onClose,
   prescriptionId, // Changed from prescriptionData to prescriptionId
-  isPatient = false
+  isPatient = false,
 }) => {
   // Use the hook to fetch prescription data
-  const { prescription, loading, error, refetch } = usePrescriptionById(prescriptionId);
+  const { prescription, loading, error, refetch } =
+    usePrescriptionById(prescriptionId);
 
   if (!isOpen) return null;
 
@@ -840,7 +841,10 @@ export const PrescriptionViewModal = ({
     return (
       <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-40 p-4">
         <div className="bg-white rounded-2xl p-6 sm:p-8 text-center shadow-2xl max-w-xs sm:max-w-sm w-full">
-          <Loader2 size={48} className="animate-spin mx-auto mb-4 text-[#25c8b1]" />
+          <Loader2
+            size={48}
+            className="animate-spin mx-auto mb-4 text-[#25c8b1]"
+          />
           <p className="text-gray-600 font-medium">Loading prescription...</p>
         </div>
       </div>
@@ -853,8 +857,12 @@ export const PrescriptionViewModal = ({
       <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-40 p-4">
         <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-xs sm:max-w-md w-full shadow-2xl">
           <AlertCircle size={48} className="mx-auto mb-4 text-red-500" />
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Error Loading Prescription</h3>
-          <p className="text-gray-600 mb-6">{error.message || 'Failed to load prescription'}</p>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            Error Loading Prescription
+          </h3>
+          <p className="text-gray-600 mb-6">
+            {error.message || "Failed to load prescription"}
+          </p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => refetch()}
@@ -880,8 +888,12 @@ export const PrescriptionViewModal = ({
       <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-40 p-4">
         <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-xs sm:max-w-md w-full shadow-2xl">
           <AlertCircle size={48} className="mx-auto mb-4 text-yellow-500" />
-          <h3 className="text-xl font-bold text-gray-800 mb-2">No Prescription Found</h3>
-          <p className="text-gray-600 mb-6">The requested prescription could not be found.</p>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            No Prescription Found
+          </h3>
+          <p className="text-gray-600 mb-6">
+            The requested prescription could not be found.
+          </p>
           <button
             onClick={onClose}
             className="px-6 py-3 bg-[#25c8b1] text-white rounded-lg hover:bg-[#25c8b1]/90 transition-all duration-200 font-medium"
@@ -894,35 +906,35 @@ export const PrescriptionViewModal = ({
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case "active":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "completed":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "cancelled":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
   const handlePrint = () => {
     // Create a new window for printing
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     const printContent = generatePrintContent();
-    
+
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.focus();
@@ -932,11 +944,13 @@ export const PrescriptionViewModal = ({
 
   const handleDownload = () => {
     const printContent = generatePrintContent();
-    const blob = new Blob([printContent], { type: 'text/html' });
+    const blob = new Blob([printContent], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `prescription-${prescription.id}-${prescription.patientDetails.name.replace(/\s+/g, '-')}.html`;
+    a.download = `prescription-${
+      prescription.id
+    }-${prescription.patientDetails.name.replace(/\s+/g, "-")}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -998,12 +1012,20 @@ export const PrescriptionViewModal = ({
               <div class="section-title">Prescription Information</div>
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <div>
-                  <p><strong>Appointment ID:</strong> ${prescription.appointmentId}</p>
-                  <p><strong>Created:</strong> ${formatDate(prescription.createdAt)}</p>
-                  <p><strong>Last Updated:</strong> ${formatDate(prescription.updatedAt)}</p>
+                  <p><strong>Appointment ID:</strong> ${
+                    prescription.appointmentId
+                  }</p>
+                  <p><strong>Created:</strong> ${formatDate(
+                    prescription.createdAt
+                  )}</p>
+                  <p><strong>Last Updated:</strong> ${formatDate(
+                    prescription.updatedAt
+                  )}</p>
                 </div>
                 <div>
-                  <span class="status-badge status-${prescription.status?.toLowerCase() || 'unknown'}">${prescription.status?.toUpperCase() || 'UNKNOWN'}</span>
+                  <span class="status-badge status-${
+                    prescription.status?.toLowerCase() || "unknown"
+                  }">${prescription.status?.toUpperCase() || "UNKNOWN"}</span>
                 </div>
               </div>
             </div>
@@ -1013,20 +1035,33 @@ export const PrescriptionViewModal = ({
               <div class="info-grid">
                 <div class="info-card">
                   <h3>Patient Details</h3>
-                  <p><strong>Name:</strong> ${prescription.patientDetails.name}</p>
-                  <p><strong>Patient ID:</strong> ${prescription.patientDetails.patientId}</p>
+                  <p><strong>Name:</strong> ${
+                    prescription.patientDetails.name
+                  }</p>
+                  <p><strong>Patient ID:</strong> ${
+                    prescription.patientDetails.patientId
+                  }</p>
                 </div>
                 <div class="info-card">
                   <h3>Doctor Details</h3>
-                  <p><strong>Name:</strong> ${prescription.doctorDetails.name}</p>
-                  <p><strong>Doctor ID:</strong> ${prescription.doctorDetails.doctorId}</p>
+                  <p><strong>Name:</strong> ${
+                    prescription.doctorDetails.name
+                  }</p>
+                  <p><strong>Doctor ID:</strong> ${
+                    prescription.doctorDetails.doctorId
+                  }</p>
                 </div>
               </div>
             </div>
 
             <div class="section">
-              <div class="section-title">Prescribed Medications (${prescription.medications?.length || 0})</div>
-              ${prescription.medications?.map((med, index) => `
+              <div class="section-title">Prescribed Medications (${
+                prescription.medications?.length || 0
+              })</div>
+              ${
+                prescription.medications
+                  ?.map(
+                    (med, index) => `
                 <div class="medication">
                   <h4>${index + 1}. ${med.drugName}</h4>
                   <div class="med-details">
@@ -1052,27 +1087,42 @@ export const PrescriptionViewModal = ({
                     <div class="instructions-text">${med.instructions}</div>
                   </div>
                 </div>
-              `).join('') || '<p>No medications prescribed</p>'}
+              `
+                  )
+                  .join("") || "<p>No medications prescribed</p>"
+              }
             </div>
 
-            ${prescription.recommendations ? `
+            ${
+              prescription.recommendations
+                ? `
               <div class="section">
                 <div class="section-title">Additional Recommendations</div>
                 <div class="recommendations">
                   <p>${prescription.recommendations}</p>
                 </div>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
 
-            ${prescription.signature ? `
+            ${
+              prescription.signature
+                ? `
               <div class="section">
                 <div class="section-title">Digital Signature</div>
                 <div class="signature">
-                  <p><strong>Digitally Signed by:</strong> ${prescription.signature}</p>
-                  <p><strong>Signed on:</strong> ${formatDate(prescription.createdAt)}</p>
+                  <p><strong>Digitally Signed by:</strong> ${
+                    prescription.signature
+                  }</p>
+                  <p><strong>Signed on:</strong> ${formatDate(
+                    prescription.createdAt
+                  )}</p>
                 </div>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
 
             <div class="footer">
               <p>This prescription is valid and legally binding. Present this prescription to your pharmacist to obtain your medications.</p>
@@ -1095,7 +1145,7 @@ export const PrescriptionViewModal = ({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-[#28161c]">
-                {isPatient ? 'My Prescription' : 'Prescription Details'}
+                {isPatient ? "My Prescription" : "Prescription Details"}
               </h2>
               <p className="text-xs sm:text-sm text-gray-600">
                 Prescription ID: {prescription.id}
@@ -1135,7 +1185,9 @@ export const PrescriptionViewModal = ({
             <div className="mb-6 p-4 sm:p-6 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="text-lg font-bold text-[#28161c] mb-2">Prescription Information</h3>
+                  <h3 className="text-lg font-bold text-[#28161c] mb-2">
+                    Prescription Information
+                  </h3>
                   <div className="flex flex-wrap gap-2 sm:gap-4 text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       <Calendar size={14} />
@@ -1148,14 +1200,20 @@ export const PrescriptionViewModal = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(prescription.status)}`}>
-                    {prescription.status?.toUpperCase() || 'UNKNOWN'}
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(
+                      prescription.status
+                    )}`}
+                  >
+                    {prescription.status?.toUpperCase() || "UNKNOWN"}
                   </span>
                 </div>
               </div>
-              
+
               <div className="text-sm text-gray-600">
-                <p><strong>Appointment ID:</strong> {prescription.appointmentId}</p>
+                <p>
+                  <strong>Appointment ID:</strong> {prescription.appointmentId}
+                </p>
               </div>
             </div>
 
@@ -1171,13 +1229,24 @@ export const PrescriptionViewModal = ({
                   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-primary/50 to-primary/60 relative overflow-hidden border-2 border-white shadow-lg flex-shrink-0">
                     {prescription.patientDetails.profileImage ? (
                       <img
-                        src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + prescription.patientDetails.profileImage}
-                        alt="Patient" 
+                        src={
+                          prescription.patientDetails.profileImage.startsWith(
+                            "http"
+                          )
+                            ? prescription.patientDetails.profileImage
+                            :
+                          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                          prescription.patientDetails.profileImage
+                        }
+                        alt="Patient"
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm sm:text-lg">
-                        {prescription.patientDetails.name.split(' ').map(n => n.charAt(0)).join('')}
+                        {prescription.patientDetails.name
+                          .split(" ")
+                          .map((n) => n.charAt(0))
+                          .join("")}
                       </div>
                     )}
                   </div>
@@ -1202,13 +1271,23 @@ export const PrescriptionViewModal = ({
                   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-green-500 to-green-600 relative overflow-hidden border-2 border-white shadow-lg flex-shrink-0">
                     {prescription.doctorDetails.profileImage ? (
                       <img
-                        src={process.env.NEXT_PUBLIC_TELEHEALTH_API_URL+prescription.doctorDetails.profileImage}
-                        alt="Doctor" 
+                        src={
+                          prescription.doctorDetails.profileImagr.startsWith(
+                            "http"
+                          )
+                            ? prescription.doctorDetails.profileImage
+                            : process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                              prescription.doctorDetails.profileImage
+                        }
+                        alt="Doctor"
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-bold text-sm sm:text-lg">
-                        {prescription.doctorDetails.name.split(' ').map(n => n.charAt(0)).join('')}
+                        {prescription.doctorDetails.name
+                          .split(" ")
+                          .map((n) => n.charAt(0))
+                          .join("")}
                       </div>
                     )}
                   </div>
@@ -1232,7 +1311,10 @@ export const PrescriptionViewModal = ({
               </h3>
               <div className="space-y-4">
                 {prescription.medications?.map((medication, index) => (
-                  <div key={index} className="border-2 border-gray-200 rounded-lg p-4 sm:p-6 bg-white shadow-sm">
+                  <div
+                    key={index}
+                    className="border-2 border-gray-200 rounded-lg p-4 sm:p-6 bg-white shadow-sm"
+                  >
                     <div className="flex items-start gap-3 mb-4">
                       <div className="w-8 h-8 bg-gradient-to-br from-[#25c8b1] to-[#25c8b1]/80 rounded-full text-white text-sm flex items-center justify-center flex-shrink-0">
                         {index + 1}
@@ -1243,25 +1325,45 @@ export const PrescriptionViewModal = ({
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                           <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs font-semibold text-gray-500 mb-1">DOSAGE</p>
-                            <p className="text-sm font-medium text-gray-800">{medication.dosage}</p>
+                            <p className="text-xs font-semibold text-gray-500 mb-1">
+                              DOSAGE
+                            </p>
+                            <p className="text-sm font-medium text-gray-800">
+                              {medication.dosage}
+                            </p>
                           </div>
                           <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs font-semibold text-gray-500 mb-1">ROUTE</p>
-                            <p className="text-sm font-medium text-gray-800">{medication.route}</p>
+                            <p className="text-xs font-semibold text-gray-500 mb-1">
+                              ROUTE
+                            </p>
+                            <p className="text-sm font-medium text-gray-800">
+                              {medication.route}
+                            </p>
                           </div>
                           <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs font-semibold text-gray-500 mb-1">FREQUENCY</p>
-                            <p className="text-sm font-medium text-gray-800">{medication.frequency}</p>
+                            <p className="text-xs font-semibold text-gray-500 mb-1">
+                              FREQUENCY
+                            </p>
+                            <p className="text-sm font-medium text-gray-800">
+                              {medication.frequency}
+                            </p>
                           </div>
                           <div className="bg-gray-50 rounded-lg p-3">
-                            <p className="text-xs font-semibold text-gray-500 mb-1">DURATION</p>
-                            <p className="text-sm font-medium text-gray-800">{medication.duration}</p>
+                            <p className="text-xs font-semibold text-gray-500 mb-1">
+                              DURATION
+                            </p>
+                            <p className="text-sm font-medium text-gray-800">
+                              {medication.duration}
+                            </p>
                           </div>
                         </div>
                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                          <p className="text-xs font-semibold text-amber-700 mb-1">INSTRUCTIONS</p>
-                          <p className="text-sm text-amber-800">{medication.instructions}</p>
+                          <p className="text-xs font-semibold text-amber-700 mb-1">
+                            INSTRUCTIONS
+                          </p>
+                          <p className="text-sm text-amber-800">
+                            {medication.instructions}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -1278,9 +1380,13 @@ export const PrescriptionViewModal = ({
             {/* Recommendations */}
             {prescription.recommendations && (
               <div className="mb-6">
-                <h3 className="text-lg font-bold text-[#28161c] mb-4">Additional Recommendations</h3>
+                <h3 className="text-lg font-bold text-[#28161c] mb-4">
+                  Additional Recommendations
+                </h3>
                 <div className="p-4 sm:p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-gray-700 whitespace-pre-wrap">{prescription.recommendations}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {prescription.recommendations}
+                  </p>
                 </div>
               </div>
             )}
@@ -1288,7 +1394,9 @@ export const PrescriptionViewModal = ({
             {/* Signature */}
             {prescription.signature && (
               <div className="mb-6">
-                <h3 className="text-lg font-bold text-[#28161c] mb-4">Digital Signature</h3>
+                <h3 className="text-lg font-bold text-[#28161c] mb-4">
+                  Digital Signature
+                </h3>
                 <div className="p-4 sm:p-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-3 text-green-700">
                     <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
@@ -1296,7 +1404,9 @@ export const PrescriptionViewModal = ({
                     </div>
                     <div>
                       <p className="font-semibold">Digitally Signed by:</p>
-                      <p className="text-lg font-bold">{prescription.signature}</p>
+                      <p className="text-lg font-bold">
+                        {prescription.signature}
+                      </p>
                       <p className="text-sm text-green-600">
                         Signed on {formatDate(prescription.createdAt)}
                       </p>
@@ -1309,11 +1419,17 @@ export const PrescriptionViewModal = ({
             {/* Legal Notice */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-6">
               <div className="flex items-start gap-3">
-                <AlertCircle className="text-gray-500 mt-1 flex-shrink-0" size={20} />
+                <AlertCircle
+                  className="text-gray-500 mt-1 flex-shrink-0"
+                  size={20}
+                />
                 <div className="text-sm text-gray-600">
                   <p className="font-semibold mb-2">Important Notice</p>
                   <p>
-                    This prescription is valid and legally binding. {isPatient ? 'Present this prescription to your pharmacist to obtain your medications. Follow all instructions carefully and consult your doctor if you have any questions.' : 'This prescription was issued by a licensed healthcare provider and should be dispensed according to medical regulations.'}
+                    This prescription is valid and legally binding.{" "}
+                    {isPatient
+                      ? "Present this prescription to your pharmacist to obtain your medications. Follow all instructions carefully and consult your doctor if you have any questions."
+                      : "This prescription was issued by a licensed healthcare provider and should be dispensed according to medical regulations."}
                   </p>
                 </div>
               </div>

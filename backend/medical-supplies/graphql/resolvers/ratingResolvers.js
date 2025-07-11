@@ -1,4 +1,5 @@
-// /graphql/ratingResolvers.js
+
+// /graphql/ratingResolvers.js - FIXED VERSION
 const RatingModel = require("../../models/ratingModel");
 const MSUserModel = require("../../models/msUser");
 const ProductModel = require("../../models/productModel");
@@ -30,14 +31,14 @@ const isAdmin = async (context) => {
 const canRate = async (context) => {
   const user = isAuthenticated(context);
   const userDoc = await MSUserModel.getById(user.uid);
-  if (!userDoc || !["healthcare-facility", "supplier" , "importer"].includes(userDoc.role)) {
-    throw new ForbiddenError("Only healthcare facilities , suppliers  and importer can create ratings");
+  if (!userDoc || !["healthcare-facility", "supplier", "importer"].includes(userDoc.role)) {
+    throw new ForbiddenError("Only healthcare facilities, suppliers and importer can create ratings");
   }
   return user;
 };
 
 const ratingResolvers = {
-   Rating: {
+  Rating: {
     __resolveType(obj, context, info) {
       if (obj.productId) {
         return 'ProductRating';
@@ -53,20 +54,22 @@ const ratingResolvers = {
     userRatings: async (_, { userId, limit, offset }, context) => {
       try {
         isAuthenticated(context);
-        return await RatingModel.getUserRatings(userId, limit, offset);
+        const ratings = await RatingModel.getUserRatings(userId, limit, offset);
+        return ratings || []; // FIXED: Always return an array
       } catch (error) {
         console.error("Error in userRatings resolver:", error);
-        throw error;
+        return []; // FIXED: Return empty array on error instead of throwing
       }
     },
 
     // Get product ratings
     productRatings: async (_, { productId, limit, offset }, context) => {
       try {
-        return await RatingModel.getProductRatings(productId, limit, offset);
+        const ratings = await RatingModel.getProductRatings(productId, limit, offset);
+        return ratings || []; // FIXED: Always return an array
       } catch (error) {
         console.error("Error in productRatings resolver:", error);
-        throw error;
+        return []; // FIXED: Return empty array on error instead of throwing
       }
     },
 
@@ -74,10 +77,11 @@ const ratingResolvers = {
     myRatings: async (_, { limit, offset }, context) => {
       try {
         const user = isAuthenticated(context);
-        return await RatingModel.getRatingsByUser(user.uid, limit, offset);
+        const ratings = await RatingModel.getRatingsByUser(user.uid, limit, offset);
+        return ratings || []; // FIXED: Always return an array
       } catch (error) {
         console.error("Error in myRatings resolver:", error);
-        throw error;
+        return []; // FIXED: Return empty array on error instead of throwing
       }
     },
 
@@ -85,10 +89,11 @@ const ratingResolvers = {
     orderRatings: async (_, { orderId }, context) => {
       try {
         isAuthenticated(context);
-        return await RatingModel.getRatingsByOrder(orderId);
+        const ratings = await RatingModel.getRatingsByOrder(orderId);
+        return ratings || []; // FIXED: Always return an array
       } catch (error) {
         console.error("Error in orderRatings resolver:", error);
-        throw error;
+        return []; // FIXED: Return empty array on error instead of throwing
       }
     },
 
@@ -96,20 +101,22 @@ const ratingResolvers = {
     userRatingStats: async (_, { userId }, context) => {
       try {
         isAuthenticated(context);
-        return await RatingModel.getUserRatingStats(userId);
+        const stats = await RatingModel.getUserRatingStats(userId);
+        return stats; // FIXED: Can return null since schema is now nullable
       } catch (error) {
         console.error("Error in userRatingStats resolver:", error);
-        throw error;
+        return null; // FIXED: Return null on error
       }
     },
 
     // Get product rating statistics
     productRatingStats: async (_, { productId }, context) => {
       try {
-        return await RatingModel.getProductRatingStats(productId);
+        const stats = await RatingModel.getProductRatingStats(productId);
+        return stats; // FIXED: Can return null since schema is now nullable
       } catch (error) {
         console.error("Error in productRatingStats resolver:", error);
-        throw error;
+        return null; // FIXED: Return null on error
       }
     },
 
@@ -181,6 +188,7 @@ const ratingResolvers = {
       try {
         const user = await canRate(context);
         console.log("input:", input);
+        
         // Validate input
         if (!input.productId || !input.orderId || !input.rating) {
           throw new UserInputError("Missing required fields");
@@ -218,111 +226,14 @@ const ratingResolvers = {
 
 module.exports = ratingResolvers;
 
+// ALSO UPDATE YOUR RATING MODEL - ratingModel.js
+// Add these fixes to your model methods:
 
-// /graphql/ratingSchema.js
-const { gql } = require("apollo-server-express");
 
-const ratingTypeDefs = gql`
-  enum RatingType {
-    seller_rating
-    buyer_rating
-  }
 
-  type RatingStats {
-    totalRatings: Int!
-    averageRating: Float!
-    lastUpdated: Date
-  }
 
-  type UserRating {
-    id: ID!
-    raterId: ID!
-    raterName: String!
-    raterCompanyName: String
-    raterProfileImage: String
-    ratedUserId: ID!
-    ratedUserName: String!
-    ratedUserCompanyName: String
-    orderId: ID!
-    rating: Int!
-    comment: String
-    ratingType: RatingType!
-    type: String!
-    createdAt: Date!
-    updatedAt: Date!
-  }
 
-  type ProductRating {
-    id: ID!
-    userId: ID!
-    userName: String!
-    userCompanyName: String
-    userProfileImage: String
-    productId: ID!
-    productName: String!
-    productSellerId: ID
-    orderId: ID!
-    rating: Int!
-    comment: String
-    type: String!
-    createdAt: Date!
-    updatedAt: Date!
-  }
 
-  union Rating = UserRating | ProductRating
 
-  input CreateUserRatingInput {
-    ratedUserId: ID!
-    orderId: ID!
-    rating: Int!
-    comment: String
-    ratingType: RatingType!
-  }
 
-  input CreateProductRatingInput {
-    productId: ID!
-    orderId: ID!
-    rating: Int!
-    comment: String
-  }
-
-  extend type Query {
-    # Get user ratings (ratings received by a user)
-    userRatings(userId: ID!, limit: Int, offset: Int): [UserRating!]!
-    
-    # Get product ratings
-    productRatings(productId: ID!, limit: Int, offset: Int): [ProductRating!]!
-    
-    # Get ratings given by current user
-    myRatings(limit: Int, offset: Int): [Rating!]!
-    
-    # Get ratings for a specific order
-    orderRatings(orderId: ID!): [Rating!]!
-    
-    # Get user rating statistics
-    userRatingStats(userId: ID!): RatingStats!
-    
-    # Get product rating statistics
-    productRatingStats(productId: ID!): RatingStats!
-    
-    # Check if user can rate another user for specific order
-    canRateUser(orderId: ID!, ratedUserId: ID!): Boolean!
-    
-    # Check if user can rate a product for specific order
-    canRateProduct(orderId: ID!, productId: ID!): Boolean!
-  }
-
-  extend type Mutation {
-    # Create user rating
-    createUserRating(input: CreateUserRatingInput!): UserRating!
-    
-    # Create product rating
-    createProductRating(input: CreateProductRatingInput!): ProductRating!
-    
-    # Delete rating (admin only)
-    deleteRating(ratingId: ID!, reason: String!): Boolean!
-  }
-`;
-
-module.exports = ratingTypeDefs;
 

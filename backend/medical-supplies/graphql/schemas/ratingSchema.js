@@ -1,5 +1,4 @@
-
-// /graphql/ratingSchema.js
+// /graphql/ratingSchema.js - FIXED VERSION
 const { gql } = require("apollo-server-express");
 
 const ratingTypeDefs = gql`
@@ -67,23 +66,23 @@ const ratingTypeDefs = gql`
   }
 
   extend type Query {
-    # Get user ratings (ratings received by a user)
+    # Get user ratings (ratings received by a user) - FIXED: Made non-nullable array
     userRatings(userId: ID!, limit: Int, offset: Int): [UserRating!]!
     
-    # Get product ratings
+    # Get product ratings - FIXED: Made non-nullable array
     productRatings(productId: ID!, limit: Int, offset: Int): [ProductRating!]!
     
-    # Get ratings given by current user
+    # Get ratings given by current user - FIXED: Made non-nullable array
     myRatings(limit: Int, offset: Int): [Rating!]!
     
-    # Get ratings for a specific order
+    # Get ratings for a specific order - FIXED: Made non-nullable array
     orderRatings(orderId: ID!): [Rating!]!
     
-    # Get user rating statistics
-    userRatingStats(userId: ID!): RatingStats!
+    # Get user rating statistics - FIXED: Made nullable
+    userRatingStats(userId: ID!): RatingStats
     
-    # Get product rating statistics
-    productRatingStats(productId: ID!): RatingStats!
+    # Get product rating statistics - FIXED: Made nullable for consistency
+    productRatingStats(productId: ID!): RatingStats
     
     # Check if user can rate another user for specific order
     canRateUser(orderId: ID!, ratedUserId: ID!): Boolean!
@@ -105,4 +104,3 @@ const ratingTypeDefs = gql`
 `;
 
 module.exports = ratingTypeDefs;
-

@@ -71,7 +71,9 @@ const ProductReviews = ({
     return (
       <div className="flex items-center gap-4 group">
         <div className="flex items-center gap-2 min-w-[50px]">
-          <span className="text-sm font-semibold text-secondary/70">{rating}</span>
+          <span className="text-sm font-semibold text-secondary/70">
+            {rating}
+          </span>
           <Star className="w-4 h-4 fill-primary text-primary" />
         </div>
         <div className="flex-1 bg-secondary/10 rounded-full h-3 overflow-hidden">
@@ -135,7 +137,6 @@ const ProductReviews = ({
       {/* Header */}
       <div className="">
         <h2 className="text-xl font-bold text-secondary/80 flex items-center gap-3">
-         
           Product Reviews
         </h2>
       </div>
@@ -233,7 +234,6 @@ const ProductReviews = ({
           </div>
 
           <div className="lg:col-span-3">
-
             {/* Reviews List */}
             <div className="space-y-3 h-[50vh] overflow-y-auto scrollbar-hide">
               {filteredRatings.length === 0 ? (
@@ -275,9 +275,11 @@ const ProductReviews = ({
                             <div className="w-full h-full rounded-full overflow-hidden bg-white">
                               <img
                                 src={
-                                  process.env
-                                    .NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
-                                  review.userProfileImage
+                                  review.userProfileImage.startsWith("http")
+                                    ? review.userProfileImage
+                                    : process.env
+                                        .NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
+                                      review.userProfileImage
                                 }
                                 alt={review.userName}
                                 className="w-full h-full object-cover"
@@ -300,7 +302,6 @@ const ProductReviews = ({
                           </p>
                         </div>
                       </div>
-
                     </div>
                   </div>
                 ))

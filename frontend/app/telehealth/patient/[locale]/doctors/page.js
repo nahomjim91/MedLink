@@ -82,6 +82,7 @@ const DoctorCard = ({ doctor, onFavoriteClick }) => {
               {profileImage ? (
                 <img
                   src={
+                    profileImage.startsWith("http")? profileImage:
                     process.env.NEXT_PUBLIC_TELEHEALTH_API_URL + profileImage
                   }
                   alt={displayName}

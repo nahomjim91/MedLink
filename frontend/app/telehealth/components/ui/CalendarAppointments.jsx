@@ -401,6 +401,8 @@ const shortDayNames = useMemo(() => {
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0">
                       <img
                         src={
+                          appointment.avatar.startsWith("http")?
+                          appointment.avatar:
                           process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                           appointment.avatar
                         }
@@ -479,6 +481,8 @@ const shortDayNames = useMemo(() => {
                       <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
                         <img
                           src={
+                            appointment.avatar.startsWith("http")?
+                            appointment.avatar:
                             process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                             appointment.avatar
                           }
@@ -798,6 +802,8 @@ export function MinimalCalendar({ appointments, userRole, onViewProfile }) {
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-white flex-shrink-0">
                       <img
                         src={
+                          appointment.avatar.startsWith("http")?
+                          appointment.avatar:
                           process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                           appointment.avatar
                         }
@@ -894,6 +900,8 @@ export function MinimalCalendar({ appointments, userRole, onViewProfile }) {
                 >
                   <img
                     src={
+                      appointment.avatar.startsWith("http")?
+                      appointment.avatar:
                       process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
                       appointment.avatar
                     }

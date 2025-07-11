@@ -340,65 +340,69 @@ export default function DoctorDashboardPage() {
             <div className="space-y-4">
               {upcomingAppointments.slice(0, 1).map((appointment) => (
                 <div
-  key={appointment.appointmentId}
-  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
->
-  {/* Header with patient info */}
-  <div className="flex items-start gap-4 mb-4">
-    <div className="relative">
-      <img
-        src={
-          process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
-          appointment.patient?.profileImageUrl
-        }
-        alt="Patient"
-        className="w-14 h-14 rounded-full object-cover ring-2 ring-teal-100"
-      />
-      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 rounded-full border-2 border-white"></div>
-    </div>
-    
-    <div className="flex-1 min-w-0">
-      <div className="flex items-center gap-2 mb-1">
-        <h4 className="font-semibold text-secondary text-lg truncate">
-          {appointment.patientName}
-        </h4>
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-          Scheduled
-        </span>
-      </div>
-      
-      <p className="text-sm text-gray-600 leading-relaxed">
-        {appointment.reasonNote.length > 50
-          ? `${appointment.reasonNote.slice(0, 50)}...`
-          : appointment.reasonNote}
-      </p>
-    </div>
-  </div>
+                  key={appointment.appointmentId}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+                >
+                  {/* Header with patient info */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="relative">
+                      <img
+                        src={
+                          appointment.patient?.profileImageUrl.startsWith(
+                            "http://"
+                          )
+                            ? appointment.patient?.profileImageUrl
+                            : process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                              appointment.patient?.profileImageUrl
+                        }
+                        alt="Patient"
+                        className="w-14 h-14 rounded-full object-cover ring-2 ring-teal-100"
+                      />
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-500 rounded-full border-2 border-white"></div>
+                    </div>
 
-  {/* Appointment details */}
-  <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-teal-500">
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-      <div className="flex items-center gap-2 text-gray-700">
-        <div className="p-1 bg-teal-100 rounded">
-          <Calendar className="w-4 h-4 text-teal-600" />
-        </div>
-        <span className="font-medium text-sm">
-          {formatDate(appointment.scheduledStartTime)}
-        </span>
-      </div>
-      
-      <div className="flex items-center gap-2 text-gray-700">
-        <div className="p-1 bg-teal-100 rounded">
-          <Clock className="w-4 h-4 text-teal-600" />
-        </div>
-        <span className="font-medium text-sm">
-          {formatTime(appointment.scheduledStartTime)} - {formatTime(appointment.scheduledEndTime)}
-        </span>
-      </div>
-    </div>
-  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-secondary text-lg truncate">
+                          {appointment.patientName}
+                        </h4>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+                          Scheduled
+                        </span>
+                      </div>
 
-</div>
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {appointment.reasonNote.length > 50
+                          ? `${appointment.reasonNote.slice(0, 50)}...`
+                          : appointment.reasonNote}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Appointment details */}
+                  <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-teal-500">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <div className="p-1 bg-teal-100 rounded">
+                          <Calendar className="w-4 h-4 text-teal-600" />
+                        </div>
+                        <span className="font-medium text-sm">
+                          {formatDate(appointment.scheduledStartTime)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-gray-700">
+                        <div className="p-1 bg-teal-100 rounded">
+                          <Clock className="w-4 h-4 text-teal-600" />
+                        </div>
+                        <span className="font-medium text-sm">
+                          {formatTime(appointment.scheduledStartTime)} -{" "}
+                          {formatTime(appointment.scheduledEndTime)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -530,8 +534,12 @@ export default function DoctorDashboardPage() {
                       <div className="flex items-center gap-2">
                         <img
                           src={
-                            process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
-                            appointment.patient?.profileImageUrl
+                            appointment.patient?.profileImageUrl.startsWith(
+                              "http://"
+                            )
+                              ? appointment.patient?.profileImageUrl
+                              : process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                                appointment.patient?.profileImageUrl
                           }
                           alt="Patient"
                           className="w-8 h-8 rounded-full"
@@ -670,8 +678,12 @@ export default function DoctorDashboardPage() {
                         <div className="flex items-center gap-2">
                           <img
                             src={
-                              process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
-                              appointment.patient?.profileImageUrl
+                              appointment.patient?.profileImageUrl.startsWith(
+                                "http"
+                              )
+                                ? appointment.patient?.profileImageUrl
+                                : process.env.NEXT_PUBLIC_TELEHEALTH_API_URL +
+                                  appointment.patient?.profileImageUrl
                             }
                             alt="Patient"
                             className="w-8 h-8 rounded-full bg-primary/20"

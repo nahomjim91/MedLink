@@ -3,7 +3,7 @@ const { GraphQLScalarType } = require("graphql");
 const { Kind } = require("graphql/language");
 const MSUserModel = require("../../models/msUser");
 const CartModel = require("../../models/cartModel");
-const RatingModel = require("../../models/RatingModel");
+const RatingModel = require("../../models/ratingModel");
 const {
   AuthenticationError,
   ForbiddenError,

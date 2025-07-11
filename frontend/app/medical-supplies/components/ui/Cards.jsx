@@ -254,6 +254,8 @@ export const DynamicMinOrderCard = ({ orders, userRole, userId }) => {
             {otherUserInfo.image && !otherUserInfo.isLoading ? (
               <img
                 src={
+                  otherUserInfo.image.startsWith("http") ?
+                    otherUserInfo.image :
                   process.env.NEXT_PUBLIC_MEDICAL_SUPPLIES_API_URL +
                   otherUserInfo.image
                 }
